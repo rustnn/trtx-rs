@@ -43,9 +43,7 @@ impl CudaEngine {
             return Err(Error::from_ffi(result, &error_msg));
         }
 
-        let name = unsafe { CStr::from_ptr(name_ptr) }
-            .to_str()?
-            .to_string();
+        let name = unsafe { CStr::from_ptr(name_ptr) }.to_str()?.to_string();
 
         Ok(name)
     }
@@ -108,7 +106,11 @@ impl<'a> ExecutionContext<'a> {
     /// - `data` points to valid CUDA device memory
     /// - The memory remains valid for the lifetime of inference
     /// - The memory is large enough for the tensor's size
-    pub unsafe fn set_tensor_address(&mut self, name: &str, data: *mut std::ffi::c_void) -> Result<()> {
+    pub unsafe fn set_tensor_address(
+        &mut self,
+        name: &str,
+        data: *mut std::ffi::c_void,
+    ) -> Result<()> {
         let name_cstr = std::ffi::CString::new(name)?;
         let mut error_msg = [0i8; 1024];
 

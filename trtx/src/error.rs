@@ -60,16 +60,10 @@ impl Error {
     /// Parse error message from C string buffer
     fn parse_error_msg(buffer: &[i8]) -> String {
         // Find null terminator
-        let len = buffer
-            .iter()
-            .position(|&c| c == 0)
-            .unwrap_or(buffer.len());
+        let len = buffer.iter().position(|&c| c == 0).unwrap_or(buffer.len());
 
         // Convert i8 to u8 safely
-        let bytes: Vec<u8> = buffer[..len]
-            .iter()
-            .map(|&c| c as u8)
-            .collect();
+        let bytes: Vec<u8> = buffer[..len].iter().map(|&c| c as u8).collect();
 
         String::from_utf8_lossy(&bytes).into_owned()
     }

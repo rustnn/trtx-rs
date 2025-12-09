@@ -9,9 +9,7 @@ fn main() {
         println!("cargo:warning=Building in MOCK mode - no TensorRT-RTX required");
 
         // Build mock C implementation
-        cc::Build::new()
-            .file("mock.c")
-            .compile("trtx_mock");
+        cc::Build::new().file("mock.c").compile("trtx_mock");
 
         generate_mock_bindings(&out_path);
         return;
@@ -22,8 +20,8 @@ fn main() {
 
     // Look for TensorRT-RTX installation
     // Users can override with TENSORRT_RTX_DIR environment variable
-    let trtx_dir = env::var("TENSORRT_RTX_DIR")
-        .unwrap_or_else(|_| "/usr/local/tensorrt-rtx".to_string());
+    let trtx_dir =
+        env::var("TENSORRT_RTX_DIR").unwrap_or_else(|_| "/usr/local/tensorrt-rtx".to_string());
 
     let include_dir = format!("{}/include", trtx_dir);
     let lib_dir = format!("{}/lib", trtx_dir);
