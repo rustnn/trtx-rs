@@ -49,7 +49,7 @@ impl CudaEngine {
     }
 
     /// Create an execution context for inference
-    pub fn create_execution_context(&self) -> Result<ExecutionContext> {
+    pub fn create_execution_context(&self) -> Result<ExecutionContext<'_>> {
         let mut context_ptr: *mut TrtxExecutionContext = std::ptr::null_mut();
         let mut error_msg = [0i8; 1024];
 
@@ -70,11 +70,6 @@ impl CudaEngine {
             inner: context_ptr,
             _engine: std::marker::PhantomData,
         })
-    }
-
-    /// Get the raw pointer (for internal use)
-    pub(crate) fn as_ptr(&self) -> *mut TrtxCudaEngine {
-        self.inner
     }
 }
 

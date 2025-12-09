@@ -1,5 +1,5 @@
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 fn main() {
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
@@ -66,7 +66,7 @@ fn main() {
         .expect("Couldn't write bindings!");
 }
 
-fn generate_mock_bindings(out_path: &PathBuf) {
+fn generate_mock_bindings(out_path: &Path) {
     let mock_bindings = r#"
 // Mock bindings for development without TensorRT-RTX
 

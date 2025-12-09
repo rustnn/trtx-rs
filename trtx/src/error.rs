@@ -1,7 +1,6 @@
 //! Error types for TensorRT-RTX operations
 
 use std::ffi::NulError;
-use std::fmt;
 use thiserror::Error;
 
 /// Result type for TensorRT-RTX operations

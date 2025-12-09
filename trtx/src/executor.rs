@@ -5,8 +5,8 @@
 
 use crate::builder::network_flags;
 use crate::cuda::DeviceBuffer;
-use crate::error::{Error, Result};
-use crate::{Builder, BuilderConfig, Logger, OnnxParser, Runtime};
+use crate::error::Result;
+use crate::{Builder, Logger, OnnxParser, Runtime};
 
 /// Input descriptor for TensorRT execution
 #[derive(Debug, Clone)]
