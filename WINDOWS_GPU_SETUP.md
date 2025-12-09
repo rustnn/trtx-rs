@@ -31,7 +31,7 @@ Download and install from: https://developer.nvidia.com/cuda-downloads
 
 Or use the automated script:
 ```powershell
-powershell -ExecutionPolicy Bypass -File ./install-cuda.ps1
+powershell -ExecutionPolicy Bypass -File ./scripts/install-cuda.ps1
 ```
 
 **Installation Path**: `C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.6`
@@ -83,7 +83,7 @@ To persist these permanently:
 ### Option 1: Use the provided build script
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File ./build-simple.ps1
+powershell -ExecutionPolicy Bypass -File ./scripts/build-simple.ps1
 ```
 
 ### Option 2: Manual build
@@ -99,7 +99,7 @@ cargo build --release --verbose
 ### Run all tests with GPU support:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File ./test-gpu.ps1
+powershell -ExecutionPolicy Bypass -File ./scripts/test-gpu.ps1
 ```
 
 ### Run specific tests:
@@ -151,8 +151,11 @@ trtx-rs/
 │   └── examples/
 │       ├── basic_workflow.rs
 │       └── rustnn_executor.rs
-├── build-simple.ps1    # Build script
-├── test-gpu.ps1        # Test script
+├── scripts/            # Build and test automation
+│   ├── build-simple.ps1      # Build script
+│   ├── test-gpu.ps1          # Test script
+│   ├── install-cuda.ps1      # CUDA installation
+│   └── download-onnx-model.ps1
 └── WINDOWS_GPU_SETUP.md # This file
 ```
 
