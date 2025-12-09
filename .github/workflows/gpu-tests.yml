@@ -22,6 +22,7 @@ jobs:
   gpu-test:
     name: Test on Windows T4 GPU
     runs-on: [self-hosted, windows, gpu, t4]
+    if: false  # Disabled - enable when GPU runner is available
 
     steps:
       - name: Checkout code
