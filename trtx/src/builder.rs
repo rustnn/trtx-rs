@@ -68,7 +68,7 @@ impl BuilderConfig {
             )
         };
 
-        if result != TRTX_SUCCESS {
+        if result != TRTX_SUCCESS as i32 {
             return Err(Error::from_ffi(result, &error_msg));
         }
 
@@ -114,7 +114,7 @@ impl<'a> Builder<'a> {
             )
         };
 
-        if result != TRTX_SUCCESS {
+        if result != TRTX_SUCCESS as i32 {
             return Err(Error::from_ffi(result, &error_msg));
         }
 
@@ -139,7 +139,7 @@ impl<'a> Builder<'a> {
             )
         };
 
-        if result != TRTX_SUCCESS {
+        if result != TRTX_SUCCESS as i32 {
             return Err(Error::from_ffi(result, &error_msg));
         }
 
@@ -160,7 +160,7 @@ impl<'a> Builder<'a> {
             )
         };
 
-        if result != TRTX_SUCCESS {
+        if result != TRTX_SUCCESS as i32 {
             return Err(Error::from_ffi(result, &error_msg));
         }
 
@@ -189,7 +189,7 @@ impl<'a> Builder<'a> {
             )
         };
 
-        if result != TRTX_SUCCESS {
+        if result != TRTX_SUCCESS as i32 {
             return Err(Error::from_ffi(result, &error_msg));
         }
 

@@ -48,10 +48,10 @@ impl Error {
         let msg = Self::parse_error_msg(error_msg);
 
         match code {
-            trtx_sys::TRTX_ERROR_INVALID_ARGUMENT => Error::InvalidArgument(msg),
-            trtx_sys::TRTX_ERROR_OUT_OF_MEMORY => Error::OutOfMemory(msg),
-            trtx_sys::TRTX_ERROR_RUNTIME_ERROR => Error::Runtime(msg),
-            trtx_sys::TRTX_ERROR_CUDA_ERROR => Error::Cuda(msg),
+            code if code == trtx_sys::TRTX_ERROR_INVALID_ARGUMENT as i32 => Error::InvalidArgument(msg),
+            code if code == trtx_sys::TRTX_ERROR_OUT_OF_MEMORY as i32 => Error::OutOfMemory(msg),
+            code if code == trtx_sys::TRTX_ERROR_RUNTIME_ERROR as i32 => Error::Runtime(msg),
+            code if code == trtx_sys::TRTX_ERROR_CUDA_ERROR as i32 => Error::Cuda(msg),
             _ => Error::Unknown(msg),
         }
     }
@@ -88,7 +88,7 @@ mod tests {
     #[test]
     fn test_from_ffi() {
         let msg = b"test\0".map(|b| b as i8);
-        let err = Error::from_ffi(trtx_sys::TRTX_ERROR_INVALID_ARGUMENT, &msg);
+        let err = Error::from_ffi(trtx_sys::TRTX_ERROR_INVALID_ARGUMENT as i32, &msg);
         match err {
             Error::InvalidArgument(s) => assert_eq!(s, "test"),
             _ => panic!("Wrong error type"),

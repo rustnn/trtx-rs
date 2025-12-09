@@ -17,36 +17,70 @@ fn main() {
 
     println!("cargo:rerun-if-changed=wrapper.hpp");
     println!("cargo:rerun-if-changed=wrapper.cpp");
+    println!("cargo:rerun-if-env-changed=TENSORRT_RTX_DIR");
+    println!("cargo:rerun-if-env-changed=CUDA_ROOT");
+    println!("cargo:rerun-if-env-changed=LIBCLANG_PATH");
 
     // Look for TensorRT-RTX installation
     // Users can override with TENSORRT_RTX_DIR environment variable
-    let trtx_dir =
-        env::var("TENSORRT_RTX_DIR").unwrap_or_else(|_| "/usr/local/tensorrt-rtx".to_string());
+    let trtx_dir = match env::var("TENSORRT_RTX_DIR") {
+        Ok(dir) => {
+            println!("cargo:warning=Using TENSORRT_RTX_DIR={}", dir);
+            dir
+        }
+        Err(_) => {
+            println!("cargo:warning=TENSORRT_RTX_DIR not set, using default: /usr/local/tensorrt-rtx");
+            "/usr/local/tensorrt-rtx".to_string()
+        }
+    };
 
     let include_dir = format!("{}/include", trtx_dir);
     let lib_dir = format!("{}/lib", trtx_dir);
 
     println!("cargo:rustc-link-search=native={}", lib_dir);
-    println!("cargo:rustc-link-lib=dylib=nvinfer");
-    println!("cargo:rustc-link-lib=dylib=nvonnxparser");
+    // TensorRT 10.x uses versioned library names
+    println!("cargo:rustc-link-lib=dylib=nvinfer_10");
+    println!("cargo:rustc-link-lib=dylib=nvonnxparser_10");
 
     // Also need CUDA runtime
     if let Ok(cuda_dir) = env::var("CUDA_ROOT") {
-        println!("cargo:rustc-link-search=native={}/lib64", cuda_dir);
+        // Windows uses lib\x64, Unix uses lib64
+        if cfg!(target_os = "windows") {
+            println!("cargo:rustc-link-search=native={}\\lib\\x64", cuda_dir);
+        } else {
+            println!("cargo:rustc-link-search=native={}/lib64", cuda_dir);
+        }
         println!("cargo:rustc-link-lib=dylib=cudart");
     } else {
         // Common CUDA locations
-        println!("cargo:rustc-link-search=native=/usr/local/cuda/lib64");
+        if cfg!(target_os = "windows") {
+            println!("cargo:rustc-link-search=native=C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v12.6\\lib\\x64");
+        } else {
+            println!("cargo:rustc-link-search=native=/usr/local/cuda/lib64");
+        }
         println!("cargo:rustc-link-lib=dylib=cudart");
     }
 
     // Build C++ wrapper
-    cc::Build::new()
-        .cpp(true)
+    let mut build = cc::Build::new();
+    build.cpp(true)
         .file("wrapper.cpp")
-        .include(&include_dir)
-        .flag("-std=c++17")
-        .compile("trtx_wrapper");
+        .include(&include_dir);
+
+    // Also include CUDA headers
+    if let Ok(cuda_dir) = env::var("CUDA_ROOT") {
+        let cuda_include = format!("{}\\include", cuda_dir);
+        build.include(&cuda_include);
+    }
+
+    // Use correct C++17 flag based on compiler
+    if cfg!(target_os = "windows") && cfg!(target_env = "msvc") {
+        build.flag("/std:c++17");
+    } else {
+        build.flag("-std=c++17");
+    }
+
+    build.compile("trtx_wrapper");
 
     // Generate bindings
     let bindings = bindgen::Builder::default()

@@ -10,15 +10,15 @@ use trtx_sys::*;
 #[repr(i32)]
 pub enum Severity {
     /// Internal error (most severe)
-    InternalError = TrtxLoggerSeverity::TRTX_SEVERITY_INTERNAL_ERROR as i32,
+    InternalError = TrtxLoggerSeverity_TRTX_SEVERITY_INTERNAL_ERROR,
     /// Error
-    Error = TrtxLoggerSeverity::TRTX_SEVERITY_ERROR as i32,
+    Error = TrtxLoggerSeverity_TRTX_SEVERITY_ERROR,
     /// Warning
-    Warning = TrtxLoggerSeverity::TRTX_SEVERITY_WARNING as i32,
+    Warning = TrtxLoggerSeverity_TRTX_SEVERITY_WARNING,
     /// Info
-    Info = TrtxLoggerSeverity::TRTX_SEVERITY_INFO as i32,
+    Info = TrtxLoggerSeverity_TRTX_SEVERITY_INFO,
     /// Verbose (most detailed)
-    Verbose = TrtxLoggerSeverity::TRTX_SEVERITY_VERBOSE as i32,
+    Verbose = TrtxLoggerSeverity_TRTX_SEVERITY_VERBOSE,
 }
 
 /// Trait for handling log messages from TensorRT
@@ -63,7 +63,7 @@ impl Logger {
             )
         };
 
-        if result != TRTX_SUCCESS {
+        if result != TRTX_SUCCESS as i32 {
             // Clean up user_data
             unsafe {
                 let _ = Box::from_raw(user_data as *mut Box<dyn LogHandler>);
@@ -105,11 +105,12 @@ impl Logger {
             let msg_str = CStr::from_ptr(msg);
 
             let severity = match severity {
-                TrtxLoggerSeverity::TRTX_SEVERITY_INTERNAL_ERROR => Severity::InternalError,
-                TrtxLoggerSeverity::TRTX_SEVERITY_ERROR => Severity::Error,
-                TrtxLoggerSeverity::TRTX_SEVERITY_WARNING => Severity::Warning,
-                TrtxLoggerSeverity::TRTX_SEVERITY_INFO => Severity::Info,
-                TrtxLoggerSeverity::TRTX_SEVERITY_VERBOSE => Severity::Verbose,
+                TrtxLoggerSeverity_TRTX_SEVERITY_INTERNAL_ERROR => Severity::InternalError,
+                TrtxLoggerSeverity_TRTX_SEVERITY_ERROR => Severity::Error,
+                TrtxLoggerSeverity_TRTX_SEVERITY_WARNING => Severity::Warning,
+                TrtxLoggerSeverity_TRTX_SEVERITY_INFO => Severity::Info,
+                TrtxLoggerSeverity_TRTX_SEVERITY_VERBOSE => Severity::Verbose,
+                _ => Severity::Verbose, // Default fallback
             };
 
             if let Ok(msg) = msg_str.to_str() {

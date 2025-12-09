@@ -18,7 +18,7 @@ impl DeviceBuffer {
         let result =
             unsafe { trtx_cuda_malloc(&mut ptr, size, error_msg.as_mut_ptr(), error_msg.len()) };
 
-        if result != TRTX_SUCCESS {
+        if result != TRTX_SUCCESS as i32 {
             return Err(Error::from_ffi(result, &error_msg));
         }
 
@@ -55,7 +55,7 @@ impl DeviceBuffer {
             )
         };
 
-        if result != TRTX_SUCCESS {
+        if result != TRTX_SUCCESS as i32 {
             return Err(Error::from_ffi(result, &error_msg));
         }
 
@@ -82,7 +82,7 @@ impl DeviceBuffer {
             )
         };
 
-        if result != TRTX_SUCCESS {
+        if result != TRTX_SUCCESS as i32 {
             return Err(Error::from_ffi(result, &error_msg));
         }
 
@@ -109,7 +109,7 @@ pub fn synchronize() -> Result<()> {
 
     let result = unsafe { trtx_cuda_synchronize(error_msg.as_mut_ptr(), error_msg.len()) };
 
-    if result != TRTX_SUCCESS {
+    if result != TRTX_SUCCESS as i32 {
         return Err(Error::from_ffi(result, &error_msg));
     }
 

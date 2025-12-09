@@ -17,7 +17,7 @@ impl CudaEngine {
 
         let result = unsafe { trtx_cuda_engine_get_nb_io_tensors(self.inner, &mut count) };
 
-        if result != TRTX_SUCCESS {
+        if result != TRTX_SUCCESS as i32 {
             return Err(Error::from_ffi(result, &[]));
         }
 
@@ -39,7 +39,7 @@ impl CudaEngine {
             )
         };
 
-        if result != TRTX_SUCCESS {
+        if result != TRTX_SUCCESS as i32 {
             return Err(Error::from_ffi(result, &error_msg));
         }
 
@@ -62,7 +62,7 @@ impl CudaEngine {
             )
         };
 
-        if result != TRTX_SUCCESS {
+        if result != TRTX_SUCCESS as i32 {
             return Err(Error::from_ffi(result, &error_msg));
         }
 
@@ -117,7 +117,7 @@ impl<'a> ExecutionContext<'a> {
             error_msg.len(),
         );
 
-        if result != TRTX_SUCCESS {
+        if result != TRTX_SUCCESS as i32 {
             return Err(Error::from_ffi(result, &error_msg));
         }
 
@@ -142,7 +142,7 @@ impl<'a> ExecutionContext<'a> {
             error_msg.len(),
         );
 
-        if result != TRTX_SUCCESS {
+        if result != TRTX_SUCCESS as i32 {
             return Err(Error::from_ffi(result, &error_msg));
         }
 
@@ -183,7 +183,7 @@ impl<'a> Runtime<'a> {
             )
         };
 
-        if result != TRTX_SUCCESS {
+        if result != TRTX_SUCCESS as i32 {
             return Err(Error::from_ffi(result, &error_msg));
         }
 
@@ -209,7 +209,7 @@ impl<'a> Runtime<'a> {
             )
         };
 
-        if result != TRTX_SUCCESS {
+        if result != TRTX_SUCCESS as i32 {
             return Err(Error::from_ffi(result, &error_msg));
         }
 
