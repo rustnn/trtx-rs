@@ -53,20 +53,3 @@ jobs:
         run: |
           cargo publish --features mock -p trtx --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
         continue-on-error: false
-
-      - name: Create GitHub Release
-        if: github.event.inputs.publish == 'true'
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v${{ github.ref_name }}
-          name: Release v${{ github.ref_name }}
-          body: |
-            ## ⚠️  EXPERIMENTAL RELEASE
-
-            This is an experimental release of trtx-rs, Rust bindings to NVIDIA TensorRT-RTX.
-
-            **NOT FOR PRODUCTION USE**
-
-            See the [README](https://github.com/${{ github.repository }}/blob/main/README.md) for usage instructions.
-          draft: false
-          prerelease: true
