@@ -195,12 +195,12 @@ mod tests {
         let input = TensorInput {
             name: "input".to_string(),
             shape: vec![1, 3, 224, 224],
-            data: vec![0.0; 1 * 3 * 224 * 224],
+            data: vec![0.0; 3 * 224 * 224],
         };
 
         assert_eq!(input.name, "input");
         assert_eq!(input.shape, vec![1, 3, 224, 224]);
-        assert_eq!(input.data.len(), 1 * 3 * 224 * 224);
+        assert_eq!(input.data.len(), 3 * 224 * 224);
     }
 
     #[test]

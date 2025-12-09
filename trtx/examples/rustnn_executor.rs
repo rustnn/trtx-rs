@@ -46,7 +46,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let inputs = vec![TensorInput {
         name: "input".to_string(),
         shape: vec![1, 3, 224, 224],
-        data: create_sample_input(1 * 3 * 224 * 224),
+        data: create_sample_input(3 * 224 * 224),
     }];
 
     match run_onnx_with_tensorrt(&dummy_onnx, &inputs) {
