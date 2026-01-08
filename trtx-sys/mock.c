@@ -24,6 +24,10 @@ int32_t trtx_logger_create(
     char* error_msg,
     size_t error_msg_len
 ) {
+    (void)callback;
+    (void)user_data;
+    (void)error_msg;
+    (void)error_msg_len;
     *out_logger = malloc(sizeof(TrtxLogger));
     return 0; // TRTX_SUCCESS
 }
@@ -38,6 +42,9 @@ int32_t trtx_builder_create(
     char* error_msg,
     size_t error_msg_len
 ) {
+    (void)logger;
+    (void)error_msg;
+    (void)error_msg_len;
     *out_builder = malloc(sizeof(TrtxBuilder));
     return 0;
 }
@@ -53,6 +60,10 @@ int32_t trtx_builder_create_network(
     char* error_msg,
     size_t error_msg_len
 ) {
+    (void)builder;
+    (void)flags;
+    (void)error_msg;
+    (void)error_msg_len;
     *out_network = malloc(sizeof(TrtxNetworkDefinition));
     return 0;
 }
@@ -63,6 +74,9 @@ int32_t trtx_builder_create_builder_config(
     char* error_msg,
     size_t error_msg_len
 ) {
+    (void)builder;
+    (void)error_msg;
+    (void)error_msg_len;
     *out_config = malloc(sizeof(TrtxBuilderConfig));
     return 0;
 }
@@ -76,6 +90,11 @@ int32_t trtx_builder_build_serialized_network(
     char* error_msg,
     size_t error_msg_len
 ) {
+    (void)builder;
+    (void)network;
+    (void)config;
+    (void)error_msg;
+    (void)error_msg_len;
     // Return a small dummy buffer
     *out_size = 16;
     *out_data = malloc(16);
@@ -94,6 +113,11 @@ int32_t trtx_builder_config_set_memory_pool_limit(
     char* error_msg,
     size_t error_msg_len
 ) {
+    (void)config;
+    (void)pool_type;
+    (void)pool_size;
+    (void)error_msg;
+    (void)error_msg_len;
     return 0;
 }
 
@@ -107,6 +131,9 @@ int32_t trtx_runtime_create(
     char* error_msg,
     size_t error_msg_len
 ) {
+    (void)logger;
+    (void)error_msg;
+    (void)error_msg_len;
     *out_runtime = malloc(sizeof(TrtxRuntime));
     return 0;
 }
@@ -123,6 +150,11 @@ int32_t trtx_runtime_deserialize_cuda_engine(
     char* error_msg,
     size_t error_msg_len
 ) {
+    (void)runtime;
+    (void)data;
+    (void)size;
+    (void)error_msg;
+    (void)error_msg_len;
     *out_engine = malloc(sizeof(TrtxCudaEngine));
     return 0;
 }
@@ -137,6 +169,9 @@ int32_t trtx_cuda_engine_create_execution_context(
     char* error_msg,
     size_t error_msg_len
 ) {
+    (void)engine;
+    (void)error_msg;
+    (void)error_msg_len;
     *out_context = malloc(sizeof(TrtxExecutionContext));
     return 0;
 }
@@ -148,6 +183,9 @@ int32_t trtx_cuda_engine_get_tensor_name(
     char* error_msg,
     size_t error_msg_len
 ) {
+    (void)engine;
+    (void)error_msg;
+    (void)error_msg_len;
     static const char* mock_names[] = {"input", "output"};
     if (index < 0 || index >= 2) {
         return 1; // TRTX_ERROR_INVALID_ARGUMENT
@@ -160,6 +198,7 @@ int32_t trtx_cuda_engine_get_nb_io_tensors(
     TrtxCudaEngine* engine,
     int32_t* out_count
 ) {
+    (void)engine;
     *out_count = 2; // Mock: 1 input, 1 output
     return 0;
 }
@@ -175,6 +214,11 @@ int32_t trtx_execution_context_set_tensor_address(
     char* error_msg,
     size_t error_msg_len
 ) {
+    (void)context;
+    (void)tensor_name;
+    (void)data;
+    (void)error_msg;
+    (void)error_msg_len;
     return 0;
 }
 
@@ -184,6 +228,10 @@ int32_t trtx_execution_context_enqueue_v3(
     char* error_msg,
     size_t error_msg_len
 ) {
+    (void)context;
+    (void)cuda_stream;
+    (void)error_msg;
+    (void)error_msg_len;
     return 0;
 }
 
@@ -201,6 +249,10 @@ int32_t trtx_onnx_parser_create(
     char* error_msg,
     size_t error_msg_len
 ) {
+    (void)network;
+    (void)logger;
+    (void)error_msg;
+    (void)error_msg_len;
     *out_parser = malloc(sizeof(TrtxOnnxParser));
     return 0;
 }
@@ -216,6 +268,11 @@ int32_t trtx_onnx_parser_parse(
     char* error_msg,
     size_t error_msg_len
 ) {
+    (void)parser;
+    (void)model_data;
+    (void)model_size;
+    (void)error_msg;
+    (void)error_msg_len;
     // Mock: always succeeds
     return 0;
 }
@@ -227,6 +284,8 @@ int32_t trtx_cuda_malloc(
     char* error_msg,
     size_t error_msg_len
 ) {
+    (void)error_msg;
+    (void)error_msg_len;
     *ptr = malloc(size);
     return *ptr ? 0 : 2; // 0 = success, 2 = out of memory
 }
@@ -236,6 +295,8 @@ int32_t trtx_cuda_free(
     char* error_msg,
     size_t error_msg_len
 ) {
+    (void)error_msg;
+    (void)error_msg_len;
     free(ptr);
     return 0;
 }
@@ -247,6 +308,8 @@ int32_t trtx_cuda_memcpy_host_to_device(
     char* error_msg,
     size_t error_msg_len
 ) {
+    (void)error_msg;
+    (void)error_msg_len;
     memcpy(dst, src, size);
     return 0;
 }
@@ -258,6 +321,8 @@ int32_t trtx_cuda_memcpy_device_to_host(
     char* error_msg,
     size_t error_msg_len
 ) {
+    (void)error_msg;
+    (void)error_msg_len;
     memcpy(dst, src, size);
     return 0;
 }
@@ -266,6 +331,8 @@ int32_t trtx_cuda_synchronize(
     char* error_msg,
     size_t error_msg_len
 ) {
+    (void)error_msg;
+    (void)error_msg_len;
     // Mock: nothing to synchronize
     return 0;
 }
