@@ -245,7 +245,7 @@ Error codes:
 
 - **TensorRT Documentation**: https://docs.nvidia.com/deeplearning/tensorrt/
 - **CUDA Documentation**: https://docs.nvidia.com/cuda/
-- **Project Repository**: https://github.com/yourusername/trtx-rs
+- **Project Repository**: https://github.com/rustnn/trtx-rs
 
 ## License
 

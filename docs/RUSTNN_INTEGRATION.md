@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines how to integrate `trtx` as a new executor backend in the [rustnn](https://github.com/tarekziade/rustnn) project, enabling GPU-accelerated inference on NVIDIA hardware alongside existing ONNX and CoreML backends.
+This document outlines how to integrate `trtx` as a new executor backend in the [rustnn](https://github.com/rustnn/rustnn) project, enabling GPU-accelerated inference on NVIDIA hardware alongside existing ONNX and CoreML backends.
 
 ## Current rustnn Architecture Analysis
 

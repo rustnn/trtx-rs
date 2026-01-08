@@ -56,7 +56,7 @@ When configuring the runner, add these labels:
 
 To add labels:
 ```powershell
-.\config.cmd --url https://github.com/YOUR_ORG/trtx-rs --token YOUR_TOKEN --labels gpu,t4
+.\config.cmd --url https://github.com/rustnn/trtx-rs --token YOUR_TOKEN --labels gpu,t4
 ```
 
 ### 2.3 Install as Windows Service (Recommended)

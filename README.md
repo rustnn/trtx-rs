@@ -232,7 +232,7 @@ CUDA-related operations require `unsafe`:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/trtx-rs.git
+git clone https://github.com/rustnn/trtx-rs.git
 cd trtx-rs
 
 # Option 1: Build with TensorRT-RTX (requires NVIDIA GPU)
@@ -333,16 +333,11 @@ The GPU tests workflow:
 
 ## Contributing
 
-Contributions are welcome! Please see [DESIGN.md](DESIGN.md) for architecture details.
+Contributions are welcome! Please see [docs/DESIGN.md](docs/DESIGN.md) for architecture details.
 
 ## License
 
-This project is licensed under either of:
-
-- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
-- MIT License ([LICENSE-MIT](LICENSE-MIT))
-
-at your option.
+This project is licensed under the Apache License, Version 2.0 - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
