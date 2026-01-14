@@ -41,8 +41,8 @@ fn main() {
 
     println!("cargo:rustc-link-search=native={}", lib_dir);
     // TensorRT 10.x uses versioned library names
-    println!("cargo:rustc-link-lib=dylib=nvinfer_10");
-    println!("cargo:rustc-link-lib=dylib=nvonnxparser_10");
+    println!("cargo:rustc-link-lib=dylib=tensorrt_rtx");
+    println!("cargo:rustc-link-lib=dylib=tensorrt_onnxparser_rtx");
 
     let cuda_dir = env::var("CUDA_PATH")
         .or_else(|_| env::var("CUDA_ROOT"))
