@@ -10,30 +10,15 @@ use trtx_sys::*;
 #[repr(i32)]
 pub enum Severity {
     /// Internal error (most severe)
-    #[cfg(feature = "mock")]
     InternalError = TrtxLoggerSeverity::TRTX_SEVERITY_INTERNAL_ERROR as i32,
-    #[cfg(not(feature = "mock"))]
-    InternalError = TrtxLoggerSeverity_TRTX_SEVERITY_INTERNAL_ERROR,
     /// Error
-    #[cfg(feature = "mock")]
     Error = TrtxLoggerSeverity::TRTX_SEVERITY_ERROR as i32,
-    #[cfg(not(feature = "mock"))]
-    Error = TrtxLoggerSeverity_TRTX_SEVERITY_ERROR,
     /// Warning
-    #[cfg(feature = "mock")]
     Warning = TrtxLoggerSeverity::TRTX_SEVERITY_WARNING as i32,
-    #[cfg(not(feature = "mock"))]
-    Warning = TrtxLoggerSeverity_TRTX_SEVERITY_WARNING,
     /// Info
-    #[cfg(feature = "mock")]
     Info = TrtxLoggerSeverity::TRTX_SEVERITY_INFO as i32,
-    #[cfg(not(feature = "mock"))]
-    Info = TrtxLoggerSeverity_TRTX_SEVERITY_INFO,
     /// Verbose (most detailed)
-    #[cfg(feature = "mock")]
     Verbose = TrtxLoggerSeverity::TRTX_SEVERITY_VERBOSE as i32,
-    #[cfg(not(feature = "mock"))]
-    Verbose = TrtxLoggerSeverity_TRTX_SEVERITY_VERBOSE,
 }
 
 /// Trait for handling log messages from TensorRT
@@ -119,23 +104,12 @@ impl Logger {
             let handler = &*(user_data as *const Box<dyn LogHandler>);
             let msg_str = CStr::from_ptr(msg);
 
-            #[cfg(feature = "mock")]
             let severity = match severity {
                 TrtxLoggerSeverity::TRTX_SEVERITY_INTERNAL_ERROR => Severity::InternalError,
                 TrtxLoggerSeverity::TRTX_SEVERITY_ERROR => Severity::Error,
                 TrtxLoggerSeverity::TRTX_SEVERITY_WARNING => Severity::Warning,
                 TrtxLoggerSeverity::TRTX_SEVERITY_INFO => Severity::Info,
                 TrtxLoggerSeverity::TRTX_SEVERITY_VERBOSE => Severity::Verbose,
-            };
-
-            #[cfg(not(feature = "mock"))]
-            let severity = match severity {
-                TrtxLoggerSeverity_TRTX_SEVERITY_INTERNAL_ERROR => Severity::InternalError,
-                TrtxLoggerSeverity_TRTX_SEVERITY_ERROR => Severity::Error,
-                TrtxLoggerSeverity_TRTX_SEVERITY_WARNING => Severity::Warning,
-                TrtxLoggerSeverity_TRTX_SEVERITY_INFO => Severity::Info,
-                TrtxLoggerSeverity_TRTX_SEVERITY_VERBOSE => Severity::Verbose,
-                _ => Severity::Verbose, // Default fallback
             };
 
             if let Ok(msg) = msg_str.to_str() {

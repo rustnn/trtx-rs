@@ -17,7 +17,7 @@ extern "C" {
 #define TRTX_ERROR_UNKNOWN 99
 
 // Logger severity levels (matching nvinfer1::ILogger::Severity)
-typedef enum {
+typedef enum : int32_t {
     TRTX_SEVERITY_INTERNAL_ERROR = 0,
     TRTX_SEVERITY_ERROR = 1,
     TRTX_SEVERITY_WARNING = 2,
