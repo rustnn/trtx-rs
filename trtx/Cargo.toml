@@ -18,6 +18,8 @@ mock = ["trtx-sys/mock"]
 [dependencies]
 trtx-sys = { version = "0.2.0", path = "../trtx-sys", default-features = false }
 thiserror = "2.0"
+cxx = "1.0"
+libc = "0.2"
 
 [dev-dependencies]
 # For examples and tests

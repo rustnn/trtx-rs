@@ -35,6 +35,7 @@ trtx-rs/
 
 1. **NVIDIA TensorRT-RTX**: Download and install from [NVIDIA Developer](https://developer.nvidia.com/tensorrt)
 2. **CUDA Runtime**: Version compatible with your TensorRT-RTX installation
+3. **Clang**: Clang is required for autocxx. On Windows install it with `winget install LLVM.LLVM`.
 3. **NVIDIA GPU**: Compatible with TensorRT-RTX requirements
 
 ### Environment Setup

@@ -1,5 +1,5 @@
 use std::env;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 fn main() {
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
@@ -15,8 +15,9 @@ fn main() {
         return;
     }
 
-    println!("cargo:rerun-if-changed=wrapper.hpp");
-    println!("cargo:rerun-if-changed=wrapper.cpp");
+    println!("cargo:rerun-if-changed=src/lib.rs");
+    println!("cargo:rerun-if-changed=logger_bridge.hpp");
+    println!("cargo:rerun-if-changed=logger_bridge.cpp");
     println!("cargo:rerun-if-env-changed=TENSORRT_RTX_DIR");
     println!("cargo:rerun-if-env-changed=CUDA_ROOT");
     println!("cargo:rerun-if-env-changed=LIBCLANG_PATH");
@@ -41,8 +42,13 @@ fn main() {
 
     println!("cargo:rustc-link-search=native={}", lib_dir);
     // TensorRT 10.x uses versioned library names
-    println!("cargo:rustc-link-lib=dylib=tensorrt_rtx");
-    println!("cargo:rustc-link-lib=dylib=tensorrt_onnxparser_rtx");
+    if cfg!(target_os = "windows") {
+        println!("cargo:rustc-link-lib=dylib=tensorrt_rtx_1_3");
+        println!("cargo:rustc-link-lib=dylib=tensorrt_onnxparser_rtx_1_3");
+    } else {
+        println!("cargo:rustc-link-lib=dylib=tensorrt_rtx");
+        println!("cargo:rustc-link-lib=dylib=tensorrt_onnxparser_rtx");
+    }
 
     let cuda_dir = env::var("CUDA_PATH")
         .or_else(|_| env::var("CUDA_ROOT"))
@@ -59,53 +65,66 @@ fn main() {
     }
     println!("cargo:rustc-link-lib=dylib=cudart");
 
-    // Build C++ wrapper
-    let mut build = cc::Build::new();
-    build.cpp(true).file("wrapper.cpp").include(&include_dir);
+    // Build logger bridge C++ wrapper
+    let mut cc_build = cc::Build::new();
+    cc_build
+        .cpp(true)
+        .file("logger_bridge.cpp")
+        .include(&include_dir);
 
     // Also include CUDA headers
-    let cuda_include = format!("{}/include", cuda_dir);
-    build.include(&cuda_include);
+    cc_build.include(format!("{}/include", cuda_dir));
 
-    // Use correct C++17 flag and warning suppression based on compiler
+    // Use correct C++17 flag based on compiler
     if cfg!(target_os = "windows") && cfg!(target_env = "msvc") {
-        build.flag("/std:c++17");
-        // Disable specific warnings from TensorRT headers
-        build.flag("/wd4996"); // Deprecated declarations
-        build.flag("/wd4100"); // Unreferenced formal parameter
+        cc_build.flag("/std:c++17");
+        cc_build.flag("/wd4100"); // Disable unused parameter warning on MSVC
+        cc_build.flag("/wd4996"); // Disable deprecated declaration warning on MSVC
     } else {
-        build.flag("-std=c++17");
-        // Disable specific warnings from TensorRT headers
-        build.flag("-Wno-deprecated-declarations");
-        build.flag("-Wno-unused-parameter");
+        cc_build.flag("-std=c++17");
+        cc_build.flag("-Wno-unused-parameter"); // Suppress unused parameter warnings
+        cc_build.flag("-Wno-deprecated-declarations"); // Suppress deprecated warnings
     }
 
-    build.compile("trtx_wrapper");
+    cc_build.compile("trtx_logger_bridge");
 
-    // Generate bindings
-    let bindings = bindgen::Builder::default()
-        .header("wrapper.hpp")
-        .clang_arg(format!("-I{}", include_dir))
-        .clang_arg(format!("-I{}", cuda_include))
-        // Suppress warnings from TensorRT headers during binding generation
-        .clang_arg("-Wno-deprecated-declarations")
-        .clang_arg("-Wno-unused-parameter")
-        .allowlist_function("trtx_.*")
-        .allowlist_type("TrtxLogger.*")
-        .allowlist_var("TRTX_.*")
-        .rustified_enum("TrtxLoggerSeverity")
-        .derive_debug(true)
-        .derive_default(true)
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
-        .generate()
-        .expect("Unable to generate bindings");
+    // Build autocxx bindings for main TensorRT API
+    // Prepare CUDA include paths for autocxx clang parser
+    let mut clang_args = vec![
+        "-std=c++17".to_string(),
+        "-Wno-unused-parameter".to_string(), // Suppress unused parameter warnings from TensorRT headers
+        "-Wno-deprecated-declarations".to_string(), // Suppress deprecated warnings from TensorRT headers
+    ];
 
-    bindings
-        .write_to_file(out_path.join("bindings.rs"))
-        .expect("Couldn't write bindings!");
+    clang_args.push(format!("-I{}/include", cuda_dir));
+
+    let clang_args_refs: Vec<&str> = clang_args.iter().map(|s| s.as_str()).collect();
+
+    let mut autocxx_build = autocxx_build::Builder::new("src/lib.rs", &[&include_dir])
+        .extra_clang_args(&clang_args_refs)
+        .build()
+        .expect("Failed to build autocxx bindings");
+
+    // Add CUDA include paths for C++ compilation phase as well
+    autocxx_build.include(format!("{}/include", cuda_dir));
+
+    // Set C++17 standard and suppress warnings
+    if cfg!(target_os = "windows") && cfg!(target_env = "msvc") {
+        autocxx_build.flag("/std:c++17");
+        autocxx_build.flag("/wd4100"); // Disable unused parameter warning
+        autocxx_build.flag("/wd4996"); // Disable deprecated declaration warning
+    } else {
+        autocxx_build.flag("-std=c++17");
+        autocxx_build.flag("-Wno-unused-parameter"); // Suppress unused parameter warnings
+        autocxx_build.flag("-Wno-deprecated-declarations"); // Suppress deprecated warnings
+    }
+
+    autocxx_build.compile("trtx_autocxx");
+
+    println!("cargo:rerun-if-changed=src/lib.rs");
 }
 
-fn generate_mock_bindings(out_path: &Path) {
+fn generate_mock_bindings(out_path: &std::path::Path) {
     let mock_bindings = r#"
 // Mock bindings for development without TensorRT-RTX
 

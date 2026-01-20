@@ -2,7 +2,7 @@
 
 use crate::error::{Error, Result};
 use crate::logger::Logger;
-use trtx_sys::*;
+use crate::network::NetworkDefinition;
 
 /// Network definition builder flags
 pub mod network_flags {
@@ -24,59 +24,72 @@ pub enum MemoryPoolType {
     DlaGlobalDram = 3,
 }
 
-/// Network definition for building TensorRT engines
-pub struct NetworkDefinition {
-    inner: *mut TrtxNetworkDefinition,
-}
-
-impl NetworkDefinition {
-    /// Get the raw pointer (for internal use)
-    pub(crate) fn as_ptr(&self) -> *mut TrtxNetworkDefinition {
-        self.inner
-    }
-}
-
-impl Drop for NetworkDefinition {
-    fn drop(&mut self) {
-        if !self.inner.is_null() {
-            unsafe {
-                trtx_network_destroy(self.inner);
-            }
-        }
-    }
-}
-
-unsafe impl Send for NetworkDefinition {}
-
 /// Builder configuration
 pub struct BuilderConfig {
-    inner: *mut TrtxBuilderConfig,
+    #[cfg(not(feature = "mock"))]
+    inner: *mut std::ffi::c_void,
+    #[cfg(feature = "mock")]
+    inner: *mut trtx_sys::TrtxBuilderConfig,
 }
 
 impl BuilderConfig {
     /// Set memory pool limit
     pub fn set_memory_pool_limit(&mut self, pool: MemoryPoolType, size: usize) -> Result<()> {
-        let mut error_msg = [0i8; 1024];
+        #[cfg(feature = "mock")]
+        {
+            let mut error_msg = [0i8; 1024];
 
-        let result = unsafe {
-            trtx_builder_config_set_memory_pool_limit(
-                self.inner,
-                pool as i32,
-                size,
-                error_msg.as_mut_ptr(),
-                error_msg.len(),
-            )
-        };
+            let result = unsafe {
+                trtx_sys::trtx_builder_config_set_memory_pool_limit(
+                    self.inner,
+                    pool as i32,
+                    size,
+                    error_msg.as_mut_ptr(),
+                    error_msg.len(),
+                )
+            };
 
-        if result != TRTX_SUCCESS as i32 {
-            return Err(Error::from_ffi(result, &error_msg));
+            if result != trtx_sys::TRTX_SUCCESS as i32 {
+                return Err(Error::from_ffi(result, &error_msg));
+            }
+
+            Ok(())
         }
 
-        Ok(())
+        #[cfg(not(feature = "mock"))]
+        {
+            if self.inner.is_null() {
+                return Err(Error::Runtime("Invalid builder config".to_string()));
+            }
+
+            let trt_pool = match pool {
+                MemoryPoolType::Workspace => 0,      // kWORKSPACE
+                MemoryPoolType::DlaManagedSram => 1, // kDLA_MANAGED_SRAM
+                MemoryPoolType::DlaLocalDram => 2,   // kDLA_LOCAL_DRAM
+                MemoryPoolType::DlaGlobalDram => 3,  // kDLA_GLOBAL_DRAM
+            };
+
+            unsafe {
+                trtx_sys::builder_config_set_memory_pool_limit(self.inner, trt_pool, size);
+            }
+
+            Ok(())
+        }
     }
 
     /// Get the raw pointer (for internal use)
-    pub(crate) fn as_ptr(&self) -> *mut TrtxBuilderConfig {
+    #[cfg(not(feature = "mock"))]
+    pub(crate) fn as_mut_ptr(&mut self) -> *mut std::ffi::c_void {
+        self.inner
+    }
+
+    #[cfg(feature = "mock")]
+    pub(crate) fn as_ptr(&self) -> *mut trtx_sys::TrtxBuilderConfig {
+        self.inner
+    }
+
+    #[cfg(feature = "mock")]
+    pub(crate) fn as_mut_ptr(&mut self) -> *mut trtx_sys::TrtxBuilderConfig {
         self.inner
     }
 }
@@ -84,8 +97,13 @@ impl BuilderConfig {
 impl Drop for BuilderConfig {
     fn drop(&mut self) {
         if !self.inner.is_null() {
+            #[cfg(feature = "mock")]
             unsafe {
-                trtx_builder_config_destroy(self.inner);
+                trtx_sys::trtx_builder_config_destroy(self.inner);
+            }
+            #[cfg(not(feature = "mock"))]
+            unsafe {
+                trtx_sys::delete_config(self.inner);
             }
         }
     }
@@ -95,121 +113,223 @@ unsafe impl Send for BuilderConfig {}
 
 /// Builder for creating optimized TensorRT engines
 pub struct Builder<'a> {
-    inner: *mut TrtxBuilder,
+    #[cfg(not(feature = "mock"))]
+    inner: *mut std::ffi::c_void,
+    #[cfg(feature = "mock")]
+    inner: *mut trtx_sys::TrtxBuilder,
     _logger: &'a Logger,
 }
 
 impl<'a> Builder<'a> {
     /// Create a new builder
     pub fn new(logger: &'a Logger) -> Result<Self> {
-        let mut builder_ptr: *mut TrtxBuilder = std::ptr::null_mut();
-        let mut error_msg = [0i8; 1024];
+        #[cfg(feature = "mock")]
+        {
+            let mut builder_ptr: *mut trtx_sys::TrtxBuilder = std::ptr::null_mut();
+            let mut error_msg = [0i8; 1024];
 
-        let result = unsafe {
-            trtx_builder_create(
-                logger.as_ptr(),
-                &mut builder_ptr,
-                error_msg.as_mut_ptr(),
-                error_msg.len(),
-            )
-        };
+            let result = unsafe {
+                trtx_sys::trtx_builder_create(
+                    logger.as_ptr(),
+                    &mut builder_ptr,
+                    error_msg.as_mut_ptr(),
+                    error_msg.len(),
+                )
+            };
 
-        if result != TRTX_SUCCESS as i32 {
-            return Err(Error::from_ffi(result, &error_msg));
+            if result != trtx_sys::TRTX_SUCCESS as i32 {
+                return Err(Error::from_ffi(result, &error_msg));
+            }
+
+            Ok(Builder {
+                inner: builder_ptr,
+                _logger: logger,
+            })
         }
 
-        Ok(Builder {
-            inner: builder_ptr,
-            _logger: logger,
-        })
+        #[cfg(not(feature = "mock"))]
+        {
+            let logger_ptr = logger.as_logger_ptr();
+            let builder_ptr = unsafe { trtx_sys::create_infer_builder(logger_ptr) };
+
+            if builder_ptr.is_null() {
+                return Err(Error::Runtime("Failed to create builder".to_string()));
+            }
+
+            Ok(Builder {
+                inner: builder_ptr,
+                _logger: logger,
+            })
+        }
     }
 
     /// Create a network definition
     pub fn create_network(&self, flags: u32) -> Result<NetworkDefinition> {
-        let mut network_ptr: *mut TrtxNetworkDefinition = std::ptr::null_mut();
-        let mut error_msg = [0i8; 1024];
+        #[cfg(feature = "mock")]
+        {
+            let mut network_ptr: *mut trtx_sys::TrtxNetworkDefinition = std::ptr::null_mut();
+            let mut error_msg = [0i8; 1024];
 
-        let result = unsafe {
-            trtx_builder_create_network(
-                self.inner,
-                flags,
-                &mut network_ptr,
-                error_msg.as_mut_ptr(),
-                error_msg.len(),
-            )
-        };
+            let result = unsafe {
+                trtx_sys::trtx_builder_create_network(
+                    self.inner,
+                    flags,
+                    &mut network_ptr,
+                    error_msg.as_mut_ptr(),
+                    error_msg.len(),
+                )
+            };
 
-        if result != TRTX_SUCCESS as i32 {
-            return Err(Error::from_ffi(result, &error_msg));
+            if result != trtx_sys::TRTX_SUCCESS as i32 {
+                return Err(Error::from_ffi(result, &error_msg));
+            }
+
+            Ok(NetworkDefinition::from_ptr(network_ptr))
         }
 
-        Ok(NetworkDefinition { inner: network_ptr })
+        #[cfg(not(feature = "mock"))]
+        {
+            if self.inner.is_null() {
+                return Err(Error::Runtime("Invalid builder".to_string()));
+            }
+
+            let network_ptr = unsafe { trtx_sys::builder_create_network_v2(self.inner, flags) };
+
+            if network_ptr.is_null() {
+                return Err(Error::Runtime("Failed to create network".to_string()));
+            }
+
+            Ok(NetworkDefinition::from_ptr(network_ptr))
+        }
     }
 
     /// Create a builder configuration
     pub fn create_config(&self) -> Result<BuilderConfig> {
-        let mut config_ptr: *mut TrtxBuilderConfig = std::ptr::null_mut();
-        let mut error_msg = [0i8; 1024];
+        #[cfg(feature = "mock")]
+        {
+            let mut config_ptr: *mut trtx_sys::TrtxBuilderConfig = std::ptr::null_mut();
+            let mut error_msg = [0i8; 1024];
 
-        let result = unsafe {
-            trtx_builder_create_builder_config(
-                self.inner,
-                &mut config_ptr,
-                error_msg.as_mut_ptr(),
-                error_msg.len(),
-            )
-        };
+            let result = unsafe {
+                trtx_sys::trtx_builder_create_builder_config(
+                    self.inner,
+                    &mut config_ptr,
+                    error_msg.as_mut_ptr(),
+                    error_msg.len(),
+                )
+            };
 
-        if result != TRTX_SUCCESS as i32 {
-            return Err(Error::from_ffi(result, &error_msg));
+            if result != trtx_sys::TRTX_SUCCESS as i32 {
+                return Err(Error::from_ffi(result, &error_msg));
+            }
+
+            Ok(BuilderConfig { inner: config_ptr })
         }
 
-        Ok(BuilderConfig { inner: config_ptr })
+        #[cfg(not(feature = "mock"))]
+        {
+            if self.inner.is_null() {
+                return Err(Error::Runtime("Invalid builder".to_string()));
+            }
+
+            let config_ptr = unsafe { trtx_sys::builder_create_config(self.inner) };
+
+            if config_ptr.is_null() {
+                return Err(Error::Runtime(
+                    "Failed to create builder config".to_string(),
+                ));
+            }
+
+            Ok(BuilderConfig { inner: config_ptr })
+        }
     }
 
     /// Build a serialized network (engine)
     pub fn build_serialized_network(
         &self,
-        network: &NetworkDefinition,
-        config: &BuilderConfig,
+        network: &mut NetworkDefinition,
+        config: &mut BuilderConfig,
     ) -> Result<Vec<u8>> {
-        let mut data_ptr: *mut std::ffi::c_void = std::ptr::null_mut();
-        let mut size: usize = 0;
-        let mut error_msg = [0i8; 1024];
+        #[cfg(feature = "mock")]
+        {
+            let mut data_ptr: *mut std::ffi::c_void = std::ptr::null_mut();
+            let mut size: usize = 0;
+            let mut error_msg = [0i8; 1024];
 
-        let result = unsafe {
-            trtx_builder_build_serialized_network(
-                self.inner,
-                network.as_ptr(),
-                config.as_ptr(),
-                &mut data_ptr,
-                &mut size,
-                error_msg.as_mut_ptr(),
-                error_msg.len(),
-            )
-        };
+            let result = unsafe {
+                trtx_sys::trtx_builder_build_serialized_network(
+                    self.inner,
+                    network.as_ptr(),
+                    config.as_ptr(),
+                    &mut data_ptr,
+                    &mut size,
+                    error_msg.as_mut_ptr(),
+                    error_msg.len(),
+                )
+            };
 
-        if result != TRTX_SUCCESS as i32 {
-            return Err(Error::from_ffi(result, &error_msg));
+            if result != trtx_sys::TRTX_SUCCESS as i32 {
+                return Err(Error::from_ffi(result, &error_msg));
+            }
+
+            // Copy data to Vec and free C buffer
+            let data = unsafe {
+                let slice = std::slice::from_raw_parts(data_ptr as *const u8, size);
+                let vec = slice.to_vec();
+                trtx_sys::trtx_free_buffer(data_ptr);
+                vec
+            };
+
+            Ok(data)
         }
 
-        // Copy data to Vec and free C buffer
-        let data = unsafe {
-            let slice = std::slice::from_raw_parts(data_ptr as *const u8, size);
-            let vec = slice.to_vec();
-            trtx_free_buffer(data_ptr);
-            vec
-        };
+        #[cfg(not(feature = "mock"))]
+        {
+            if self.inner.is_null() {
+                return Err(Error::Runtime("Invalid builder".to_string()));
+            }
+            let network_ptr = network.as_mut_ptr();
+            let config_ptr = config.as_mut_ptr();
 
-        Ok(data)
+            let mut size: usize = 0;
+            let data_ptr = unsafe {
+                trtx_sys::builder_build_serialized_network(
+                    self.inner,
+                    network_ptr,
+                    config_ptr,
+                    &mut size,
+                )
+            };
+
+            if data_ptr.is_null() {
+                return Err(Error::Runtime(
+                    "Failed to build serialized network".to_string(),
+                ));
+            }
+
+            // Copy data to Vec and free C buffer
+            let data = unsafe {
+                let slice = std::slice::from_raw_parts(data_ptr as *const u8, size);
+                let vec = slice.to_vec();
+                libc::free(data_ptr);
+                vec
+            };
+
+            Ok(data)
+        }
     }
 }
 
 impl Drop for Builder<'_> {
     fn drop(&mut self) {
         if !self.inner.is_null() {
+            #[cfg(feature = "mock")]
             unsafe {
-                trtx_builder_destroy(self.inner);
+                trtx_sys::trtx_builder_destroy(self.inner);
+            }
+            #[cfg(not(feature = "mock"))]
+            unsafe {
+                trtx_sys::delete_builder(self.inner);
             }
         }
     }
