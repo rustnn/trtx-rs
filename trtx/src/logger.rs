@@ -129,7 +129,7 @@ impl Drop for Logger {
                 trtx_logger_destroy(self.inner);
             }
         }
-        
+
         // Then clean up the user_data (double-boxed handler)
         if !self.user_data.is_null() {
             unsafe {
