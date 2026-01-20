@@ -41,43 +41,43 @@ fn main() {
 
     println!("cargo:rustc-link-search=native={}", lib_dir);
     // TensorRT 10.x uses versioned library names
-    println!("cargo:rustc-link-lib=dylib=nvinfer_10");
-    println!("cargo:rustc-link-lib=dylib=nvonnxparser_10");
+    println!("cargo:rustc-link-lib=dylib=tensorrt_rtx");
+    println!("cargo:rustc-link-lib=dylib=tensorrt_onnxparser_rtx");
+
+    let cuda_dir = env::var("CUDA_PATH")
+        .or_else(|_| env::var("CUDA_ROOT"))
+        .or_else(|_| env::var("CUDA_HOME"))
+        .unwrap_or_else(|_| "/usr/local/cuda".to_string());
+
+    println!("cargo:warning=CUDA_DIR={}", cuda_dir);
 
     // Also need CUDA runtime
-    if let Ok(cuda_dir) = env::var("CUDA_ROOT") {
-        // Windows uses lib\x64, Unix uses lib64
-        if cfg!(target_os = "windows") {
-            println!("cargo:rustc-link-search=native={}\\lib\\x64", cuda_dir);
-        } else {
-            println!("cargo:rustc-link-search=native={}/lib64", cuda_dir);
-        }
-        println!("cargo:rustc-link-lib=dylib=cudart");
+    if cfg!(target_os = "windows") {
+        println!("cargo:rustc-link-search=native={}\\lib\\x64", cuda_dir);
     } else {
-        // Common CUDA locations
-        if cfg!(target_os = "windows") {
-            println!("cargo:rustc-link-search=native=C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v12.6\\lib\\x64");
-        } else {
-            println!("cargo:rustc-link-search=native=/usr/local/cuda/lib64");
-        }
-        println!("cargo:rustc-link-lib=dylib=cudart");
+        println!("cargo:rustc-link-search=native={}/lib64", cuda_dir);
     }
+    println!("cargo:rustc-link-lib=dylib=cudart");
 
     // Build C++ wrapper
     let mut build = cc::Build::new();
     build.cpp(true).file("wrapper.cpp").include(&include_dir);
 
     // Also include CUDA headers
-    if let Ok(cuda_dir) = env::var("CUDA_ROOT") {
-        let cuda_include = format!("{}\\include", cuda_dir);
-        build.include(&cuda_include);
-    }
+    let cuda_include = format!("{}/include", cuda_dir);
+    build.include(&cuda_include);
 
-    // Use correct C++17 flag based on compiler
+    // Use correct C++17 flag and warning suppression based on compiler
     if cfg!(target_os = "windows") && cfg!(target_env = "msvc") {
         build.flag("/std:c++17");
+        // Disable specific warnings from TensorRT headers
+        build.flag("/wd4996"); // Deprecated declarations
+        build.flag("/wd4100"); // Unreferenced formal parameter
     } else {
         build.flag("-std=c++17");
+        // Disable specific warnings from TensorRT headers
+        build.flag("-Wno-deprecated-declarations");
+        build.flag("-Wno-unused-parameter");
     }
 
     build.compile("trtx_wrapper");
@@ -86,9 +86,14 @@ fn main() {
     let bindings = bindgen::Builder::default()
         .header("wrapper.hpp")
         .clang_arg(format!("-I{}", include_dir))
+        .clang_arg(format!("-I{}", cuda_include))
+        // Suppress warnings from TensorRT headers during binding generation
+        .clang_arg("-Wno-deprecated-declarations")
+        .clang_arg("-Wno-unused-parameter")
         .allowlist_function("trtx_.*")
         .allowlist_type("TrtxLogger.*")
         .allowlist_var("TRTX_.*")
+        .rustified_enum("TrtxLoggerSeverity")
         .derive_debug(true)
         .derive_default(true)
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
