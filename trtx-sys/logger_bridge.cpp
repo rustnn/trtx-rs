@@ -210,7 +210,7 @@ void* network_add_convolution(void* network, void* input, int32_t nb_outputs, co
         nvinfer1::Weights b{static_cast<nvinfer1::DataType>(0), bias, 0};
         
         auto* layer = inetwork->addConvolutionNd(*itensor, nb_outputs, dims, w, b);
-        return layer ? layer->getOutput(0) : nullptr;
+        return layer; // Return layer, not output tensor
     } catch (...) {
         return nullptr;
     }
@@ -228,7 +228,7 @@ void* network_add_pooling(void* network, void* input, int32_t type, const int32_
         dims.d[0] = window_size[0];
         dims.d[1] = window_size[1];
         auto* layer = inetwork->addPoolingNd(*itensor, static_cast<nvinfer1::PoolingType>(type), dims);
-        return layer ? layer->getOutput(0) : nullptr;
+        return layer; // Return layer, not output tensor
     } catch (...) {
         return nullptr;
     }
@@ -251,7 +251,7 @@ void* network_add_constant(void* network, const int32_t* dims, int32_t nb_dims, 
             count
         };
         auto* layer = inetwork->addConstant(dimensions, w);
-        return layer ? layer->getOutput(0) : nullptr;
+        return layer; // Return layer, not output tensor
     } catch (...) {
         return nullptr;
     }
@@ -271,7 +271,7 @@ void* network_add_concatenation(void* network, void** inputs, int32_t nb_inputs)
             tensors.push_back(static_cast<nvinfer1::ITensor*>(inputs[i]));
         }
         auto* layer = inetwork->addConcatenation(tensors.data(), nb_inputs);
-        return layer ? layer->getOutput(0) : nullptr;
+        return layer; // Return layer, not output tensor
     } catch (...) {
         return nullptr;
     }
@@ -295,7 +295,7 @@ void* network_add_scale(void* network, void* input, int32_t mode,
             static_cast<nvinfer1::ScaleMode>(mode),
             shift_w, scale_w, power_w
         );
-        return layer ? layer->getOutput(0) : nullptr;
+        return layer; // Return layer, not output tensor
     } catch (...) {
         return nullptr;
     }
@@ -320,7 +320,7 @@ void* network_add_slice(void* network, void* input, const int32_t* start,
         }
         
         auto* layer = inetwork->addSlice(*itensor, start_dims, size_dims, stride_dims);
-        return layer ? layer->getOutput(0) : nullptr;
+        return layer; // Return layer, not output tensor
     } catch (...) {
         return nullptr;
     }

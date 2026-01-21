@@ -78,6 +78,10 @@ pub mod real_bindings {
         generate!("nvinfer1::IExecutionContext")
         generate!("nvinfer1::IHostMemory")
         generate!("nvinfer1::Dims")
+        // Note: Dims and Weights cannot be generate_pod! because:
+        // - Dims is a typedef to a complex type with methods
+        // - Weights contains raw pointers and has special semantics
+        // Therefore, C++ wrappers are needed for functions that construct these
         generate!("nvinfer1::DataType")
         generate!("nvinfer1::TensorIOMode")
         generate!("nvinfer1::MemoryPoolType")

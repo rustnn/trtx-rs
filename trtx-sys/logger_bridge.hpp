@@ -36,21 +36,11 @@ void builder_config_set_memory_pool_limit(void* config, int32_t pool_type, size_
 // Network methods
 void* network_add_input(void* network, const char* name, int32_t data_type, const int32_t* dims, int32_t nb_dims);
 void* network_add_convolution(void* network, void* input, int32_t nb_outputs, const int32_t* kernel_size, const void* weights, const void* bias);
-// void* network_add_activation - REMOVED - Using direct autocxx
 void* network_add_pooling(void* network, void* input, int32_t type, const int32_t* window_size);
-// void* network_add_elementwise - REMOVED - Using direct autocxx
-// void* network_add_shuffle - REMOVED - Using direct autocxx
 void* network_add_concatenation(void* network, void** inputs, int32_t nb_inputs);
-// void* network_add_matrix_multiply - REMOVED - Using direct autocxx
 void* network_add_constant(void* network, const int32_t* dims, int32_t nb_dims, const void* weights, int32_t data_type, int64_t count);
-// void* network_add_softmax - REMOVED - Using direct autocxx
 void* network_add_scale(void* network, void* input, int32_t mode, const void* shift, const void* scale, const void* power);
-// void* network_add_reduce - REMOVED - Using direct autocxx
 void* network_add_slice(void* network, void* input, const int32_t* start, const int32_t* size, const int32_t* stride, int32_t nb_dims);
-// void* network_add_resize - REMOVED - Using direct autocxx
-// void* network_add_topk - REMOVED - Using direct autocxx
-// void* network_add_gather - REMOVED - Using direct autocxx
-// void* network_add_select - REMOVED - Using direct autocxx
 void* network_add_assertion(void* network, void* condition, const char* message);
 void* network_add_loop(void* network);
 void* network_add_if_conditional(void* network);
