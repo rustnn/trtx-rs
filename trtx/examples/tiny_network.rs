@@ -12,7 +12,7 @@
 use trtx::builder::{network_flags, MemoryPoolType};
 use trtx::cuda::{synchronize, DeviceBuffer};
 use trtx::error::Result;
-use trtx::network::Layer;  // Import Layer trait for get_output method
+use trtx::network::Layer; // Import Layer trait for get_output method
 use trtx::{Builder, Logger, Runtime};
 
 fn main() -> Result<()> {

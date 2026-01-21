@@ -51,7 +51,7 @@ pub mod real_bindings {
         generate!("nvinfer1::INetworkDefinition")
         generate!("nvinfer1::ITensor")
         generate!("nvinfer1::ILayer")
-        
+
         // Derived layer types - for inheritance support
         generate!("nvinfer1::IActivationLayer")
         generate!("nvinfer1::IConvolutionLayer")
@@ -72,7 +72,7 @@ pub mod real_bindings {
         generate!("nvinfer1::IAssertionLayer")
         generate!("nvinfer1::ILoop")
         generate!("nvinfer1::IIfConditional")
-        
+
         generate!("nvinfer1::IRuntime")
         generate!("nvinfer1::ICudaEngine")
         generate!("nvinfer1::IExecutionContext")
@@ -325,12 +325,6 @@ pub mod real_bindings {
         pub fn delete_context(context: *mut std::ffi::c_void);
         pub fn delete_parser(parser: *mut std::ffi::c_void);
     }
-
-    // CUDA constants
-    pub const CUDA_SUCCESS: i32 = 0;
-    pub const CUDA_MEMCPY_HOST_TO_DEVICE: i32 = 1;
-    pub const CUDA_MEMCPY_DEVICE_TO_HOST: i32 = 2;
-    pub const CUDA_MEMCPY_DEVICE_TO_DEVICE: i32 = 3;
 
     // Opaque type for logger bridge
     #[repr(C)]

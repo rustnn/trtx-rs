@@ -248,7 +248,9 @@ impl<'a> Builder<'a> {
                 ));
             }
 
-            Ok(BuilderConfig { inner: config_ptr as *mut _ })
+            Ok(BuilderConfig {
+                inner: config_ptr as *mut _,
+            })
         }
     }
 
@@ -304,7 +306,7 @@ impl<'a> Builder<'a> {
                 let builder = &mut *(self.inner as *mut trtx_sys::nvinfer1::IBuilder);
                 let network = &mut *(network_ptr as *mut trtx_sys::nvinfer1::INetworkDefinition);
                 let config = &mut *(config_ptr as *mut trtx_sys::nvinfer1::IBuilderConfig);
-                
+
                 let mut builder_pin = std::pin::Pin::new_unchecked(builder);
                 builder_pin.as_mut().buildSerializedNetwork(
                     std::pin::Pin::new_unchecked(network),
@@ -323,7 +325,7 @@ impl<'a> Builder<'a> {
                 let host_memory = &*serialized_engine;
                 // autocxx wraps types, access the inner value
                 let size_raw = host_memory.size();
-                let size = size_raw.0 as usize;  // Access inner value and convert
+                let size = size_raw.0 as usize; // Access inner value and convert
                 let data_ptr = host_memory.data();
                 let slice = std::slice::from_raw_parts(data_ptr as *const u8, size);
                 let vec = slice.to_vec();

@@ -71,13 +71,6 @@ int32_t parser_get_nb_errors(void* parser);
 void* parser_get_error(void* parser, int32_t index);
 const char* parser_error_desc(void* error);
 
-// CUDA wrappers
-int32_t cuda_malloc_wrapper(void** ptr, size_t size);
-int32_t cuda_free_wrapper(void* ptr);
-int32_t cuda_memcpy_wrapper(void* dst, const void* src, size_t count, int32_t kind);
-int32_t cuda_device_synchronize_wrapper();
-const char* cuda_get_error_string_wrapper(int32_t error);
-
 #ifdef __cplusplus
 }
 #endif

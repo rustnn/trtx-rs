@@ -129,7 +129,7 @@ impl CudaEngine {
             let context_ptr = unsafe {
                 crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ICudaEngine>(self.inner)
                     .createExecutionContext(
-                        trtx_sys::nvinfer1::ExecutionContextAllocationStrategy::kSTATIC
+                        trtx_sys::nvinfer1::ExecutionContextAllocationStrategy::kSTATIC,
                     )
             };
 
@@ -224,8 +224,10 @@ impl<'a> ExecutionContext<'a> {
 
             // Use autocxx Pin to call setTensorAddress directly
             let success = unsafe {
-                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::IExecutionContext>(self.inner)
-                    .setTensorAddress(name_cstr.as_ptr(), data as *mut _)
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::IExecutionContext>(
+                    self.inner,
+                )
+                .setTensorAddress(name_cstr.as_ptr(), data as *mut _)
             };
 
             if !success {
@@ -271,8 +273,10 @@ impl<'a> ExecutionContext<'a> {
 
             // Use autocxx Pin to call enqueueV3 directly
             let success = unsafe {
-                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::IExecutionContext>(self.inner)
-                    .enqueueV3(cuda_stream as *mut _)
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::IExecutionContext>(
+                    self.inner,
+                )
+                .enqueueV3(cuda_stream as *mut _)
             };
 
             if !success {
@@ -389,7 +393,7 @@ impl<'a> Runtime<'a> {
                 trtx_sys::runtime_deserialize_cuda_engine(
                     self.inner,
                     data.as_ptr() as *const _,
-                    data.len()
+                    data.len(),
                 )
             };
 
@@ -397,7 +401,9 @@ impl<'a> Runtime<'a> {
                 return Err(Error::Runtime("Failed to deserialize engine".to_string()));
             }
 
-            Ok(CudaEngine { inner: engine_ptr as *mut _ })
+            Ok(CudaEngine {
+                inner: engine_ptr as *mut _,
+            })
         }
     }
 }

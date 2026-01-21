@@ -83,7 +83,7 @@ mod tests {
     fn test_pin_mut_compiles() {
         // This test just verifies the function signature compiles
         // We can't actually test it without a real C++ object
-        
+
         let _f: unsafe fn(*mut u32) -> Pin<&'static mut u32> = pin_mut;
     }
 

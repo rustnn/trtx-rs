@@ -477,36 +477,7 @@ const char* parser_error_desc(void* error) {
 }
 
 //==============================================================================
-// SECTION 6: CUDA WRAPPERS (NECESSARY FOR NOW - Type Compatibility)
-//==============================================================================
-// These bridge between std::ffi::c_void (Rust) and autocxx::c_void (autocxx wrapper).
-// autocxx generates CUDA bindings but with incompatible c_void types.
-// TESTED: Direct calls fail with "expected autocxx::c_void, found c_void"
-// FUTURE: Could remove if entire codebase migrates to autocxx::c_void
-
-// CUDA wrappers
-int32_t cuda_malloc_wrapper(void** ptr, size_t size) {
-    return static_cast<int32_t>(cudaMalloc(ptr, size));
-}
-
-int32_t cuda_free_wrapper(void* ptr) {
-    return static_cast<int32_t>(cudaFree(ptr));
-}
-
-int32_t cuda_memcpy_wrapper(void* dst, const void* src, size_t count, int32_t kind) {
-    return static_cast<int32_t>(cudaMemcpy(dst, src, count, static_cast<cudaMemcpyKind>(kind)));
-}
-
-int32_t cuda_device_synchronize_wrapper() {
-    return static_cast<int32_t>(cudaDeviceSynchronize());
-}
-
-const char* cuda_get_error_string_wrapper(int32_t error) {
-    return cudaGetErrorString(static_cast<cudaError_t>(error));
-}
-
-//==============================================================================
-// SECTION 7: DESTRUCTION METHODS (POTENTIALLY REDUNDANT)
+// SECTION 6: DESTRUCTION METHODS (POTENTIALLY REDUNDANT)
 //==============================================================================
 // These wrap TensorRT object deletion.
 // autocxx CAN handle C++ destructors with RAII wrappers.

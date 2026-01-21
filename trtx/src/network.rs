@@ -15,7 +15,7 @@ pub struct Tensor {
 pub trait Layer {
     /// Get the output tensor at the specified index
     fn get_output(&self, index: i32) -> Result<Tensor>;
-    
+
     /// Get the raw layer pointer (for internal use)
     fn as_ptr(&self) -> *mut std::ffi::c_void;
 }
@@ -26,13 +26,13 @@ macro_rules! define_layer {
         pub struct $name {
             inner: *mut std::ffi::c_void,
         }
-        
+
         impl $name {
             pub(crate) fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
                 Self { inner: ptr }
             }
         }
-        
+
         impl Layer for $name {
             fn get_output(&self, index: i32) -> Result<Tensor> {
                 #[cfg(not(feature = "mock"))]
@@ -47,14 +47,18 @@ macro_rules! define_layer {
                     if tensor_ptr.is_null() {
                         return Err(Error::Runtime("Failed to get output tensor".to_string()));
                     }
-                    Ok(Tensor { inner: tensor_ptr as *mut _ })
+                    Ok(Tensor {
+                        inner: tensor_ptr as *mut _,
+                    })
                 }
                 #[cfg(feature = "mock")]
                 {
-                    Ok(Tensor { inner: std::ptr::null_mut() })
+                    Ok(Tensor {
+                        inner: std::ptr::null_mut(),
+                    })
                 }
             }
-            
+
             fn as_ptr(&self) -> *mut std::ffi::c_void {
                 self.inner
             }
@@ -70,7 +74,10 @@ define_layer!(ResizeLayer, trtx_sys::nvinfer1::IResizeLayer);
 define_layer!(TopKLayer, trtx_sys::nvinfer1::ITopKLayer);
 define_layer!(GatherLayer, trtx_sys::nvinfer1::IGatherLayer);
 define_layer!(SelectLayer, trtx_sys::nvinfer1::ISelectLayer);
-define_layer!(MatrixMultiplyLayer, trtx_sys::nvinfer1::IMatrixMultiplyLayer);
+define_layer!(
+    MatrixMultiplyLayer,
+    trtx_sys::nvinfer1::IMatrixMultiplyLayer
+);
 define_layer!(SoftMaxLayer, trtx_sys::nvinfer1::ISoftMaxLayer);
 define_layer!(ReduceLayer, trtx_sys::nvinfer1::IReduceLayer);
 define_layer!(PoolingLayer, trtx_sys::nvinfer1::IPoolingLayer);
@@ -227,8 +234,10 @@ impl NetworkDefinition {
         {
             unsafe {
                 let tensor_ref = &mut *(tensor.inner as *mut trtx_sys::nvinfer1::ITensor);
-                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(self.inner)
-                    .markOutput(std::pin::Pin::new_unchecked(tensor_ref));
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(
+                    self.inner,
+                )
+                .markOutput(std::pin::Pin::new_unchecked(tensor_ref));
             }
             Ok(())
         }
@@ -242,8 +251,10 @@ impl NetworkDefinition {
     pub fn get_nb_inputs(&self) -> i32 {
         #[cfg(not(feature = "mock"))]
         unsafe {
-            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(self.inner)
-                .getNbInputs()
+            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(
+                self.inner,
+            )
+            .getNbInputs()
         }
         #[cfg(feature = "mock")]
         {
@@ -255,8 +266,10 @@ impl NetworkDefinition {
     pub fn get_nb_outputs(&self) -> i32 {
         #[cfg(not(feature = "mock"))]
         unsafe {
-            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(self.inner)
-                .getNbOutputs()
+            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(
+                self.inner,
+            )
+            .getNbOutputs()
         }
         #[cfg(feature = "mock")]
         {
@@ -269,8 +282,10 @@ impl NetworkDefinition {
         #[cfg(not(feature = "mock"))]
         {
             let tensor_ptr = unsafe {
-                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(self.inner)
-                    .getInput(index)
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(
+                    self.inner,
+                )
+                .getInput(index)
             };
             if tensor_ptr.is_null() {
                 return Err(Error::Runtime(format!(
@@ -278,7 +293,9 @@ impl NetworkDefinition {
                     index
                 )));
             }
-            Ok(Tensor { inner: tensor_ptr as *mut _ })
+            Ok(Tensor {
+                inner: tensor_ptr as *mut _,
+            })
         }
         #[cfg(feature = "mock")]
         {
@@ -293,8 +310,10 @@ impl NetworkDefinition {
         #[cfg(not(feature = "mock"))]
         {
             let tensor_ptr = unsafe {
-                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(self.inner)
-                    .getOutput(index)
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(
+                    self.inner,
+                )
+                .getOutput(index)
             };
             if tensor_ptr.is_null() {
                 return Err(Error::Runtime(format!(
@@ -302,7 +321,9 @@ impl NetworkDefinition {
                     index
                 )));
             }
-            Ok(Tensor { inner: tensor_ptr as *mut _ })
+            Ok(Tensor {
+                inner: tensor_ptr as *mut _,
+            })
         }
         #[cfg(feature = "mock")]
         {
@@ -313,25 +334,31 @@ impl NetworkDefinition {
     }
 
     /// Add an activation layer
-    pub fn add_activation(&mut self, input: &Tensor, activation_type: i32) -> Result<ActivationLayer> {
+    pub fn add_activation(
+        &mut self,
+        input: &Tensor,
+        activation_type: i32,
+    ) -> Result<ActivationLayer> {
         #[cfg(not(feature = "mock"))]
         {
             let layer_ptr = unsafe {
                 let input_ref = &mut *(input.inner as *mut trtx_sys::nvinfer1::ITensor);
-                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(self.inner);
-                
+                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::INetworkDefinition,
+                >(self.inner);
+
                 let layer_ptr = network_pin.as_mut().addActivation(
                     std::pin::Pin::new_unchecked(input_ref),
-                    std::mem::transmute(activation_type) // ActivationType enum
+                    std::mem::transmute(activation_type), // ActivationType enum
                 );
-                
+
                 if layer_ptr.is_null() {
                     return Err(Error::Runtime("Failed to add activation layer".to_string()));
                 }
-                
+
                 layer_ptr as *mut std::ffi::c_void
             };
-            
+
             Ok(ActivationLayer::from_ptr(layer_ptr))
         }
         #[cfg(feature = "mock")]
@@ -341,27 +368,36 @@ impl NetworkDefinition {
     }
 
     /// Add an elementwise operation layer
-    pub fn add_elementwise(&mut self, input1: &Tensor, input2: &Tensor, op: i32) -> Result<ElementWiseLayer> {
+    pub fn add_elementwise(
+        &mut self,
+        input1: &Tensor,
+        input2: &Tensor,
+        op: i32,
+    ) -> Result<ElementWiseLayer> {
         #[cfg(not(feature = "mock"))]
         {
             let layer_ptr = unsafe {
                 let input1_ref = &mut *(input1.inner as *mut trtx_sys::nvinfer1::ITensor);
                 let input2_ref = &mut *(input2.inner as *mut trtx_sys::nvinfer1::ITensor);
-                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(self.inner);
-                
+                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::INetworkDefinition,
+                >(self.inner);
+
                 let layer_ptr = network_pin.as_mut().addElementWise(
                     std::pin::Pin::new_unchecked(input1_ref),
                     std::pin::Pin::new_unchecked(input2_ref),
-                    std::mem::transmute(op) // ElementWiseOperation enum
+                    std::mem::transmute(op), // ElementWiseOperation enum
                 );
-                
+
                 if layer_ptr.is_null() {
-                    return Err(Error::Runtime("Failed to add elementwise layer".to_string()));
+                    return Err(Error::Runtime(
+                        "Failed to add elementwise layer".to_string(),
+                    ));
                 }
-                
+
                 layer_ptr as *mut std::ffi::c_void
             };
-            
+
             Ok(ElementWiseLayer::from_ptr(layer_ptr))
         }
         #[cfg(feature = "mock")]
@@ -404,16 +440,20 @@ impl NetworkDefinition {
         {
             let layer_ptr = unsafe {
                 let input_ref = &mut *(input.inner as *mut trtx_sys::nvinfer1::ITensor);
-                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(self.inner);
-                
-                let layer_ptr = network_pin.as_mut().addShuffle(std::pin::Pin::new_unchecked(input_ref));
+                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::INetworkDefinition,
+                >(self.inner);
+
+                let layer_ptr = network_pin
+                    .as_mut()
+                    .addShuffle(std::pin::Pin::new_unchecked(input_ref));
                 if layer_ptr.is_null() {
                     return Err(Error::Runtime("Failed to add shuffle layer".to_string()));
                 }
-                
+
                 layer_ptr as *mut std::ffi::c_void
             };
-            
+
             Ok(ShuffleLayer::from_ptr(layer_ptr))
         }
         #[cfg(feature = "mock")]
@@ -435,22 +475,26 @@ impl NetworkDefinition {
             let layer_ptr = unsafe {
                 let input0_ref = &mut *(input0.inner as *mut trtx_sys::nvinfer1::ITensor);
                 let input1_ref = &mut *(input1.inner as *mut trtx_sys::nvinfer1::ITensor);
-                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(self.inner);
-                
+                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::INetworkDefinition,
+                >(self.inner);
+
                 let layer_ptr = network_pin.as_mut().addMatrixMultiply(
                     std::pin::Pin::new_unchecked(input0_ref),
                     std::mem::transmute(op0), // MatrixOperation enum
                     std::pin::Pin::new_unchecked(input1_ref),
-                    std::mem::transmute(op1)  // MatrixOperation enum
+                    std::mem::transmute(op1), // MatrixOperation enum
                 );
-                
+
                 if layer_ptr.is_null() {
-                    return Err(Error::Runtime("Failed to add matrix multiply layer".to_string()));
+                    return Err(Error::Runtime(
+                        "Failed to add matrix multiply layer".to_string(),
+                    ));
                 }
-                
+
                 layer_ptr as *mut std::ffi::c_void
             };
-            
+
             Ok(MatrixMultiplyLayer::from_ptr(layer_ptr))
         }
         #[cfg(feature = "mock")]
@@ -526,21 +570,26 @@ impl NetworkDefinition {
     }
 
     /// Add a constant tensor
-    /// 
+    ///
     /// # Arguments
     /// * `dims` - Dimensions of the tensor
     /// * `weights` - Raw byte data for the tensor
     /// * `data_type` - TensorRT data type (0=kFLOAT, 1=kHALF, 2=kINT8, 3=kINT32, 4=kUINT8)
-    /// 
+    ///
     /// # Note
     /// The `weights` slice must contain the correct number of bytes for the given
     /// dimensions and data type. For example, a [2,2] float32 tensor needs 16 bytes.
-    pub fn add_constant(&mut self, dims: &[i32], weights: &[u8], data_type: i32) -> Result<ConstantLayer> {
+    pub fn add_constant(
+        &mut self,
+        dims: &[i32],
+        weights: &[u8],
+        data_type: i32,
+    ) -> Result<ConstantLayer> {
         #[cfg(not(feature = "mock"))]
         {
             // Calculate element count from dimensions
             let element_count: i64 = dims.iter().map(|&d| d as i64).product();
-            
+
             // Calculate expected bytes based on data type
             let bytes_per_element = match data_type {
                 0 => 4, // kFLOAT
@@ -548,9 +597,14 @@ impl NetworkDefinition {
                 2 => 1, // kINT8
                 3 => 4, // kINT32
                 4 => 1, // kUINT8
-                _ => return Err(Error::Runtime(format!("Unsupported data type: {}", data_type))),
+                _ => {
+                    return Err(Error::Runtime(format!(
+                        "Unsupported data type: {}",
+                        data_type
+                    )))
+                }
             };
-            
+
             let expected_bytes = element_count * bytes_per_element;
             if weights.len() as i64 != expected_bytes {
                 return Err(Error::Runtime(format!(
@@ -559,7 +613,7 @@ impl NetworkDefinition {
                     weights.len()
                 )));
             }
-            
+
             let layer_ptr = unsafe {
                 trtx_sys::network_add_constant(
                     self.inner,
@@ -591,21 +645,25 @@ impl NetworkDefinition {
         {
             let layer_ptr = unsafe {
                 let input_ref = &mut *(input.inner as *mut trtx_sys::nvinfer1::ITensor);
-                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(self.inner);
-                
-                let layer_ptr = network_pin.as_mut().addSoftMax(std::pin::Pin::new_unchecked(input_ref));
-                
+                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::INetworkDefinition,
+                >(self.inner);
+
+                let layer_ptr = network_pin
+                    .as_mut()
+                    .addSoftMax(std::pin::Pin::new_unchecked(input_ref));
+
                 if layer_ptr.is_null() {
                     return Err(Error::Runtime("Failed to add softmax layer".to_string()));
                 }
-                
+
                 // Set axes on the layer
                 let mut layer_pin = std::pin::Pin::new_unchecked(&mut *layer_ptr);
                 layer_pin.as_mut().setAxes(axes);
-                
+
                 layer_ptr as *mut std::ffi::c_void
             };
-            
+
             Ok(SoftMaxLayer::from_ptr(layer_ptr))
         }
         #[cfg(feature = "mock")]
@@ -671,22 +729,24 @@ impl NetworkDefinition {
         {
             let layer_ptr = unsafe {
                 let input_ref = &mut *(input.inner as *mut trtx_sys::nvinfer1::ITensor);
-                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(self.inner);
-                
+                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::INetworkDefinition,
+                >(self.inner);
+
                 let layer_ptr = network_pin.as_mut().addReduce(
                     std::pin::Pin::new_unchecked(input_ref),
                     std::mem::transmute(op), // ReduceOperation enum
                     axes,
-                    keep_dims
+                    keep_dims,
                 );
-                
+
                 if layer_ptr.is_null() {
                     return Err(Error::Runtime("Failed to add reduce layer".to_string()));
                 }
-                
+
                 layer_ptr as *mut std::ffi::c_void
             };
-            
+
             Ok(ReduceLayer::from_ptr(layer_ptr))
         }
         #[cfg(feature = "mock")]
@@ -745,17 +805,21 @@ impl NetworkDefinition {
         {
             let layer_ptr = unsafe {
                 let input_ref = &mut *(input.inner as *mut trtx_sys::nvinfer1::ITensor);
-                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(self.inner);
-                
-                let layer_ptr = network_pin.as_mut().addResize(std::pin::Pin::new_unchecked(input_ref));
-                
+                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::INetworkDefinition,
+                >(self.inner);
+
+                let layer_ptr = network_pin
+                    .as_mut()
+                    .addResize(std::pin::Pin::new_unchecked(input_ref));
+
                 if layer_ptr.is_null() {
                     return Err(Error::Runtime("Failed to add resize layer".to_string()));
                 }
-                
+
                 layer_ptr as *mut std::ffi::c_void
             };
-            
+
             Ok(ResizeLayer::from_ptr(layer_ptr))
         }
         #[cfg(feature = "mock")]
@@ -776,22 +840,24 @@ impl NetworkDefinition {
         {
             let layer_ptr = unsafe {
                 let input_ref = &mut *(input.inner as *mut trtx_sys::nvinfer1::ITensor);
-                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(self.inner);
-                
+                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::INetworkDefinition,
+                >(self.inner);
+
                 let layer_ptr = network_pin.as_mut().addTopK(
                     std::pin::Pin::new_unchecked(input_ref),
                     std::mem::transmute(op), // TopKOperation enum
                     k,
-                    axes
+                    axes,
                 );
-                
+
                 if layer_ptr.is_null() {
                     return Err(Error::Runtime("Failed to add topk layer".to_string()));
                 }
-                
+
                 layer_ptr as *mut std::ffi::c_void
             };
-            
+
             Ok(TopKLayer::from_ptr(layer_ptr))
         }
         #[cfg(feature = "mock")]
@@ -806,27 +872,34 @@ impl NetworkDefinition {
     /// * `data` - Data tensor
     /// * `indices` - Indices tensor
     /// * `axis` - Axis along which to gather
-    pub fn add_gather(&mut self, data: &Tensor, indices: &Tensor, axis: i32) -> Result<GatherLayer> {
+    pub fn add_gather(
+        &mut self,
+        data: &Tensor,
+        indices: &Tensor,
+        axis: i32,
+    ) -> Result<GatherLayer> {
         #[cfg(not(feature = "mock"))]
         {
             let layer_ptr = unsafe {
                 let data_ref = &mut *(data.inner as *mut trtx_sys::nvinfer1::ITensor);
                 let indices_ref = &mut *(indices.inner as *mut trtx_sys::nvinfer1::ITensor);
-                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(self.inner);
-                
+                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::INetworkDefinition,
+                >(self.inner);
+
                 let layer_ptr = network_pin.as_mut().addGather(
                     std::pin::Pin::new_unchecked(data_ref),
                     std::pin::Pin::new_unchecked(indices_ref),
-                    axis
+                    axis,
                 );
-                
+
                 if layer_ptr.is_null() {
                     return Err(Error::Runtime("Failed to add gather layer".to_string()));
                 }
-                
+
                 layer_ptr as *mut std::ffi::c_void
             };
-            
+
             Ok(GatherLayer::from_ptr(layer_ptr))
         }
         #[cfg(feature = "mock")]
@@ -855,21 +928,23 @@ impl NetworkDefinition {
                 let condition_ref = &mut *(condition.inner as *mut trtx_sys::nvinfer1::ITensor);
                 let then_ref = &mut *(then_input.inner as *mut trtx_sys::nvinfer1::ITensor);
                 let else_ref = &mut *(else_input.inner as *mut trtx_sys::nvinfer1::ITensor);
-                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(self.inner);
-                
+                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::INetworkDefinition,
+                >(self.inner);
+
                 let layer_ptr = network_pin.as_mut().addSelect(
                     std::pin::Pin::new_unchecked(condition_ref),
                     std::pin::Pin::new_unchecked(then_ref),
-                    std::pin::Pin::new_unchecked(else_ref)
+                    std::pin::Pin::new_unchecked(else_ref),
                 );
-                
+
                 if layer_ptr.is_null() {
                     return Err(Error::Runtime("Failed to add select layer".to_string()));
                 }
-                
+
                 layer_ptr as *mut std::ffi::c_void
             };
-            
+
             Ok(SelectLayer::from_ptr(layer_ptr))
         }
         #[cfg(feature = "mock")]
