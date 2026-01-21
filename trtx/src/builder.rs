@@ -193,13 +193,17 @@ impl<'a> Builder<'a> {
                 return Err(Error::Runtime("Invalid builder".to_string()));
             }
 
-            let network_ptr = unsafe { trtx_sys::builder_create_network_v2(self.inner, flags) };
+            // Use autocxx Pin to call createNetworkV2 directly (no C++ wrapper!)
+            let network_ptr = unsafe {
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::IBuilder>(self.inner)
+                    .createNetworkV2(flags)
+            };
 
             if network_ptr.is_null() {
                 return Err(Error::Runtime("Failed to create network".to_string()));
             }
 
-            Ok(NetworkDefinition::from_ptr(network_ptr))
+            Ok(NetworkDefinition::from_ptr(network_ptr as *mut _))
         }
     }
 
@@ -232,7 +236,11 @@ impl<'a> Builder<'a> {
                 return Err(Error::Runtime("Invalid builder".to_string()));
             }
 
-            let config_ptr = unsafe { trtx_sys::builder_create_config(self.inner) };
+            // Use autocxx Pin to call createBuilderConfig directly
+            let config_ptr = unsafe {
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::IBuilder>(self.inner)
+                    .createBuilderConfig()
+            };
 
             if config_ptr.is_null() {
                 return Err(Error::Runtime(
@@ -240,7 +248,7 @@ impl<'a> Builder<'a> {
                 ));
             }
 
-            Ok(BuilderConfig { inner: config_ptr })
+            Ok(BuilderConfig { inner: config_ptr as *mut _ })
         }
     }
 
@@ -291,27 +299,35 @@ impl<'a> Builder<'a> {
             let network_ptr = network.as_mut_ptr();
             let config_ptr = config.as_mut_ptr();
 
-            let mut size: usize = 0;
-            let data_ptr = unsafe {
-                trtx_sys::builder_build_serialized_network(
-                    self.inner,
-                    network_ptr,
-                    config_ptr,
-                    &mut size,
+            // Use autocxx Pin to call buildSerializedNetwork directly
+            let serialized_engine = unsafe {
+                let builder = &mut *(self.inner as *mut trtx_sys::nvinfer1::IBuilder);
+                let network = &mut *(network_ptr as *mut trtx_sys::nvinfer1::INetworkDefinition);
+                let config = &mut *(config_ptr as *mut trtx_sys::nvinfer1::IBuilderConfig);
+                
+                let mut builder_pin = std::pin::Pin::new_unchecked(builder);
+                builder_pin.as_mut().buildSerializedNetwork(
+                    std::pin::Pin::new_unchecked(network),
+                    std::pin::Pin::new_unchecked(config),
                 )
             };
 
-            if data_ptr.is_null() {
+            if serialized_engine.is_null() {
                 return Err(Error::Runtime(
                     "Failed to build serialized network".to_string(),
                 ));
             }
 
-            // Copy data to Vec and free C buffer
+            // Get data from IHostMemory and copy to Vec
             let data = unsafe {
+                let host_memory = &*serialized_engine;
+                // autocxx wraps types, access the inner value
+                let size_raw = host_memory.size();
+                let size = size_raw.0 as usize;  // Access inner value and convert
+                let data_ptr = host_memory.data();
                 let slice = std::slice::from_raw_parts(data_ptr as *const u8, size);
                 let vec = slice.to_vec();
-                libc::free(data_ptr);
+                // IHostMemory will be freed when it goes out of scope
                 vec
             };
 

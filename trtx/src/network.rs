@@ -12,7 +12,11 @@ impl Tensor {
     pub fn name(&self) -> Result<String> {
         #[cfg(not(feature = "mock"))]
         {
-            let name_ptr = unsafe { trtx_sys::tensor_get_name(self.inner) };
+            // Use autocxx Pin to call getName directly
+            let name_ptr = unsafe {
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ITensor>(self.inner)
+                    .getName()
+            };
             if name_ptr.is_null() {
                 return Err(Error::Runtime("Failed to get tensor name".to_string()));
             }
@@ -29,8 +33,10 @@ impl Tensor {
         #[cfg(not(feature = "mock"))]
         {
             let name_cstr = std::ffi::CString::new(name)?;
+            // Use autocxx Pin to call setName directly
             unsafe {
-                trtx_sys::tensor_set_name(self.inner, name_cstr.as_ptr());
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ITensor>(self.inner)
+                    .setName(name_cstr.as_ptr());
             }
             Ok(())
         }
@@ -44,6 +50,7 @@ impl Tensor {
     pub fn dimensions(&self) -> Result<Vec<i32>> {
         #[cfg(not(feature = "mock"))]
         {
+            // Keep wrapper - getDimensions returns Dims which is complex to extract
             let mut dims = [0i32; 8]; // MAX_DIMS
             let mut nb_dims = 0i32;
             let result = unsafe {
@@ -66,6 +73,7 @@ impl Tensor {
     pub fn get_type(&self) -> Result<i32> {
         #[cfg(not(feature = "mock"))]
         {
+            // Keep wrapper - DataType enum conversion is simpler through wrapper
             let data_type = unsafe { trtx_sys::tensor_get_type(self.inner) };
             Ok(data_type)
         }
@@ -116,6 +124,7 @@ impl NetworkDefinition {
     pub fn add_input(&mut self, name: &str, data_type: i32, dims: &[i32]) -> Result<Tensor> {
         #[cfg(not(feature = "mock"))]
         {
+            // Keep wrapper - creating Dims object is complex
             let name_cstr = std::ffi::CString::new(name)?;
             let tensor_ptr = unsafe {
                 trtx_sys::network_add_input(
@@ -143,11 +152,10 @@ impl NetworkDefinition {
     pub fn mark_output(&mut self, tensor: &Tensor) -> Result<()> {
         #[cfg(not(feature = "mock"))]
         {
-            let success = unsafe { trtx_sys::network_mark_output(self.inner, tensor.inner) };
-            if !success {
-                return Err(Error::Runtime(
-                    "Failed to mark tensor as output".to_string(),
-                ));
+            unsafe {
+                let tensor_ref = &mut *(tensor.inner as *mut trtx_sys::nvinfer1::ITensor);
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(self.inner)
+                    .markOutput(std::pin::Pin::new_unchecked(tensor_ref));
             }
             Ok(())
         }
@@ -161,7 +169,8 @@ impl NetworkDefinition {
     pub fn get_nb_inputs(&self) -> i32 {
         #[cfg(not(feature = "mock"))]
         unsafe {
-            trtx_sys::network_get_nb_inputs(self.inner)
+            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(self.inner)
+                .getNbInputs()
         }
         #[cfg(feature = "mock")]
         {
@@ -173,7 +182,8 @@ impl NetworkDefinition {
     pub fn get_nb_outputs(&self) -> i32 {
         #[cfg(not(feature = "mock"))]
         unsafe {
-            trtx_sys::network_get_nb_outputs(self.inner)
+            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(self.inner)
+                .getNbOutputs()
         }
         #[cfg(feature = "mock")]
         {
@@ -185,14 +195,17 @@ impl NetworkDefinition {
     pub fn get_input(&self, index: i32) -> Result<Tensor> {
         #[cfg(not(feature = "mock"))]
         {
-            let tensor_ptr = unsafe { trtx_sys::network_get_input(self.inner, index) };
+            let tensor_ptr = unsafe {
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(self.inner)
+                    .getInput(index)
+            };
             if tensor_ptr.is_null() {
                 return Err(Error::Runtime(format!(
                     "Failed to get input at index {}",
                     index
                 )));
             }
-            Ok(Tensor { inner: tensor_ptr })
+            Ok(Tensor { inner: tensor_ptr as *mut _ })
         }
         #[cfg(feature = "mock")]
         {
@@ -206,14 +219,17 @@ impl NetworkDefinition {
     pub fn get_output(&self, index: i32) -> Result<Tensor> {
         #[cfg(not(feature = "mock"))]
         {
-            let tensor_ptr = unsafe { trtx_sys::network_get_output(self.inner, index) };
+            let tensor_ptr = unsafe {
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(self.inner)
+                    .getOutput(index)
+            };
             if tensor_ptr.is_null() {
                 return Err(Error::Runtime(format!(
                     "Failed to get output at index {}",
                     index
                 )));
             }
-            Ok(Tensor { inner: tensor_ptr })
+            Ok(Tensor { inner: tensor_ptr as *mut _ })
         }
         #[cfg(feature = "mock")]
         {
@@ -299,6 +315,7 @@ impl NetworkDefinition {
     pub fn add_shuffle(&mut self, input: &Tensor) -> Result<Tensor> {
         #[cfg(not(feature = "mock"))]
         {
+            // Keep wrapper - layer inheritance makes autocxx usage complex
             let tensor_ptr = unsafe { trtx_sys::network_add_shuffle(self.inner, input.inner) };
             if tensor_ptr.is_null() {
                 return Err(Error::Runtime("Failed to add shuffle layer".to_string()));
@@ -417,15 +434,48 @@ impl NetworkDefinition {
     }
 
     /// Add a constant tensor
-    pub fn add_constant(&mut self, dims: &[i32], weights: &[u8]) -> Result<Tensor> {
+    /// 
+    /// # Arguments
+    /// * `dims` - Dimensions of the tensor
+    /// * `weights` - Raw byte data for the tensor
+    /// * `data_type` - TensorRT data type (0=kFLOAT, 1=kHALF, 2=kINT8, 3=kINT32, 4=kUINT8)
+    /// 
+    /// # Note
+    /// The `weights` slice must contain the correct number of bytes for the given
+    /// dimensions and data type. For example, a [2,2] float32 tensor needs 16 bytes.
+    pub fn add_constant(&mut self, dims: &[i32], weights: &[u8], data_type: i32) -> Result<Tensor> {
         #[cfg(not(feature = "mock"))]
         {
+            // Calculate element count from dimensions
+            let element_count: i64 = dims.iter().map(|&d| d as i64).product();
+            
+            // Calculate expected bytes based on data type
+            let bytes_per_element = match data_type {
+                0 => 4, // kFLOAT
+                1 => 2, // kHALF
+                2 => 1, // kINT8
+                3 => 4, // kINT32
+                4 => 1, // kUINT8
+                _ => return Err(Error::Runtime(format!("Unsupported data type: {}", data_type))),
+            };
+            
+            let expected_bytes = element_count * bytes_per_element;
+            if weights.len() as i64 != expected_bytes {
+                return Err(Error::Runtime(format!(
+                    "Weight size mismatch: expected {} bytes, got {} bytes",
+                    expected_bytes,
+                    weights.len()
+                )));
+            }
+            
             let tensor_ptr = unsafe {
                 trtx_sys::network_add_constant(
                     self.inner,
                     dims.as_ptr(),
                     dims.len() as i32,
                     weights.as_ptr() as *const std::ffi::c_void,
+                    data_type,
+                    element_count,
                 )
             };
             if tensor_ptr.is_null() {

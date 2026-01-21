@@ -203,6 +203,8 @@ pub mod real_bindings {
             dims: *const i32,
             nb_dims: i32,
             weights: *const std::ffi::c_void,
+            data_type: i32,
+            count: i64,
         ) -> *mut std::ffi::c_void;
 
         pub fn network_add_softmax(

@@ -35,7 +35,11 @@ impl CudaEngine {
                 return Err(Error::Runtime("Invalid engine".to_string()));
             }
 
-            let count = unsafe { trtx_sys::engine_get_nb_io_tensors(self.inner) };
+            // Use autocxx Pin to call getNbIOTensors directly
+            let count = unsafe {
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ICudaEngine>(self.inner)
+                    .getNbIOTensors()
+            };
 
             Ok(count)
         }
@@ -73,7 +77,11 @@ impl CudaEngine {
                 return Err(Error::Runtime("Invalid engine".to_string()));
             }
 
-            let name_ptr = unsafe { trtx_sys::engine_get_tensor_name(self.inner, index) };
+            // Use autocxx Pin to call getIOTensorName directly
+            let name_ptr = unsafe {
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ICudaEngine>(self.inner)
+                    .getIOTensorName(index)
+            };
 
             if name_ptr.is_null() {
                 return Err(Error::InvalidArgument("Invalid tensor index".to_string()));
@@ -117,7 +125,13 @@ impl CudaEngine {
                 return Err(Error::Runtime("Invalid engine".to_string()));
             }
 
-            let context_ptr = unsafe { trtx_sys::engine_create_execution_context(self.inner) };
+            // Use autocxx Pin to call createExecutionContext directly
+            let context_ptr = unsafe {
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ICudaEngine>(self.inner)
+                    .createExecutionContext(
+                        trtx_sys::nvinfer1::ExecutionContextAllocationStrategy::kSTATIC
+                    )
+            };
 
             if context_ptr.is_null() {
                 return Err(Error::Runtime(
@@ -126,7 +140,7 @@ impl CudaEngine {
             }
 
             Ok(ExecutionContext {
-                inner: context_ptr,
+                inner: context_ptr as *mut _,
                 _engine: std::marker::PhantomData,
             })
         }
@@ -208,8 +222,10 @@ impl<'a> ExecutionContext<'a> {
 
             let name_cstr = std::ffi::CString::new(name)?;
 
+            // Use autocxx Pin to call setTensorAddress directly
             let success = unsafe {
-                trtx_sys::context_set_tensor_address(self.inner, name_cstr.as_ptr(), data)
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::IExecutionContext>(self.inner)
+                    .setTensorAddress(name_cstr.as_ptr(), data as *mut _)
             };
 
             if !success {
@@ -253,7 +269,11 @@ impl<'a> ExecutionContext<'a> {
                 return Err(Error::Runtime("Invalid execution context".to_string()));
             }
 
-            let success = unsafe { trtx_sys::context_enqueue_v3(self.inner, cuda_stream) };
+            // Use autocxx Pin to call enqueueV3 directly
+            let success = unsafe {
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::IExecutionContext>(self.inner)
+                    .enqueueV3(cuda_stream as *mut _)
+            };
 
             if !success {
                 return Err(Error::Runtime("Failed to enqueue inference".to_string()));
@@ -364,11 +384,12 @@ impl<'a> Runtime<'a> {
                 return Err(Error::Runtime("Invalid runtime".to_string()));
             }
 
+            // Use wrapper for now - autocxx::c_ulonglong type not accessible from trtx crate
             let engine_ptr = unsafe {
                 trtx_sys::runtime_deserialize_cuda_engine(
                     self.inner,
-                    data.as_ptr() as *const std::ffi::c_void,
-                    data.len(),
+                    data.as_ptr() as *const _,
+                    data.len()
                 )
             };
 
@@ -376,7 +397,7 @@ impl<'a> Runtime<'a> {
                 return Err(Error::Runtime("Failed to deserialize engine".to_string()));
             }
 
-            Ok(CudaEngine { inner: engine_ptr })
+            Ok(CudaEngine { inner: engine_ptr as *mut _ })
         }
     }
 }

@@ -30,18 +30,11 @@ void* create_infer_runtime(void* logger);
 void* create_onnx_parser(void* network, void* logger);
 
 // Builder methods
-void* builder_create_network_v2(void* builder, uint32_t flags);
-void* builder_create_config(void* builder);
 void* builder_build_serialized_network(void* builder, void* network, void* config, size_t* out_size);
 void builder_config_set_memory_pool_limit(void* config, int32_t pool_type, size_t limit);
 
 // Network methods
 void* network_add_input(void* network, const char* name, int32_t data_type, const int32_t* dims, int32_t nb_dims);
-bool network_mark_output(void* network, void* tensor);
-int32_t network_get_nb_inputs(void* network);
-int32_t network_get_nb_outputs(void* network);
-void* network_get_input(void* network, int32_t index);
-void* network_get_output(void* network, int32_t index);
 void* network_add_convolution(void* network, void* input, int32_t nb_outputs, const int32_t* kernel_size, const void* weights, const void* bias);
 void* network_add_activation(void* network, void* input, int32_t type);
 void* network_add_pooling(void* network, void* input, int32_t type, const int32_t* window_size);
@@ -49,7 +42,7 @@ void* network_add_elementwise(void* network, void* input1, void* input2, int32_t
 void* network_add_shuffle(void* network, void* input);
 void* network_add_concatenation(void* network, void** inputs, int32_t nb_inputs);
 void* network_add_matrix_multiply(void* network, void* input0, int32_t op0, void* input1, int32_t op1);
-void* network_add_constant(void* network, const int32_t* dims, int32_t nb_dims, const void* weights);
+void* network_add_constant(void* network, const int32_t* dims, int32_t nb_dims, const void* weights, int32_t data_type, int64_t count);
 void* network_add_softmax(void* network, void* input, uint32_t axes);
 void* network_add_scale(void* network, void* input, int32_t mode, const void* shift, const void* scale, const void* power);
 void* network_add_reduce(void* network, void* input, int32_t op, uint32_t axes, bool keep_dims);
@@ -63,8 +56,6 @@ void* network_add_loop(void* network);
 void* network_add_if_conditional(void* network);
 
 // Tensor methods
-const char* tensor_get_name(void* tensor);
-void tensor_set_name(void* tensor, const char* name);
 void* tensor_get_dimensions(void* tensor, int32_t* dims, int32_t* nb_dims);
 int32_t tensor_get_type(void* tensor);
 
@@ -81,13 +72,8 @@ void delete_parser(void* parser);
 void* runtime_deserialize_cuda_engine(void* runtime, const void* data, size_t size);
 
 // Engine methods
-int32_t engine_get_nb_io_tensors(void* engine);
-const char* engine_get_tensor_name(void* engine, int32_t index);
-void* engine_create_execution_context(void* engine);
 
 // ExecutionContext methods
-bool context_set_tensor_address(void* context, const char* name, void* data);
-bool context_enqueue_v3(void* context, void* stream);
 
 // Parser methods
 bool parser_parse(void* parser, const void* data, size_t size);

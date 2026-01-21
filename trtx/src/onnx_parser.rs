@@ -42,6 +42,7 @@ impl OnnxParser {
             let network_ptr = network.as_mut_ptr();
             let logger_ptr = logger.as_logger_ptr();
 
+            // Use wrapper - createParser is a free function, works well with autocxx
             let parser_ptr = unsafe { trtx_sys::create_onnx_parser(network_ptr, logger_ptr) };
 
             if parser_ptr.is_null() {
@@ -81,6 +82,7 @@ impl OnnxParser {
                 return Err(Error::Runtime("Invalid parser".to_string()));
             }
 
+            // Use wrapper - parse has c_ulonglong size parameter that's difficult to access
             let success = unsafe {
                 trtx_sys::parser_parse(
                     self.inner,
@@ -99,8 +101,9 @@ impl OnnxParser {
                             let desc_ptr = trtx_sys::parser_error_desc(err_ptr);
                             if !desc_ptr.is_null() {
                                 std::ffi::CStr::from_ptr(desc_ptr)
-                                    .to_string_lossy()
-                                    .into_owned()
+                                    .to_str()
+                                    .unwrap_or("Failed to parse ONNX model")
+                                    .to_string()
                             } else {
                                 "Failed to parse ONNX model".to_string()
                             }

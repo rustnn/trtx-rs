@@ -1,6 +1,64 @@
+/**
+ * Logger Bridge for TensorRT-RTX Rust Bindings
+ * 
+ * This file provides C wrapper functions for TensorRT-RTX C++ API.
+ * While we use autocxx for most C++ bindings, some wrappers are still necessary.
+ * 
+ * ## Architecture
+ * 
+ * ```
+ * Rust (trtx) → Raw FFI (trtx-sys) → logger_bridge.cpp → TensorRT C++ + autocxx
+ * ```
+ * 
+ * ## Why These Wrappers Exist
+ * 
+ * ### NECESSARY WRAPPERS (Cannot be removed):
+ * 
+ * 1. **Logger Bridge (lines 29-52)**: 
+ *    - Rust cannot implement C++ virtual classes
+ *    - RustLoggerImpl forwards virtual method calls to Rust callbacks
+ *    - REQUIRED: No alternative
+ * 
+ * 2. **Factory Functions (lines 55-91)**:
+ *    - createInferBuilder/Runtime take `ILogger&` references
+ *    - autocxx struggles with C++ reference parameters
+ *    - REQUIRED: Simplest solution for reference params
+ * 
+ * 3. **CUDA Wrappers (lines 658-677)**:
+ *    - Bridge between std::ffi::c_void and autocxx::c_void
+ *    - Type compatibility issue between Rust and autocxx types
+ *    - KEEP FOR NOW: Could be removed with codebase-wide type migration
+ * 
+ * ### POTENTIALLY REDUNDANT WRAPPERS:
+ * 
+ * 4. **TensorRT Method Wrappers (lines 94-657)**:
+ *    - Builder, Network, Tensor, Engine, Context methods
+ *    - autocxx CAN generate these with `generate!("nvinfer1::INetworkDefinition")`
+ *    - POTENTIALLY REMOVABLE: ~75% code reduction if refactored
+ *    - STATUS: Kept for now due to stability, could be migrated to direct autocxx calls
+ * 
+ * ## Why Not Full autocxx?
+ * 
+ * We TRIED to use autocxx for everything but encountered:
+ * - Type mismatches (autocxx::c_void vs std::ffi::c_void)
+ * - Reference parameter handling issues
+ * - Virtual method/callback complications
+ * 
+ * ## See Also
+ * - docs/LOGGER_BRIDGE_ANALYSIS.md - Detailed analysis of each function
+ * - docs/REFACTORING_SUMMARY.md - Test results and recommendations
+ * - docs/FFI_GUIDE.md - How to modify bindings
+ */
+
 #include "logger_bridge.hpp"
 #include <NvOnnxParser.h>
 #include <cstring>
+
+//==============================================================================
+// SECTION 1: LOGGER BRIDGE (NECESSARY - Virtual Methods)
+//==============================================================================
+// Rust cannot implement C++ virtual classes, so we need this C++ class
+// to forward ILogger::log() calls back to Rust via function pointer callbacks.
 
 // C++ implementation of ILogger that bridges to Rust
 class RustLoggerImpl : public nvinfer1::ILogger {
@@ -51,6 +109,12 @@ nvinfer1::ILogger* get_logger_interface(RustLoggerBridge* logger) {
     return logger ? logger->impl : nullptr;
 }
 
+//==============================================================================
+// SECTION 2: FACTORY FUNCTIONS (NECESSARY - Reference Parameters)
+//==============================================================================
+// These functions take `ILogger&` references which autocxx struggles with.
+// Simpler to keep these thin wrappers than to work around autocxx limitations.
+
 // Factory functions for TensorRT
 void* create_infer_builder(void* logger) {
     if (!logger) {
@@ -90,27 +154,14 @@ void* create_onnx_parser(void* network, void* logger) {
     }
 }
 
+//==============================================================================
+// SECTION 3: BUILDER & CONFIG METHODS (POTENTIALLY REDUNDANT)
+//==============================================================================
+// These wrap IBuilder and IBuilderConfig methods.
+// autocxx CAN generate these with generate!("nvinfer1::IBuilder").
+// FUTURE: Consider migrating to direct autocxx calls (see REFACTORING_SUMMARY.md)
+
 // Builder methods
-void* builder_create_network_v2(void* builder, uint32_t flags) {
-    if (!builder) return nullptr;
-    try {
-        auto* ibuilder = static_cast<nvinfer1::IBuilder*>(builder);
-        return ibuilder->createNetworkV2(flags);
-    } catch (...) {
-        return nullptr;
-    }
-}
-
-void* builder_create_config(void* builder) {
-    if (!builder) return nullptr;
-    try {
-        auto* ibuilder = static_cast<nvinfer1::IBuilder*>(builder);
-        return ibuilder->createBuilderConfig();
-    } catch (...) {
-        return nullptr;
-    }
-}
-
 void builder_config_set_memory_pool_limit(void* config, int32_t pool_type, size_t limit) {
     if (!config) return;
     try {
@@ -120,6 +171,14 @@ void builder_config_set_memory_pool_limit(void* config, int32_t pool_type, size_
         // Ignore errors
     }
 }
+
+//==============================================================================
+// SECTION 4: NETWORK DEFINITION METHODS (POTENTIALLY REDUNDANT)
+//==============================================================================
+// These wrap INetworkDefinition layer building methods.
+// autocxx CAN generate these with generate!("nvinfer1::INetworkDefinition").
+// FUTURE: Consider migrating to direct autocxx calls
+// NOTE: This is the largest section (~350 lines) and biggest refactoring opportunity
 
 // Network methods
 void* network_add_input(void* network, const char* name, int32_t data_type, const int32_t* dims, int32_t nb_dims) {
@@ -132,58 +191,6 @@ void* network_add_input(void* network, const char* name, int32_t data_type, cons
             dimensions.d[i] = dims[i];
         }
         return inetwork->addInput(name, static_cast<nvinfer1::DataType>(data_type), dimensions);
-    } catch (...) {
-        return nullptr;
-    }
-}
-
-bool network_mark_output(void* network, void* tensor) {
-    if (!network || !tensor) return false;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        auto* itensor = static_cast<nvinfer1::ITensor*>(tensor);
-        inetwork->markOutput(*itensor);
-        return true;
-    } catch (...) {
-        return false;
-    }
-}
-
-int32_t network_get_nb_inputs(void* network) {
-    if (!network) return 0;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        return inetwork->getNbInputs();
-    } catch (...) {
-        return 0;
-    }
-}
-
-int32_t network_get_nb_outputs(void* network) {
-    if (!network) return 0;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        return inetwork->getNbOutputs();
-    } catch (...) {
-        return 0;
-    }
-}
-
-void* network_get_input(void* network, int32_t index) {
-    if (!network) return nullptr;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        return inetwork->getInput(index);
-    } catch (...) {
-        return nullptr;
-    }
-}
-
-void* network_get_output(void* network, int32_t index) {
-    if (!network) return nullptr;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        return inetwork->getOutput(index);
     } catch (...) {
         return nullptr;
     }
@@ -253,8 +260,8 @@ void* network_add_matrix_multiply(void* network, void* input0, int32_t op0, void
     }
 }
 
-void* network_add_constant(void* network, const int32_t* dims, int32_t nb_dims, const void* weights) {
-    if (!network || !dims || !weights) return nullptr;
+void* network_add_constant(void* network, const int32_t* dims, int32_t nb_dims, const void* weights, int32_t data_type, int64_t count) {
+    if (!network || !dims || !weights || count <= 0) return nullptr;
     try {
         auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
         nvinfer1::Dims dimensions;
@@ -262,7 +269,11 @@ void* network_add_constant(void* network, const int32_t* dims, int32_t nb_dims, 
         for (int32_t i = 0; i < nb_dims && i < nvinfer1::Dims::MAX_DIMS; ++i) {
             dimensions.d[i] = dims[i];
         }
-        nvinfer1::Weights w{static_cast<nvinfer1::DataType>(0), weights, 0};
+        nvinfer1::Weights w{
+            static_cast<nvinfer1::DataType>(data_type), 
+            weights, 
+            count
+        };
         auto* layer = inetwork->addConstant(dimensions, w);
         return layer ? layer->getOutput(0) : nullptr;
     } catch (...) {
@@ -478,27 +489,13 @@ void* network_add_if_conditional(void* network) {
     }
 }
 
+//==============================================================================
+// SECTION 5: TENSOR METHODS (POTENTIALLY REDUNDANT)
+//==============================================================================
+// Wrap ITensor getter/setter methods.
+// autocxx CAN generate with generate!("nvinfer1::ITensor")
+
 // Tensor methods
-const char* tensor_get_name(void* tensor) {
-    if (!tensor) return nullptr;
-    try {
-        auto* itensor = static_cast<nvinfer1::ITensor*>(tensor);
-        return itensor->getName();
-    } catch (...) {
-        return nullptr;
-    }
-}
-
-void tensor_set_name(void* tensor, const char* name) {
-    if (!tensor || !name) return;
-    try {
-        auto* itensor = static_cast<nvinfer1::ITensor*>(tensor);
-        itensor->setName(name);
-    } catch (...) {
-        // Ignore errors
-    }
-}
-
 void* tensor_get_dimensions(void* tensor, int32_t* dims, int32_t* nb_dims) {
     if (!tensor || !dims || !nb_dims) return nullptr;
     try {
@@ -559,57 +556,7 @@ void* runtime_deserialize_cuda_engine(void* runtime, const void* data, size_t si
 }
 
 // Engine methods
-int32_t engine_get_nb_io_tensors(void* engine) {
-    if (!engine) return 0;
-    try {
-        auto* iengine = static_cast<nvinfer1::ICudaEngine*>(engine);
-        return iengine->getNbIOTensors();
-    } catch (...) {
-        return 0;
-    }
-}
-
-const char* engine_get_tensor_name(void* engine, int32_t index) {
-    if (!engine) return nullptr;
-    try {
-        auto* iengine = static_cast<nvinfer1::ICudaEngine*>(engine);
-        return iengine->getIOTensorName(index);
-    } catch (...) {
-        return nullptr;
-    }
-}
-
-void* engine_create_execution_context(void* engine) {
-    if (!engine) return nullptr;
-    try {
-        auto* iengine = static_cast<nvinfer1::ICudaEngine*>(engine);
-        return iengine->createExecutionContext();
-    } catch (...) {
-        return nullptr;
-    }
-}
-
 // ExecutionContext methods
-bool context_set_tensor_address(void* context, const char* name, void* data) {
-    if (!context || !name) return false;
-    try {
-        auto* icontex = static_cast<nvinfer1::IExecutionContext*>(context);
-        return icontex->setTensorAddress(name, data);
-    } catch (...) {
-        return false;
-    }
-}
-
-bool context_enqueue_v3(void* context, void* stream) {
-    if (!context) return false;
-    try {
-        auto* icontext = static_cast<nvinfer1::IExecutionContext*>(context);
-        return icontext->enqueueV3(static_cast<cudaStream_t>(stream));
-    } catch (...) {
-        return false;
-    }
-}
-
 // Parser methods
 bool parser_parse(void* parser, const void* data, size_t size) {
     if (!parser || !data) return false;
@@ -651,6 +598,14 @@ const char* parser_error_desc(void* error) {
     }
 }
 
+//==============================================================================
+// SECTION 6: CUDA WRAPPERS (NECESSARY FOR NOW - Type Compatibility)
+//==============================================================================
+// These bridge between std::ffi::c_void (Rust) and autocxx::c_void (autocxx wrapper).
+// autocxx generates CUDA bindings but with incompatible c_void types.
+// TESTED: Direct calls fail with "expected autocxx::c_void, found c_void"
+// FUTURE: Could remove if entire codebase migrates to autocxx::c_void
+
 // CUDA wrappers
 int32_t cuda_malloc_wrapper(void** ptr, size_t size) {
     return static_cast<int32_t>(cudaMalloc(ptr, size));
@@ -671,6 +626,13 @@ int32_t cuda_device_synchronize_wrapper() {
 const char* cuda_get_error_string_wrapper(int32_t error) {
     return cudaGetErrorString(static_cast<cudaError_t>(error));
 }
+
+//==============================================================================
+// SECTION 7: DESTRUCTION METHODS (POTENTIALLY REDUNDANT)
+//==============================================================================
+// These wrap TensorRT object deletion.
+// autocxx CAN handle C++ destructors with RAII wrappers.
+// FUTURE: Consider using UniquePtr or Drop trait implementations
 
 // Destruction methods
 void delete_builder(void* builder) {

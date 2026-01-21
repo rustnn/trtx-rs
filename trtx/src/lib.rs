@@ -91,6 +91,7 @@
 // Allow unnecessary casts - they're needed for real mode (u32) but not mock mode (i32)
 #![cfg_attr(feature = "mock", allow(clippy::unnecessary_cast))]
 
+pub mod autocxx_helpers;
 pub mod builder;
 pub mod cuda;
 pub mod error;
