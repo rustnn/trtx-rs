@@ -51,6 +51,28 @@ pub mod real_bindings {
         generate!("nvinfer1::INetworkDefinition")
         generate!("nvinfer1::ITensor")
         generate!("nvinfer1::ILayer")
+        
+        // Derived layer types - for inheritance support
+        generate!("nvinfer1::IActivationLayer")
+        generate!("nvinfer1::IConvolutionLayer")
+        generate!("nvinfer1::IPoolingLayer")
+        generate!("nvinfer1::IElementWiseLayer")
+        generate!("nvinfer1::IShuffleLayer")
+        generate!("nvinfer1::IConcatenationLayer")
+        generate!("nvinfer1::IMatrixMultiplyLayer")
+        generate!("nvinfer1::IConstantLayer")
+        generate!("nvinfer1::ISoftMaxLayer")
+        generate!("nvinfer1::IScaleLayer")
+        generate!("nvinfer1::IReduceLayer")
+        generate!("nvinfer1::ISliceLayer")
+        generate!("nvinfer1::IResizeLayer")
+        generate!("nvinfer1::ITopKLayer")
+        generate!("nvinfer1::IGatherLayer")
+        generate!("nvinfer1::ISelectLayer")
+        generate!("nvinfer1::IAssertionLayer")
+        generate!("nvinfer1::ILoop")
+        generate!("nvinfer1::IIfConditional")
+        
         generate!("nvinfer1::IRuntime")
         generate!("nvinfer1::ICudaEngine")
         generate!("nvinfer1::IExecutionContext")
@@ -159,11 +181,7 @@ pub mod real_bindings {
             bias: *const std::ffi::c_void,
         ) -> *mut std::ffi::c_void;
 
-        pub fn network_add_activation(
-            network: *mut std::ffi::c_void,
-            input: *mut std::ffi::c_void,
-            type_: i32,
-        ) -> *mut std::ffi::c_void;
+        // network_add_activation - REMOVED - Using direct autocxx
 
         pub fn network_add_pooling(
             network: *mut std::ffi::c_void,
@@ -172,17 +190,9 @@ pub mod real_bindings {
             window_size: *const i32,
         ) -> *mut std::ffi::c_void;
 
-        pub fn network_add_elementwise(
-            network: *mut std::ffi::c_void,
-            input1: *mut std::ffi::c_void,
-            input2: *mut std::ffi::c_void,
-            op: i32,
-        ) -> *mut std::ffi::c_void;
+        // network_add_elementwise - REMOVED - Using direct autocxx
 
-        pub fn network_add_shuffle(
-            network: *mut std::ffi::c_void,
-            input: *mut std::ffi::c_void,
-        ) -> *mut std::ffi::c_void;
+        // network_add_shuffle - REMOVED - Using direct autocxx
 
         pub fn network_add_concatenation(
             network: *mut std::ffi::c_void,
@@ -190,13 +200,7 @@ pub mod real_bindings {
             nb_inputs: i32,
         ) -> *mut std::ffi::c_void;
 
-        pub fn network_add_matrix_multiply(
-            network: *mut std::ffi::c_void,
-            input0: *mut std::ffi::c_void,
-            op0: i32,
-            input1: *mut std::ffi::c_void,
-            op1: i32,
-        ) -> *mut std::ffi::c_void;
+        // network_add_matrix_multiply - REMOVED - Using direct autocxx
 
         pub fn network_add_constant(
             network: *mut std::ffi::c_void,
@@ -207,11 +211,7 @@ pub mod real_bindings {
             count: i64,
         ) -> *mut std::ffi::c_void;
 
-        pub fn network_add_softmax(
-            network: *mut std::ffi::c_void,
-            input: *mut std::ffi::c_void,
-            axes: u32,
-        ) -> *mut std::ffi::c_void;
+        // network_add_softmax - REMOVED - Using direct autocxx
 
         pub fn network_add_scale(
             network: *mut std::ffi::c_void,
@@ -222,13 +222,7 @@ pub mod real_bindings {
             power: *const std::ffi::c_void,
         ) -> *mut std::ffi::c_void;
 
-        pub fn network_add_reduce(
-            network: *mut std::ffi::c_void,
-            input: *mut std::ffi::c_void,
-            op: i32,
-            axes: u32,
-            keep_dims: bool,
-        ) -> *mut std::ffi::c_void;
+        // network_add_reduce - REMOVED - Using direct autocxx
 
         pub fn network_add_slice(
             network: *mut std::ffi::c_void,
@@ -239,32 +233,13 @@ pub mod real_bindings {
             nb_dims: i32,
         ) -> *mut std::ffi::c_void;
 
-        pub fn network_add_resize(
-            network: *mut std::ffi::c_void,
-            input: *mut std::ffi::c_void,
-        ) -> *mut std::ffi::c_void;
+        // network_add_resize - REMOVED - Using direct autocxx
 
-        pub fn network_add_topk(
-            network: *mut std::ffi::c_void,
-            input: *mut std::ffi::c_void,
-            op: i32,
-            k: i32,
-            axes: u32,
-        ) -> *mut std::ffi::c_void;
+        // network_add_topk - REMOVED - Using direct autocxx
 
-        pub fn network_add_gather(
-            network: *mut std::ffi::c_void,
-            data: *mut std::ffi::c_void,
-            indices: *mut std::ffi::c_void,
-            axis: i32,
-        ) -> *mut std::ffi::c_void;
+        // network_add_gather - REMOVED - Using direct autocxx
 
-        pub fn network_add_select(
-            network: *mut std::ffi::c_void,
-            condition: *mut std::ffi::c_void,
-            then_input: *mut std::ffi::c_void,
-            else_input: *mut std::ffi::c_void,
-        ) -> *mut std::ffi::c_void;
+        // network_add_select - REMOVED - Using direct autocxx
 
         pub fn network_add_assertion(
             network: *mut std::ffi::c_void,

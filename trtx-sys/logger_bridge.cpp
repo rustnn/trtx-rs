@@ -216,17 +216,7 @@ void* network_add_convolution(void* network, void* input, int32_t nb_outputs, co
     }
 }
 
-void* network_add_activation(void* network, void* input, int32_t type) {
-    if (!network || !input) return nullptr;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        auto* itensor = static_cast<nvinfer1::ITensor*>(input);
-        auto* layer = inetwork->addActivation(*itensor, static_cast<nvinfer1::ActivationType>(type));
-        return layer ? layer->getOutput(0) : nullptr;
-    } catch (...) {
-        return nullptr;
-    }
-}
+// network_add_activation - REMOVED - Now using direct autocxx call in network.rs
 
 void* network_add_pooling(void* network, void* input, int32_t type, const int32_t* window_size) {
     if (!network || !input || !window_size) return nullptr;
@@ -244,21 +234,7 @@ void* network_add_pooling(void* network, void* input, int32_t type, const int32_
     }
 }
 
-void* network_add_matrix_multiply(void* network, void* input0, int32_t op0, void* input1, int32_t op1) {
-    if (!network || !input0 || !input1) return nullptr;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        auto* itensor0 = static_cast<nvinfer1::ITensor*>(input0);
-        auto* itensor1 = static_cast<nvinfer1::ITensor*>(input1);
-        auto* layer = inetwork->addMatrixMultiply(
-            *itensor0, static_cast<nvinfer1::MatrixOperation>(op0),
-            *itensor1, static_cast<nvinfer1::MatrixOperation>(op1)
-        );
-        return layer ? layer->getOutput(0) : nullptr;
-    } catch (...) {
-        return nullptr;
-    }
-}
+// network_add_matrix_multiply - REMOVED - Using direct autocxx
 
 void* network_add_constant(void* network, const int32_t* dims, int32_t nb_dims, const void* weights, int32_t data_type, int64_t count) {
     if (!network || !dims || !weights || count <= 0) return nullptr;
@@ -281,30 +257,9 @@ void* network_add_constant(void* network, const int32_t* dims, int32_t nb_dims, 
     }
 }
 
-void* network_add_elementwise(void* network, void* input1, void* input2, int32_t op) {
-    if (!network || !input1 || !input2) return nullptr;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        auto* itensor1 = static_cast<nvinfer1::ITensor*>(input1);
-        auto* itensor2 = static_cast<nvinfer1::ITensor*>(input2);
-        auto* layer = inetwork->addElementWise(*itensor1, *itensor2, static_cast<nvinfer1::ElementWiseOperation>(op));
-        return layer ? layer->getOutput(0) : nullptr;
-    } catch (...) {
-        return nullptr;
-    }
-}
+// network_add_elementwise - REMOVED - Now using direct autocxx call in network.rs
 
-void* network_add_shuffle(void* network, void* input) {
-    if (!network || !input) return nullptr;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        auto* itensor = static_cast<nvinfer1::ITensor*>(input);
-        auto* layer = inetwork->addShuffle(*itensor);
-        return layer ? layer->getOutput(0) : nullptr;
-    } catch (...) {
-        return nullptr;
-    }
-}
+// network_add_shuffle - REMOVED - Now using direct autocxx call in network.rs
 
 void* network_add_concatenation(void* network, void** inputs, int32_t nb_inputs) {
     if (!network || !inputs || nb_inputs <= 0) return nullptr;
@@ -322,21 +277,7 @@ void* network_add_concatenation(void* network, void** inputs, int32_t nb_inputs)
     }
 }
 
-void* network_add_softmax(void* network, void* input, uint32_t axes) {
-    if (!network || !input) return nullptr;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        auto* itensor = static_cast<nvinfer1::ITensor*>(input);
-        auto* layer = inetwork->addSoftMax(*itensor);
-        if (layer) {
-            layer->setAxes(axes);
-            return layer->getOutput(0);
-        }
-        return nullptr;
-    } catch (...) {
-        return nullptr;
-    }
-}
+// network_add_softmax - REMOVED - Using direct autocxx
 
 void* network_add_scale(void* network, void* input, int32_t mode, 
                        const void* shift, const void* scale, const void* power) {
@@ -360,22 +301,7 @@ void* network_add_scale(void* network, void* input, int32_t mode,
     }
 }
 
-void* network_add_reduce(void* network, void* input, int32_t op, uint32_t axes, bool keep_dims) {
-    if (!network || !input) return nullptr;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        auto* itensor = static_cast<nvinfer1::ITensor*>(input);
-        auto* layer = inetwork->addReduce(
-            *itensor,
-            static_cast<nvinfer1::ReduceOperation>(op),
-            axes,
-            keep_dims
-        );
-        return layer ? layer->getOutput(0) : nullptr;
-    } catch (...) {
-        return nullptr;
-    }
-}
+// network_add_reduce - REMOVED - Using direct autocxx
 
 void* network_add_slice(void* network, void* input, const int32_t* start, 
                        const int32_t* size, const int32_t* stride, int32_t nb_dims) {
@@ -400,61 +326,13 @@ void* network_add_slice(void* network, void* input, const int32_t* start,
     }
 }
 
-void* network_add_resize(void* network, void* input) {
-    if (!network || !input) return nullptr;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        auto* itensor = static_cast<nvinfer1::ITensor*>(input);
-        auto* layer = inetwork->addResize(*itensor);
-        return layer ? layer->getOutput(0) : nullptr;
-    } catch (...) {
-        return nullptr;
-    }
-}
+// network_add_resize - REMOVED - Using direct autocxx
 
-void* network_add_topk(void* network, void* input, int32_t op, int32_t k, uint32_t axes) {
-    if (!network || !input) return nullptr;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        auto* itensor = static_cast<nvinfer1::ITensor*>(input);
-        auto* layer = inetwork->addTopK(
-            *itensor,
-            static_cast<nvinfer1::TopKOperation>(op),
-            k,
-            axes
-        );
-        return layer ? layer->getOutput(0) : nullptr;
-    } catch (...) {
-        return nullptr;
-    }
-}
+// network_add_topk - REMOVED - Using direct autocxx
 
-void* network_add_gather(void* network, void* data, void* indices, int32_t axis) {
-    if (!network || !data || !indices) return nullptr;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        auto* data_tensor = static_cast<nvinfer1::ITensor*>(data);
-        auto* indices_tensor = static_cast<nvinfer1::ITensor*>(indices);
-        auto* layer = inetwork->addGather(*data_tensor, *indices_tensor, axis);
-        return layer ? layer->getOutput(0) : nullptr;
-    } catch (...) {
-        return nullptr;
-    }
-}
+// network_add_gather - REMOVED - Using direct autocxx
 
-void* network_add_select(void* network, void* condition, void* then_input, void* else_input) {
-    if (!network || !condition || !then_input || !else_input) return nullptr;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        auto* condition_tensor = static_cast<nvinfer1::ITensor*>(condition);
-        auto* then_tensor = static_cast<nvinfer1::ITensor*>(then_input);
-        auto* else_tensor = static_cast<nvinfer1::ITensor*>(else_input);
-        auto* layer = inetwork->addSelect(*condition_tensor, *then_tensor, *else_tensor);
-        return layer ? layer->getOutput(0) : nullptr;
-    } catch (...) {
-        return nullptr;
-    }
-}
+// network_add_select - REMOVED - Using direct autocxx
 
 void* network_add_assertion(void* network, void* condition, const char* message) {
     if (!network || !condition) return nullptr;

@@ -36,21 +36,21 @@ void builder_config_set_memory_pool_limit(void* config, int32_t pool_type, size_
 // Network methods
 void* network_add_input(void* network, const char* name, int32_t data_type, const int32_t* dims, int32_t nb_dims);
 void* network_add_convolution(void* network, void* input, int32_t nb_outputs, const int32_t* kernel_size, const void* weights, const void* bias);
-void* network_add_activation(void* network, void* input, int32_t type);
+// void* network_add_activation - REMOVED - Using direct autocxx
 void* network_add_pooling(void* network, void* input, int32_t type, const int32_t* window_size);
-void* network_add_elementwise(void* network, void* input1, void* input2, int32_t op);
-void* network_add_shuffle(void* network, void* input);
+// void* network_add_elementwise - REMOVED - Using direct autocxx
+// void* network_add_shuffle - REMOVED - Using direct autocxx
 void* network_add_concatenation(void* network, void** inputs, int32_t nb_inputs);
-void* network_add_matrix_multiply(void* network, void* input0, int32_t op0, void* input1, int32_t op1);
+// void* network_add_matrix_multiply - REMOVED - Using direct autocxx
 void* network_add_constant(void* network, const int32_t* dims, int32_t nb_dims, const void* weights, int32_t data_type, int64_t count);
-void* network_add_softmax(void* network, void* input, uint32_t axes);
+// void* network_add_softmax - REMOVED - Using direct autocxx
 void* network_add_scale(void* network, void* input, int32_t mode, const void* shift, const void* scale, const void* power);
-void* network_add_reduce(void* network, void* input, int32_t op, uint32_t axes, bool keep_dims);
+// void* network_add_reduce - REMOVED - Using direct autocxx
 void* network_add_slice(void* network, void* input, const int32_t* start, const int32_t* size, const int32_t* stride, int32_t nb_dims);
-void* network_add_resize(void* network, void* input);
-void* network_add_topk(void* network, void* input, int32_t op, int32_t k, uint32_t axes);
-void* network_add_gather(void* network, void* data, void* indices, int32_t axis);
-void* network_add_select(void* network, void* condition, void* then_input, void* else_input);
+// void* network_add_resize - REMOVED - Using direct autocxx
+// void* network_add_topk - REMOVED - Using direct autocxx
+// void* network_add_gather - REMOVED - Using direct autocxx
+// void* network_add_select - REMOVED - Using direct autocxx
 void* network_add_assertion(void* network, void* condition, const char* message);
 void* network_add_loop(void* network);
 void* network_add_if_conditional(void* network);
