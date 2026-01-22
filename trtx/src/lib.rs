@@ -110,3 +110,8 @@ pub use logger::{LogHandler, Logger, Severity, StderrLogger};
 pub use network::{NetworkDefinition, Tensor};
 pub use onnx_parser::OnnxParser;
 pub use runtime::{CudaEngine, ExecutionContext, Runtime};
+
+// Re-export TensorRT operation enums
+pub use trtx_sys::nvinfer1::{
+    ActivationType, ElementWiseOperation, MatrixOperation, PoolingType, UnaryOperation,
+};
