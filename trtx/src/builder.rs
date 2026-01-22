@@ -328,9 +328,8 @@ impl<'a> Builder<'a> {
                 let size = size_raw.0 as usize; // Access inner value and convert
                 let data_ptr = host_memory.data();
                 let slice = std::slice::from_raw_parts(data_ptr as *const u8, size);
-                let vec = slice.to_vec();
                 // IHostMemory will be freed when it goes out of scope
-                vec
+                slice.to_vec()
             };
 
             Ok(data)

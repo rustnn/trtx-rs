@@ -86,6 +86,7 @@ define_layer!(ConstantLayer, trtx_sys::nvinfer1::IConstantLayer);
 define_layer!(ConcatenationLayer, trtx_sys::nvinfer1::IConcatenationLayer);
 define_layer!(ScaleLayer, trtx_sys::nvinfer1::IScaleLayer);
 define_layer!(SliceLayer, trtx_sys::nvinfer1::ISliceLayer);
+define_layer!(UnaryLayer, trtx_sys::nvinfer1::IUnaryLayer);
 
 impl Tensor {
     /// Get the tensor name
@@ -349,7 +350,7 @@ impl NetworkDefinition {
 
                 let layer_ptr = network_pin.as_mut().addActivation(
                     std::pin::Pin::new_unchecked(input_ref),
-                    std::mem::transmute(activation_type), // ActivationType enum
+                    std::mem::transmute::<i32, trtx_sys::nvinfer1::ActivationType>(activation_type),
                 );
 
                 if layer_ptr.is_null() {
@@ -364,6 +365,40 @@ impl NetworkDefinition {
         #[cfg(feature = "mock")]
         {
             Ok(ActivationLayer::from_ptr(std::ptr::null_mut()))
+        }
+    }
+
+    /// Add a unary operation layer
+    ///
+    /// # Arguments
+    /// * `input` - Input tensor
+    /// * `op` - Unary operation type (e.g., EXP, LOG, SQRT, ABS, NEG, CEIL, FLOOR, etc.)
+    pub fn add_unary(&mut self, input: &Tensor, op: i32) -> Result<UnaryLayer> {
+        #[cfg(not(feature = "mock"))]
+        {
+            let layer_ptr = unsafe {
+                let input_ref = &mut *(input.inner as *mut trtx_sys::nvinfer1::ITensor);
+                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::INetworkDefinition,
+                >(self.inner);
+
+                let layer_ptr = network_pin.as_mut().addUnary(
+                    std::pin::Pin::new_unchecked(input_ref),
+                    std::mem::transmute::<i32, trtx_sys::nvinfer1::UnaryOperation>(op),
+                );
+
+                if layer_ptr.is_null() {
+                    return Err(Error::Runtime("Failed to add unary layer".to_string()));
+                }
+
+                layer_ptr as *mut std::ffi::c_void
+            };
+
+            Ok(UnaryLayer::from_ptr(layer_ptr))
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(UnaryLayer::from_ptr(std::ptr::null_mut()))
         }
     }
 
@@ -386,7 +421,7 @@ impl NetworkDefinition {
                 let layer_ptr = network_pin.as_mut().addElementWise(
                     std::pin::Pin::new_unchecked(input1_ref),
                     std::pin::Pin::new_unchecked(input2_ref),
-                    std::mem::transmute(op), // ElementWiseOperation enum
+                    std::mem::transmute::<i32, trtx_sys::nvinfer1::ElementWiseOperation>(op),
                 );
 
                 if layer_ptr.is_null() {
@@ -481,9 +516,9 @@ impl NetworkDefinition {
 
                 let layer_ptr = network_pin.as_mut().addMatrixMultiply(
                     std::pin::Pin::new_unchecked(input0_ref),
-                    std::mem::transmute(op0), // MatrixOperation enum
+                    std::mem::transmute::<i32, trtx_sys::nvinfer1::MatrixOperation>(op0),
                     std::pin::Pin::new_unchecked(input1_ref),
-                    std::mem::transmute(op1), // MatrixOperation enum
+                    std::mem::transmute::<i32, trtx_sys::nvinfer1::MatrixOperation>(op1),
                 );
 
                 if layer_ptr.is_null() {
@@ -735,7 +770,7 @@ impl NetworkDefinition {
 
                 let layer_ptr = network_pin.as_mut().addReduce(
                     std::pin::Pin::new_unchecked(input_ref),
-                    std::mem::transmute(op), // ReduceOperation enum
+                    std::mem::transmute::<i32, trtx_sys::nvinfer1::ReduceOperation>(op),
                     axes,
                     keep_dims,
                 );
@@ -846,7 +881,7 @@ impl NetworkDefinition {
 
                 let layer_ptr = network_pin.as_mut().addTopK(
                     std::pin::Pin::new_unchecked(input_ref),
-                    std::mem::transmute(op), // TopKOperation enum
+                    std::mem::transmute::<i32, trtx_sys::nvinfer1::TopKOperation>(op),
                     k,
                     axes,
                 );

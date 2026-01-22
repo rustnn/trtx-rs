@@ -69,6 +69,7 @@ pub mod real_bindings {
         generate!("nvinfer1::ITopKLayer")
         generate!("nvinfer1::IGatherLayer")
         generate!("nvinfer1::ISelectLayer")
+        generate!("nvinfer1::IUnaryLayer")
         generate!("nvinfer1::IAssertionLayer")
         generate!("nvinfer1::ILoop")
         generate!("nvinfer1::IIfConditional")
@@ -90,6 +91,7 @@ pub mod real_bindings {
         generate!("nvinfer1::PoolingType")
         generate!("nvinfer1::ElementWiseOperation")
         generate!("nvinfer1::MatrixOperation")
+        generate!("nvinfer1::UnaryOperation")
         generate!("nvinfer1::Weights")
 
         // NOTE: createInferBuilder/Runtime moved to logger_bridge.cpp (autocxx struggles with these)

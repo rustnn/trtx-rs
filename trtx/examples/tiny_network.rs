@@ -48,8 +48,8 @@ fn main() -> Result<()> {
 
     // 6. Prepare input/output buffers
     println!("6. Preparing buffers...");
-    let input_size = 1 * 3 * 4 * 4; // [1, 3, 4, 4]
-    let output_size = 1 * 3 * 4 * 4; // Same as input
+    let input_size = 3 * 4 * 4; // [1, 3, 4, 4]
+    let output_size = 3 * 4 * 4; // Same as input
 
     // Create input with mix of positive and negative values
     let input_data: Vec<f32> = (0..input_size)

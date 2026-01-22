@@ -100,7 +100,7 @@ fn main() {
 
     let clang_args_refs: Vec<&str> = clang_args.iter().map(|s| s.as_str()).collect();
 
-    let mut autocxx_build = autocxx_build::Builder::new("src/lib.rs", &[&include_dir])
+    let mut autocxx_build = autocxx_build::Builder::new("src/lib.rs", [&include_dir])
         .extra_clang_args(&clang_args_refs)
         .build()
         .expect("Failed to build autocxx bindings");

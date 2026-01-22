@@ -209,7 +209,7 @@ mod tests {
         let dummy_onnx = vec![0u8; 100];
         let inputs = vec![("input".to_string(), vec![1, 3, 224, 224])];
 
-        let _result = run_onnx_zeroed(&dummy_onnx, &inputs);
+        let result = run_onnx_zeroed(&dummy_onnx, &inputs);
         // In mock mode, this should succeed
         #[cfg(feature = "mock")]
         assert!(result.is_ok());
