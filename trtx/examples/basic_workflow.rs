@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("   ✓ Builder created");
 
     // Create network with explicit batch dimensions
-    let network = builder.create_network(network_flags::EXPLICIT_BATCH)?;
+    let mut network = builder.create_network(network_flags::EXPLICIT_BATCH)?;
     println!("   ✓ Network created");
 
     // Create and configure builder config
@@ -57,7 +57,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Build serialized network
     println!("   Building serialized engine...");
-    match builder.build_serialized_network(&network, &config) {
+    match builder.build_serialized_network(&mut network, &mut config) {
         Ok(engine_data) => {
             println!("   ✓ Engine built ({} bytes)", engine_data.len());
 
