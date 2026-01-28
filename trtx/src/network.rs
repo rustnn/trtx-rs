@@ -87,6 +87,7 @@ define_layer!(ConcatenationLayer, trtx_sys::nvinfer1::IConcatenationLayer);
 define_layer!(ScaleLayer, trtx_sys::nvinfer1::IScaleLayer);
 define_layer!(SliceLayer, trtx_sys::nvinfer1::ISliceLayer);
 define_layer!(UnaryLayer, trtx_sys::nvinfer1::IUnaryLayer);
+define_layer!(IdentityLayer, trtx_sys::nvinfer1::IIdentityLayer);
 
 impl Tensor {
     /// Get the tensor name
@@ -409,6 +410,35 @@ impl NetworkDefinition {
         #[cfg(feature = "mock")]
         {
             Ok(UnaryLayer::from_ptr(std::ptr::null_mut()))
+        }
+    }
+
+    /// Add an identity layer (pass-through)
+    pub fn add_identity(&mut self, input: &Tensor) -> Result<IdentityLayer> {
+        #[cfg(not(feature = "mock"))]
+        {
+            let layer_ptr = unsafe {
+                let input_ref = &mut *(input.inner as *mut trtx_sys::nvinfer1::ITensor);
+                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::INetworkDefinition,
+                >(self.inner);
+
+                let layer_ptr = network_pin.as_mut().addIdentity(
+                    std::pin::Pin::new_unchecked(input_ref),
+                );
+
+                if layer_ptr.is_null() {
+                    return Err(Error::Runtime("Failed to add identity layer".to_string()));
+                }
+
+                layer_ptr as *mut std::ffi::c_void
+            };
+
+            Ok(IdentityLayer::from_ptr(layer_ptr))
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(IdentityLayer::from_ptr(std::ptr::null_mut()))
         }
     }
 
@@ -890,10 +920,10 @@ impl NetworkDefinition {
 
                 network_pin.as_mut().addScale(
                     input_ref,
-                    unsafe { std::mem::transmute(mode) }, // ScaleMode enum
-                    shift_w,                              // Weights by value
-                    scale_w,                              // Weights by value
-                    power_w,                              // Weights by value
+                    std::mem::transmute(mode), // ScaleMode enum - already in unsafe block
+                    shift_w,                   // Weights by value
+                    scale_w,                   // Weights by value
+                    power_w,                   // Weights by value
                 ) as *mut std::ffi::c_void
             };
             if layer_ptr.is_null() {
