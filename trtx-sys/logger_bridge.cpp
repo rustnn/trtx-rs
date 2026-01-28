@@ -181,70 +181,17 @@ void builder_config_set_memory_pool_limit(void* config, int32_t pool_type, size_
 // NOTE: This is the largest section (~350 lines) and biggest refactoring opportunity
 
 // Network methods
-void* network_add_input(void* network, const char* name, int32_t data_type, const nvinfer1::Dims& dims) {
-    if (!network || !name) return nullptr;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        // Simple pass-through: accept Dims directly
-        return inetwork->addInput(name, static_cast<nvinfer1::DataType>(data_type), dims);
-    } catch (...) {
-        return nullptr;
-    }
-}
+// network_add_input - REMOVED - Now using direct autocxx call in network.rs
 
-void* network_add_convolution(void* network, void* input, int32_t nb_outputs, const nvinfer1::Dims& kernel_dims, const void* weights, int64_t weight_count, const void* bias, int64_t bias_count) {
-    if (!network || !input || !weights) return nullptr;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        auto* itensor = static_cast<nvinfer1::ITensor*>(input);
-        
-        // Simple pass-through: accept Dims directly and use counts provided by caller
-        nvinfer1::Weights w{nvinfer1::DataType::kFLOAT, weights, weight_count};
-        nvinfer1::Weights b{nvinfer1::DataType::kFLOAT, bias, bias_count};
-        
-        auto* layer = inetwork->addConvolutionNd(*itensor, nb_outputs, kernel_dims, w, b);
-        return layer; // Return layer, not output tensor
-    } catch (...) {
-        return nullptr;
-    }
-}
+// network_add_convolution - REMOVED - Using direct autocxx
 
 // network_add_activation - REMOVED - Now using direct autocxx call in network.rs
 
-void* network_add_pooling(void* network, void* input, int32_t type, const int32_t* window_size) {
-    if (!network || !input || !window_size) return nullptr;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        auto* itensor = static_cast<nvinfer1::ITensor*>(input);
-        nvinfer1::Dims dims;
-        dims.nbDims = 2; // Assuming 2D pooling
-        dims.d[0] = window_size[0];
-        dims.d[1] = window_size[1];
-        auto* layer = inetwork->addPoolingNd(*itensor, static_cast<nvinfer1::PoolingType>(type), dims);
-        return layer; // Return layer, not output tensor
-    } catch (...) {
-        return nullptr;
-    }
-}
+// network_add_pooling - REMOVED - Now using direct autocxx call in network.rs
 
 // network_add_matrix_multiply - REMOVED - Using direct autocxx
 
-void* network_add_constant(void* network, const nvinfer1::Dims& dims, const void* weights, int32_t data_type, int64_t count) {
-    if (!network || !weights || count <= 0) return nullptr;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        // Simple pass-through: accept Dims directly
-        nvinfer1::Weights w{
-            static_cast<nvinfer1::DataType>(data_type), 
-            weights, 
-            count
-        };
-        auto* layer = inetwork->addConstant(dims, w);
-        return layer; // Return layer, not output tensor
-    } catch (...) {
-        return nullptr;
-    }
-}
+// network_add_constant - REMOVED - Using direct autocxx
 
 // network_add_elementwise - REMOVED - Now using direct autocxx call in network.rs
 
@@ -268,45 +215,11 @@ void* network_add_concatenation(void* network, void** inputs, int32_t nb_inputs)
 
 // network_add_softmax - REMOVED - Using direct autocxx
 
-void* network_add_scale(void* network, void* input, int32_t mode, 
-                       const void* shift, const void* scale, const void* power, int64_t weight_count) {
-    if (!network || !input) return nullptr;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        auto* itensor = static_cast<nvinfer1::ITensor*>(input);
-        
-        // Simple pass-through: use the count provided by caller
-        nvinfer1::Weights shift_w{nvinfer1::DataType::kFLOAT, shift, weight_count};
-        nvinfer1::Weights scale_w{nvinfer1::DataType::kFLOAT, scale, weight_count};
-        nvinfer1::Weights power_w{nvinfer1::DataType::kFLOAT, power, weight_count};
-        
-        auto* layer = inetwork->addScale(
-            *itensor, 
-            static_cast<nvinfer1::ScaleMode>(mode),
-            shift_w, scale_w, power_w
-        );
-        return layer; // Return layer, not output tensor
-    } catch (...) {
-        return nullptr;
-    }
-}
+// network_add_scale - REMOVED - Using direct autocxx
 
 // network_add_reduce - REMOVED - Using direct autocxx
 
-void* network_add_slice(void* network, void* input, const nvinfer1::Dims& start,
-                       const nvinfer1::Dims& size, const nvinfer1::Dims& stride) {
-    if (!network || !input) return nullptr;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        auto* itensor = static_cast<nvinfer1::ITensor*>(input);
-        
-        // Simple pass-through: accept Dims directly
-        auto* layer = inetwork->addSlice(*itensor, start, size, stride);
-        return layer; // Return layer, not output tensor
-    } catch (...) {
-        return nullptr;
-    }
-}
+// network_add_slice - REMOVED - Now using direct autocxx call in network.rs
 
 // network_add_resize - REMOVED - Using direct autocxx
 

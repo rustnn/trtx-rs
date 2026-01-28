@@ -78,10 +78,10 @@ pub mod real_bindings {
         generate!("nvinfer1::ICudaEngine")
         generate!("nvinfer1::IExecutionContext")
         generate!("nvinfer1::IHostMemory")
-        
+
         // Try generating Dims64 directly (base class, not the typedef alias)
         generate_pod!("nvinfer1::Dims64")
-        
+
         generate!("nvinfer1::DataType")
         generate!("nvinfer1::TensorIOMode")
         generate!("nvinfer1::MemoryPoolType")
@@ -91,7 +91,7 @@ pub mod real_bindings {
         generate!("nvinfer1::ElementWiseOperation")
         generate!("nvinfer1::MatrixOperation")
         generate!("nvinfer1::UnaryOperation")
-        generate!("nvinfer1::Weights")
+        generate_pod!("nvinfer1::Weights")
 
         // NOTE: createInferBuilder/Runtime moved to logger_bridge.cpp (autocxx struggles with these)
 
@@ -153,12 +153,10 @@ pub mod real_bindings {
         );
 
         // Network methods
-        pub fn network_add_input(
-            network: *mut std::ffi::c_void,
-            name: *const std::os::raw::c_char,
-            data_type: i32,
-            dims: *const Dims,
-        ) -> *mut std::ffi::c_void;
+        // network_add_input - REMOVED - Using direct autocxx
+        // network_add_convolution - REMOVED - Using direct autocxx
+        // network_add_constant - REMOVED - Using direct autocxx
+        // network_add_scale - REMOVED - Using direct autocxx
 
         pub fn network_mark_output(
             network: *mut std::ffi::c_void,
@@ -176,25 +174,9 @@ pub mod real_bindings {
             index: i32,
         ) -> *mut std::ffi::c_void;
 
-        pub fn network_add_convolution(
-            network: *mut std::ffi::c_void,
-            input: *mut std::ffi::c_void,
-            nb_outputs: i32,
-            kernel_dims: *const Dims,
-            weights: *const std::ffi::c_void,
-            weight_count: i64,
-            bias: *const std::ffi::c_void,
-            bias_count: i64,
-        ) -> *mut std::ffi::c_void;
-
         // network_add_activation - REMOVED - Using direct autocxx
 
-        pub fn network_add_pooling(
-            network: *mut std::ffi::c_void,
-            input: *mut std::ffi::c_void,
-            type_: i32,
-            window_size: *const i32,
-        ) -> *mut std::ffi::c_void;
+        // network_add_pooling - REMOVED - Using direct autocxx
 
         // network_add_elementwise - REMOVED - Using direct autocxx
 
@@ -206,37 +188,9 @@ pub mod real_bindings {
             nb_inputs: i32,
         ) -> *mut std::ffi::c_void;
 
-        // network_add_matrix_multiply - REMOVED - Using direct autocxx
-
-        pub fn network_add_constant(
-            network: *mut std::ffi::c_void,
-            dims: *const Dims,
-            weights: *const std::ffi::c_void,
-            data_type: i32,
-            count: i64,
-        ) -> *mut std::ffi::c_void;
-
-        // network_add_softmax - REMOVED - Using direct autocxx
-
-        pub fn network_add_scale(
-            network: *mut std::ffi::c_void,
-            input: *mut std::ffi::c_void,
-            mode: i32,
-            shift: *const std::ffi::c_void,
-            scale: *const std::ffi::c_void,
-            power: *const std::ffi::c_void,
-            weight_count: i64,
-        ) -> *mut std::ffi::c_void;
-
         // network_add_reduce - REMOVED - Using direct autocxx
 
-        pub fn network_add_slice(
-            network: *mut std::ffi::c_void,
-            input: *mut std::ffi::c_void,
-            start: *const Dims,
-            size: *const Dims,
-            stride: *const Dims,
-        ) -> *mut std::ffi::c_void;
+        // network_add_slice - REMOVED - Using direct autocxx
 
         // network_add_resize - REMOVED - Using direct autocxx
 
@@ -354,11 +308,11 @@ pub mod real_bindings {
         cudaDeviceSynchronize, cudaError_t, cudaFree, cudaGetErrorString, cudaMalloc, cudaMemcpy,
         cudaMemcpyKind,
     };
-    
+
     // Re-export Dims64 as Dims to match TensorRT's typedef
     pub use nvinfer1::Dims64;
     pub type Dims = Dims64;
-    
+
     /// Helper methods for Dims construction (avoiding name collision with generated constructor)
     impl Dims64 {
         /// Create a Dims from a slice of dimensions
@@ -368,7 +322,7 @@ pub mod real_bindings {
             d[..nb_dims as usize].copy_from_slice(&dims[..nb_dims as usize]);
             Self { nbDims: nb_dims, d }
         }
-        
+
         /// Create a 2D Dims
         pub fn new_2d(d0: i64, d1: i64) -> Self {
             Self {
@@ -376,7 +330,7 @@ pub mod real_bindings {
                 d: [d0, d1, 0, 0, 0, 0, 0, 0],
             }
         }
-        
+
         /// Create a 3D Dims
         pub fn new_3d(d0: i64, d1: i64, d2: i64) -> Self {
             Self {
@@ -384,12 +338,40 @@ pub mod real_bindings {
                 d: [d0, d1, d2, 0, 0, 0, 0, 0],
             }
         }
-        
+
         /// Create a 4D Dims
         pub fn new_4d(d0: i64, d1: i64, d2: i64, d3: i64) -> Self {
             Self {
                 nbDims: 4,
                 d: [d0, d1, d2, d3, 0, 0, 0, 0],
+            }
+        }
+    }
+
+    // Re-export Weights
+    pub use nvinfer1::Weights;
+
+    /// Helper methods for Weights construction
+    impl nvinfer1::Weights {
+        /// Create a Weights with FLOAT data type
+        pub fn new_float(values_ptr: *const std::ffi::c_void, count_val: i64) -> Self {
+            Self {
+                type_: nvinfer1::DataType::kFLOAT,
+                values: values_ptr,
+                count: count_val,
+            }
+        }
+
+        /// Create a Weights with specified data type
+        pub fn new_with_type(
+            data_type: nvinfer1::DataType,
+            values_ptr: *const std::ffi::c_void,
+            count_val: i64,
+        ) -> Self {
+            Self {
+                type_: data_type,
+                values: values_ptr,
+                count: count_val,
             }
         }
     }

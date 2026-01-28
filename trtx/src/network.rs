@@ -206,23 +206,30 @@ impl NetworkDefinition {
         #[cfg(not(feature = "mock"))]
         {
             let name_cstr = std::ffi::CString::new(name)?;
-            
+
             // Convert i32 dims to i64 and create Dims structure
             let dims_i64: Vec<i64> = dims.iter().map(|&d| d as i64).collect();
             let dims_struct = trtx_sys::Dims::from_slice(&dims_i64);
-            
+
+            // Direct autocxx call to INetworkDefinition::addInput
+            let network_ref =
+                unsafe { &mut *(self.inner as *mut trtx_sys::nvinfer1::INetworkDefinition) };
+            let mut network_pin = unsafe { std::pin::Pin::new_unchecked(network_ref) };
+
             let tensor_ptr = unsafe {
-                trtx_sys::network_add_input(
-                    self.inner,
+                network_pin.as_mut().addInput(
                     name_cstr.as_ptr(),
-                    data_type,
-                    &dims_struct as *const _,
+                    std::mem::transmute(data_type),
+                    &dims_struct,
                 )
             };
+
             if tensor_ptr.is_null() {
                 return Err(Error::Runtime(format!("Failed to add input: {}", name)));
             }
-            Ok(Tensor { inner: tensor_ptr })
+            Ok(Tensor {
+                inner: tensor_ptr as *mut _,
+            })
         }
         #[cfg(feature = "mock")]
         {
@@ -453,18 +460,27 @@ impl NetworkDefinition {
     ) -> Result<PoolingLayer> {
         #[cfg(not(feature = "mock"))]
         {
-            let layer_ptr = unsafe {
-                trtx_sys::network_add_pooling(
-                    self.inner,
-                    input.inner,
-                    pooling_type,
-                    window_size.as_ptr(),
-                )
-            };
+            // Create Dims for window size
+            let window_dims = trtx_sys::Dims::new_2d(window_size[0] as i64, window_size[1] as i64);
+
+            // Direct autocxx call to INetworkDefinition::addPoolingNd
+            let network_ref =
+                unsafe { &mut *(self.inner as *mut trtx_sys::nvinfer1::INetworkDefinition) };
+            let mut network_pin = unsafe { std::pin::Pin::new_unchecked(network_ref) };
+
+            let input_ref = unsafe { &mut *(input.inner as *mut trtx_sys::nvinfer1::ITensor) };
+            let mut input_pin = unsafe { std::pin::Pin::new_unchecked(input_ref) };
+
+            let layer_ptr = network_pin.as_mut().addPoolingNd(
+                input_pin.as_mut(),
+                unsafe { std::mem::transmute(pooling_type) },
+                &window_dims,
+            );
+
             if layer_ptr.is_null() {
                 return Err(Error::Runtime("Failed to add pooling layer".to_string()));
             }
-            Ok(PoolingLayer::from_ptr(layer_ptr))
+            Ok(PoolingLayer::from_ptr(layer_ptr as *mut _))
         }
         #[cfg(feature = "mock")]
         {
@@ -593,8 +609,10 @@ impl NetworkDefinition {
             };
 
             // weight_count = nb_outputs * input_channels * kernel_h * kernel_w (in floats)
-            let weight_count = nb_output_maps as i64 * input_channels * 
-                               kernel_size[0] as i64 * kernel_size[1] as i64;
+            let weight_count = nb_output_maps as i64
+                * input_channels
+                * kernel_size[0] as i64
+                * kernel_size[1] as i64;
 
             let bias_count = if bias_weights.is_some() {
                 nb_output_maps as i64
@@ -609,18 +627,33 @@ impl NetworkDefinition {
             // Create Dims structure for kernel (i64 dimensions for Dims64)
             let kernel_dims = trtx_sys::Dims::new_2d(kernel_size[0] as i64, kernel_size[1] as i64);
 
+            // Create Weights structs
+            let kernel_w = trtx_sys::nvinfer1::Weights::new_float(
+                kernel_weights.as_ptr() as *const std::ffi::c_void,
+                weight_count,
+            );
+            let bias_w = trtx_sys::nvinfer1::Weights::new_float(bias_ptr, bias_count);
+
+            // Try direct autocxx call
             let layer_ptr = unsafe {
-                trtx_sys::network_add_convolution(
-                    self.inner,
-                    input.inner,
-                    nb_output_maps,
-                    &kernel_dims as *const _,
-                    kernel_weights.as_ptr() as *const std::ffi::c_void,
-                    weight_count,
-                    bias_ptr,
-                    bias_count,
-                )
+                // Cast void* to Pin<&mut INetworkDefinition>
+                let network_ptr = self.inner as *mut trtx_sys::nvinfer1::INetworkDefinition;
+                let mut network_pin = std::pin::Pin::new_unchecked(&mut *network_ptr);
+
+                // Cast void* to Pin<&mut ITensor>
+                let input_ptr = input.inner as *mut trtx_sys::nvinfer1::ITensor;
+                let input_ref = std::pin::Pin::new_unchecked(&mut *input_ptr);
+
+                // Call autocxx-generated method
+                network_pin.as_mut().addConvolutionNd(
+                    input_ref,
+                    nb_output_maps as i64, // Convert i32 to i64
+                    &kernel_dims,
+                    kernel_w, // Passing Weights by value
+                    bias_w,
+                ) as *mut std::ffi::c_void
             };
+
             if layer_ptr.is_null() {
                 return Err(Error::Runtime(
                     "Failed to add convolution layer".to_string(),
@@ -711,14 +744,22 @@ impl NetworkDefinition {
             let dims_i64: Vec<i64> = dims.iter().map(|&d| d as i64).collect();
             let dims_struct = trtx_sys::Dims::from_slice(&dims_i64);
 
+            // Create Weights struct
+            let weights_struct = trtx_sys::nvinfer1::Weights::new_with_type(
+                unsafe { std::mem::transmute(data_type) },
+                weights.as_ptr() as *const std::ffi::c_void,
+                element_count,
+            );
+
+            // Direct autocxx call
             let layer_ptr = unsafe {
-                trtx_sys::network_add_constant(
-                    self.inner,
-                    &dims_struct as *const _,
-                    weights.as_ptr() as *const std::ffi::c_void,
-                    data_type,
-                    element_count,
-                )
+                let network_ptr = self.inner as *mut trtx_sys::nvinfer1::INetworkDefinition;
+                let mut network_pin = std::pin::Pin::new_unchecked(&mut *network_ptr);
+
+                network_pin.as_mut().addConstant(
+                    &dims_struct,
+                    weights_struct, // Weights by value
+                ) as *mut std::ffi::c_void
             };
             if layer_ptr.is_null() {
                 return Err(Error::Runtime("Failed to add constant tensor".to_string()));
@@ -825,16 +866,35 @@ impl NetworkDefinition {
                 )));
             };
 
+            // Create Weights structs for shift, scale, and power
+            let shift_w = trtx_sys::nvinfer1::Weights::new_float(
+                shift.as_ptr() as *const std::ffi::c_void,
+                weight_count,
+            );
+            let scale_w = trtx_sys::nvinfer1::Weights::new_float(
+                scale.as_ptr() as *const std::ffi::c_void,
+                weight_count,
+            );
+            let power_w = trtx_sys::nvinfer1::Weights::new_float(
+                power.as_ptr() as *const std::ffi::c_void,
+                weight_count,
+            );
+
+            // Direct autocxx call
             let layer_ptr = unsafe {
-                trtx_sys::network_add_scale(
-                    self.inner,
-                    input.inner,
-                    mode,
-                    shift.as_ptr() as *const std::ffi::c_void,
-                    scale.as_ptr() as *const std::ffi::c_void,
-                    power.as_ptr() as *const std::ffi::c_void,
-                    weight_count,
-                )
+                let network_ptr = self.inner as *mut trtx_sys::nvinfer1::INetworkDefinition;
+                let mut network_pin = std::pin::Pin::new_unchecked(&mut *network_ptr);
+
+                let input_ptr = input.inner as *mut trtx_sys::nvinfer1::ITensor;
+                let input_ref = std::pin::Pin::new_unchecked(&mut *input_ptr);
+
+                network_pin.as_mut().addScale(
+                    input_ref,
+                    unsafe { std::mem::transmute(mode) }, // ScaleMode enum
+                    shift_w,                              // Weights by value
+                    scale_w,                              // Weights by value
+                    power_w,                              // Weights by value
+                ) as *mut std::ffi::c_void
             };
             if layer_ptr.is_null() {
                 return Err(Error::Runtime("Failed to add scale layer".to_string()));
@@ -912,29 +972,35 @@ impl NetworkDefinition {
                     "start, size, and stride must have the same length".to_string(),
                 ));
             }
-            
+
             // Convert i32 dims to i64 and create Dims structures
             let start_i64: Vec<i64> = start.iter().map(|&d| d as i64).collect();
             let size_i64: Vec<i64> = size.iter().map(|&d| d as i64).collect();
             let stride_i64: Vec<i64> = stride.iter().map(|&d| d as i64).collect();
-            
+
             let start_dims = trtx_sys::Dims::from_slice(&start_i64);
             let size_dims = trtx_sys::Dims::from_slice(&size_i64);
             let stride_dims = trtx_sys::Dims::from_slice(&stride_i64);
-            
-            let layer_ptr = unsafe {
-                trtx_sys::network_add_slice(
-                    self.inner,
-                    input.inner,
-                    &start_dims as *const _,
-                    &size_dims as *const _,
-                    &stride_dims as *const _,
-                )
-            };
+
+            // Direct autocxx call to INetworkDefinition::addSlice
+            let network_ref =
+                unsafe { &mut *(self.inner as *mut trtx_sys::nvinfer1::INetworkDefinition) };
+            let mut network_pin = unsafe { std::pin::Pin::new_unchecked(network_ref) };
+
+            let input_ref = unsafe { &mut *(input.inner as *mut trtx_sys::nvinfer1::ITensor) };
+            let mut input_pin = unsafe { std::pin::Pin::new_unchecked(input_ref) };
+
+            let layer_ptr = network_pin.as_mut().addSlice(
+                input_pin.as_mut(),
+                &start_dims,
+                &size_dims,
+                &stride_dims,
+            );
+
             if layer_ptr.is_null() {
                 return Err(Error::Runtime("Failed to add slice layer".to_string()));
             }
-            Ok(SliceLayer::from_ptr(layer_ptr))
+            Ok(SliceLayer::from_ptr(layer_ptr as *mut _))
         }
         #[cfg(feature = "mock")]
         {
