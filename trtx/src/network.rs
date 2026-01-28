@@ -205,15 +205,18 @@ impl NetworkDefinition {
     pub fn add_input(&mut self, name: &str, data_type: i32, dims: &[i32]) -> Result<Tensor> {
         #[cfg(not(feature = "mock"))]
         {
-            // Keep wrapper - creating Dims object is complex
             let name_cstr = std::ffi::CString::new(name)?;
+            
+            // Convert i32 dims to i64 and create Dims structure
+            let dims_i64: Vec<i64> = dims.iter().map(|&d| d as i64).collect();
+            let dims_struct = trtx_sys::Dims::from_slice(&dims_i64);
+            
             let tensor_ptr = unsafe {
                 trtx_sys::network_add_input(
                     self.inner,
                     name_cstr.as_ptr(),
                     data_type,
-                    dims.as_ptr(),
-                    dims.len() as i32,
+                    &dims_struct as *const _,
                 )
             };
             if tensor_ptr.is_null() {
@@ -498,6 +501,17 @@ impl NetworkDefinition {
     }
 
     /// Add a matrix multiply layer
+    ///
+    /// # Arguments
+    /// * `input0` - First input tensor
+    /// * `op0` - Matrix operation for first input (0=NONE, 1=TRANSPOSE, 2=VECTOR)
+    /// * `input1` - Second input tensor
+    /// * `op1` - Matrix operation for second input (0=NONE, 1=TRANSPOSE, 2=VECTOR)
+    ///
+    /// # Matrix Operations
+    /// - `0` (kNONE): Use matrix as-is
+    /// - `1` (kTRANSPOSE): Transpose the matrix
+    /// - `2` (kVECTOR): Treat as 1D vector
     pub fn add_matrix_multiply(
         &mut self,
         input0: &Tensor,
@@ -539,6 +553,20 @@ impl NetworkDefinition {
     }
 
     /// Add a convolution layer
+    ///
+    /// # Arguments
+    /// * `input` - Input tensor
+    /// * `nb_output_maps` - Number of output feature maps
+    /// * `kernel_size` - Kernel dimensions [height, width]
+    /// * `kernel_weights` - Kernel weights as raw bytes (float32)
+    ///   - Size: `nb_output_maps * input_channels * kernel_size[0] * kernel_size[1] * sizeof(f32)`
+    ///   - Format: [output_channel, input_channel, kernel_height, kernel_width]
+    /// * `bias_weights` - Optional bias weights as raw bytes (float32)
+    ///   - Size: `nb_output_maps * sizeof(f32)` if provided
+    ///
+    /// # Note
+    /// The caller must ensure the weight data has the correct size.
+    /// Weight count is calculated based on the input tensor dimensions.
     pub fn add_convolution(
         &mut self,
         input: &Tensor,
@@ -549,18 +577,48 @@ impl NetworkDefinition {
     ) -> Result<ConvolutionLayer> {
         #[cfg(not(feature = "mock"))]
         {
+            // Calculate weight count based on input dimensions
+            let input_dims = input.dimensions()?;
+            let input_channels = if input_dims.len() >= 4 {
+                // Format: [N, C, H, W] - channels at index 1
+                input_dims[1] as i64
+            } else if input_dims.len() >= 3 {
+                // Format: [C, H, W] - channels at index 0
+                input_dims[0] as i64
+            } else {
+                return Err(Error::InvalidArgument(format!(
+                    "Invalid input dimensions for convolution: {:?}",
+                    input_dims
+                )));
+            };
+
+            // weight_count = nb_outputs * input_channels * kernel_h * kernel_w (in floats)
+            let weight_count = nb_output_maps as i64 * input_channels * 
+                               kernel_size[0] as i64 * kernel_size[1] as i64;
+
+            let bias_count = if bias_weights.is_some() {
+                nb_output_maps as i64
+            } else {
+                0
+            };
+
             let bias_ptr = bias_weights
                 .map(|b| b.as_ptr() as *const std::ffi::c_void)
                 .unwrap_or(std::ptr::null());
+
+            // Create Dims structure for kernel (i64 dimensions for Dims64)
+            let kernel_dims = trtx_sys::Dims::new_2d(kernel_size[0] as i64, kernel_size[1] as i64);
 
             let layer_ptr = unsafe {
                 trtx_sys::network_add_convolution(
                     self.inner,
                     input.inner,
                     nb_output_maps,
-                    kernel_size.as_ptr(),
+                    &kernel_dims as *const _,
                     kernel_weights.as_ptr() as *const std::ffi::c_void,
+                    weight_count,
                     bias_ptr,
+                    bias_count,
                 )
             };
             if layer_ptr.is_null() {
@@ -649,11 +707,14 @@ impl NetworkDefinition {
                 )));
             }
 
+            // Convert i32 dims to i64 and create Dims structure
+            let dims_i64: Vec<i64> = dims.iter().map(|&d| d as i64).collect();
+            let dims_struct = trtx_sys::Dims::from_slice(&dims_i64);
+
             let layer_ptr = unsafe {
                 trtx_sys::network_add_constant(
                     self.inner,
-                    dims.as_ptr(),
-                    dims.len() as i32,
+                    &dims_struct as *const _,
                     weights.as_ptr() as *const std::ffi::c_void,
                     data_type,
                     element_count,
@@ -709,12 +770,24 @@ impl NetworkDefinition {
 
     /// Add a Scale layer (scale, shift, power operations)
     ///
+    /// Applies the formula: `output = (input * scale + shift) ^ power`
+    ///
     /// # Arguments
     /// * `input` - Input tensor
-    /// * `mode` - Scale mode (0=Uniform, 1=Channel, 2=Elementwise)
-    /// * `shift` - Shift weights
-    /// * `scale` - Scale weights
-    /// * `power` - Power weights
+    /// * `mode` - Scale mode:
+    ///   - `0` (Uniform): Single value, applied to all elements
+    ///   - `1` (Channel): Per-channel scaling (C values, where C = number of channels)
+    ///   - `2` (Elementwise): Per-element scaling (same shape as input)
+    /// * `shift` - Shift weights as raw bytes (float32)
+    ///   - Size depends on mode: 1 value (Uniform), C values (Channel), or N values (Elementwise)
+    /// * `scale` - Scale weights as raw bytes (float32)
+    ///   - Size depends on mode: 1 value (Uniform), C values (Channel), or N values (Elementwise)
+    /// * `power` - Power weights as raw bytes (float32)
+    ///   - Size depends on mode: 1 value (Uniform), C values (Channel), or N values (Elementwise)
+    ///
+    /// # Note
+    /// The caller must ensure the weight data has the correct size for the specified mode.
+    /// Weight count is calculated automatically based on the scale mode and input dimensions.
     pub fn add_scale(
         &mut self,
         input: &Tensor,
@@ -725,6 +798,33 @@ impl NetworkDefinition {
     ) -> Result<ScaleLayer> {
         #[cfg(not(feature = "mock"))]
         {
+            // Calculate weight count based on mode and input dimensions
+            let weight_count = if mode == 0 {
+                // Uniform: 1 value
+                1i64
+            } else if mode == 1 {
+                // Channel: C values (number of channels)
+                let input_dims = input.dimensions()?;
+                if input_dims.len() >= 4 {
+                    // Format: [N, C, H, W] - channels at index 1
+                    input_dims[1] as i64
+                } else if input_dims.len() >= 1 {
+                    // Format: [C, H, W] - channels at index 0
+                    input_dims[0] as i64
+                } else {
+                    1
+                }
+            } else if mode == 2 {
+                // Elementwise: total number of elements
+                let input_dims = input.dimensions()?;
+                input_dims.iter().map(|&d| d as i64).product()
+            } else {
+                return Err(Error::InvalidArgument(format!(
+                    "Invalid scale mode: {}. Must be 0 (Uniform), 1 (Channel), or 2 (Elementwise)",
+                    mode
+                )));
+            };
+
             let layer_ptr = unsafe {
                 trtx_sys::network_add_scale(
                     self.inner,
@@ -733,6 +833,7 @@ impl NetworkDefinition {
                     shift.as_ptr() as *const std::ffi::c_void,
                     scale.as_ptr() as *const std::ffi::c_void,
                     power.as_ptr() as *const std::ffi::c_void,
+                    weight_count,
                 )
             };
             if layer_ptr.is_null() {
@@ -811,14 +912,23 @@ impl NetworkDefinition {
                     "start, size, and stride must have the same length".to_string(),
                 ));
             }
+            
+            // Convert i32 dims to i64 and create Dims structures
+            let start_i64: Vec<i64> = start.iter().map(|&d| d as i64).collect();
+            let size_i64: Vec<i64> = size.iter().map(|&d| d as i64).collect();
+            let stride_i64: Vec<i64> = stride.iter().map(|&d| d as i64).collect();
+            
+            let start_dims = trtx_sys::Dims::from_slice(&start_i64);
+            let size_dims = trtx_sys::Dims::from_slice(&size_i64);
+            let stride_dims = trtx_sys::Dims::from_slice(&stride_i64);
+            
             let layer_ptr = unsafe {
                 trtx_sys::network_add_slice(
                     self.inner,
                     input.inner,
-                    start.as_ptr(),
-                    size.as_ptr(),
-                    stride.as_ptr(),
-                    start.len() as i32,
+                    &start_dims as *const _,
+                    &size_dims as *const _,
+                    &stride_dims as *const _,
                 )
             };
             if layer_ptr.is_null() {

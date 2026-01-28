@@ -181,35 +181,28 @@ void builder_config_set_memory_pool_limit(void* config, int32_t pool_type, size_
 // NOTE: This is the largest section (~350 lines) and biggest refactoring opportunity
 
 // Network methods
-void* network_add_input(void* network, const char* name, int32_t data_type, const int32_t* dims, int32_t nb_dims) {
-    if (!network || !name || !dims) return nullptr;
+void* network_add_input(void* network, const char* name, int32_t data_type, const nvinfer1::Dims& dims) {
+    if (!network || !name) return nullptr;
     try {
         auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        nvinfer1::Dims dimensions;
-        dimensions.nbDims = nb_dims;
-        for (int32_t i = 0; i < nb_dims && i < nvinfer1::Dims::MAX_DIMS; ++i) {
-            dimensions.d[i] = dims[i];
-        }
-        return inetwork->addInput(name, static_cast<nvinfer1::DataType>(data_type), dimensions);
+        // Simple pass-through: accept Dims directly
+        return inetwork->addInput(name, static_cast<nvinfer1::DataType>(data_type), dims);
     } catch (...) {
         return nullptr;
     }
 }
 
-void* network_add_convolution(void* network, void* input, int32_t nb_outputs, const int32_t* kernel_size, const void* weights, const void* bias) {
-    if (!network || !input || !kernel_size) return nullptr;
+void* network_add_convolution(void* network, void* input, int32_t nb_outputs, const nvinfer1::Dims& kernel_dims, const void* weights, int64_t weight_count, const void* bias, int64_t bias_count) {
+    if (!network || !input || !weights) return nullptr;
     try {
         auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
         auto* itensor = static_cast<nvinfer1::ITensor*>(input);
-        nvinfer1::Dims dims;
-        dims.nbDims = 2; // Assuming 2D kernel
-        dims.d[0] = kernel_size[0];
-        dims.d[1] = kernel_size[1];
         
-        nvinfer1::Weights w{static_cast<nvinfer1::DataType>(0), weights, 0};
-        nvinfer1::Weights b{static_cast<nvinfer1::DataType>(0), bias, 0};
+        // Simple pass-through: accept Dims directly and use counts provided by caller
+        nvinfer1::Weights w{nvinfer1::DataType::kFLOAT, weights, weight_count};
+        nvinfer1::Weights b{nvinfer1::DataType::kFLOAT, bias, bias_count};
         
-        auto* layer = inetwork->addConvolutionNd(*itensor, nb_outputs, dims, w, b);
+        auto* layer = inetwork->addConvolutionNd(*itensor, nb_outputs, kernel_dims, w, b);
         return layer; // Return layer, not output tensor
     } catch (...) {
         return nullptr;
@@ -236,21 +229,17 @@ void* network_add_pooling(void* network, void* input, int32_t type, const int32_
 
 // network_add_matrix_multiply - REMOVED - Using direct autocxx
 
-void* network_add_constant(void* network, const int32_t* dims, int32_t nb_dims, const void* weights, int32_t data_type, int64_t count) {
-    if (!network || !dims || !weights || count <= 0) return nullptr;
+void* network_add_constant(void* network, const nvinfer1::Dims& dims, const void* weights, int32_t data_type, int64_t count) {
+    if (!network || !weights || count <= 0) return nullptr;
     try {
         auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        nvinfer1::Dims dimensions;
-        dimensions.nbDims = nb_dims;
-        for (int32_t i = 0; i < nb_dims && i < nvinfer1::Dims::MAX_DIMS; ++i) {
-            dimensions.d[i] = dims[i];
-        }
+        // Simple pass-through: accept Dims directly
         nvinfer1::Weights w{
             static_cast<nvinfer1::DataType>(data_type), 
             weights, 
             count
         };
-        auto* layer = inetwork->addConstant(dimensions, w);
+        auto* layer = inetwork->addConstant(dims, w);
         return layer; // Return layer, not output tensor
     } catch (...) {
         return nullptr;
@@ -280,15 +269,16 @@ void* network_add_concatenation(void* network, void** inputs, int32_t nb_inputs)
 // network_add_softmax - REMOVED - Using direct autocxx
 
 void* network_add_scale(void* network, void* input, int32_t mode, 
-                       const void* shift, const void* scale, const void* power) {
+                       const void* shift, const void* scale, const void* power, int64_t weight_count) {
     if (!network || !input) return nullptr;
     try {
         auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
         auto* itensor = static_cast<nvinfer1::ITensor*>(input);
         
-        nvinfer1::Weights shift_w{nvinfer1::DataType::kFLOAT, shift, 0};
-        nvinfer1::Weights scale_w{nvinfer1::DataType::kFLOAT, scale, 0};
-        nvinfer1::Weights power_w{nvinfer1::DataType::kFLOAT, power, 0};
+        // Simple pass-through: use the count provided by caller
+        nvinfer1::Weights shift_w{nvinfer1::DataType::kFLOAT, shift, weight_count};
+        nvinfer1::Weights scale_w{nvinfer1::DataType::kFLOAT, scale, weight_count};
+        nvinfer1::Weights power_w{nvinfer1::DataType::kFLOAT, power, weight_count};
         
         auto* layer = inetwork->addScale(
             *itensor, 
@@ -303,23 +293,15 @@ void* network_add_scale(void* network, void* input, int32_t mode,
 
 // network_add_reduce - REMOVED - Using direct autocxx
 
-void* network_add_slice(void* network, void* input, const int32_t* start, 
-                       const int32_t* size, const int32_t* stride, int32_t nb_dims) {
-    if (!network || !input || !start || !size || !stride) return nullptr;
+void* network_add_slice(void* network, void* input, const nvinfer1::Dims& start,
+                       const nvinfer1::Dims& size, const nvinfer1::Dims& stride) {
+    if (!network || !input) return nullptr;
     try {
         auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
         auto* itensor = static_cast<nvinfer1::ITensor*>(input);
         
-        nvinfer1::Dims start_dims, size_dims, stride_dims;
-        start_dims.nbDims = size_dims.nbDims = stride_dims.nbDims = nb_dims;
-        
-        for (int32_t i = 0; i < nb_dims && i < nvinfer1::Dims::MAX_DIMS; ++i) {
-            start_dims.d[i] = start[i];
-            size_dims.d[i] = size[i];
-            stride_dims.d[i] = stride[i];
-        }
-        
-        auto* layer = inetwork->addSlice(*itensor, start_dims, size_dims, stride_dims);
+        // Simple pass-through: accept Dims directly
+        auto* layer = inetwork->addSlice(*itensor, start, size, stride);
         return layer; // Return layer, not output tensor
     } catch (...) {
         return nullptr;

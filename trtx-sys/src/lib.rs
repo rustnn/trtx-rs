@@ -78,11 +78,10 @@ pub mod real_bindings {
         generate!("nvinfer1::ICudaEngine")
         generate!("nvinfer1::IExecutionContext")
         generate!("nvinfer1::IHostMemory")
-        generate!("nvinfer1::Dims")
-        // Note: Dims and Weights cannot be generate_pod! because:
-        // - Dims is a typedef to a complex type with methods
-        // - Weights contains raw pointers and has special semantics
-        // Therefore, C++ wrappers are needed for functions that construct these
+        
+        // Try generating Dims64 directly (base class, not the typedef alias)
+        generate_pod!("nvinfer1::Dims64")
+        
         generate!("nvinfer1::DataType")
         generate!("nvinfer1::TensorIOMode")
         generate!("nvinfer1::MemoryPoolType")
@@ -158,8 +157,7 @@ pub mod real_bindings {
             network: *mut std::ffi::c_void,
             name: *const std::os::raw::c_char,
             data_type: i32,
-            dims: *const i32,
-            nb_dims: i32,
+            dims: *const Dims,
         ) -> *mut std::ffi::c_void;
 
         pub fn network_mark_output(
@@ -182,9 +180,11 @@ pub mod real_bindings {
             network: *mut std::ffi::c_void,
             input: *mut std::ffi::c_void,
             nb_outputs: i32,
-            kernel_size: *const i32,
+            kernel_dims: *const Dims,
             weights: *const std::ffi::c_void,
+            weight_count: i64,
             bias: *const std::ffi::c_void,
+            bias_count: i64,
         ) -> *mut std::ffi::c_void;
 
         // network_add_activation - REMOVED - Using direct autocxx
@@ -210,8 +210,7 @@ pub mod real_bindings {
 
         pub fn network_add_constant(
             network: *mut std::ffi::c_void,
-            dims: *const i32,
-            nb_dims: i32,
+            dims: *const Dims,
             weights: *const std::ffi::c_void,
             data_type: i32,
             count: i64,
@@ -226,6 +225,7 @@ pub mod real_bindings {
             shift: *const std::ffi::c_void,
             scale: *const std::ffi::c_void,
             power: *const std::ffi::c_void,
+            weight_count: i64,
         ) -> *mut std::ffi::c_void;
 
         // network_add_reduce - REMOVED - Using direct autocxx
@@ -233,10 +233,9 @@ pub mod real_bindings {
         pub fn network_add_slice(
             network: *mut std::ffi::c_void,
             input: *mut std::ffi::c_void,
-            start: *const i32,
-            size: *const i32,
-            stride: *const i32,
-            nb_dims: i32,
+            start: *const Dims,
+            size: *const Dims,
+            stride: *const Dims,
         ) -> *mut std::ffi::c_void;
 
         // network_add_resize - REMOVED - Using direct autocxx
@@ -355,6 +354,45 @@ pub mod real_bindings {
         cudaDeviceSynchronize, cudaError_t, cudaFree, cudaGetErrorString, cudaMalloc, cudaMemcpy,
         cudaMemcpyKind,
     };
+    
+    // Re-export Dims64 as Dims to match TensorRT's typedef
+    pub use nvinfer1::Dims64;
+    pub type Dims = Dims64;
+    
+    /// Helper methods for Dims construction (avoiding name collision with generated constructor)
+    impl Dims64 {
+        /// Create a Dims from a slice of dimensions
+        pub fn from_slice(dims: &[i64]) -> Self {
+            let mut d = [0i64; 8];
+            let nb_dims = dims.len().min(8) as i32;
+            d[..nb_dims as usize].copy_from_slice(&dims[..nb_dims as usize]);
+            Self { nbDims: nb_dims, d }
+        }
+        
+        /// Create a 2D Dims
+        pub fn new_2d(d0: i64, d1: i64) -> Self {
+            Self {
+                nbDims: 2,
+                d: [d0, d1, 0, 0, 0, 0, 0, 0],
+            }
+        }
+        
+        /// Create a 3D Dims
+        pub fn new_3d(d0: i64, d1: i64, d2: i64) -> Self {
+            Self {
+                nbDims: 3,
+                d: [d0, d1, d2, 0, 0, 0, 0, 0],
+            }
+        }
+        
+        /// Create a 4D Dims
+        pub fn new_4d(d0: i64, d1: i64, d2: i64, d3: i64) -> Self {
+            Self {
+                nbDims: 4,
+                d: [d0, d1, d2, d3, 0, 0, 0, 0],
+            }
+        }
+    }
 }
 
 #[cfg(not(feature = "mock"))]

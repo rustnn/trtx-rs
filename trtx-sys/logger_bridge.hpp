@@ -34,13 +34,21 @@ void* builder_build_serialized_network(void* builder, void* network, void* confi
 void builder_config_set_memory_pool_limit(void* config, int32_t pool_type, size_t limit);
 
 // Network methods
-void* network_add_input(void* network, const char* name, int32_t data_type, const int32_t* dims, int32_t nb_dims);
-void* network_add_convolution(void* network, void* input, int32_t nb_outputs, const int32_t* kernel_size, const void* weights, const void* bias);
+void* network_add_input(void* network, const char* name, int32_t data_type, const nvinfer1::Dims& dims);
+
+// Add convolution layer
+// kernel_dims: Dims structure specifying kernel dimensions (e.g., {nbDims: 2, d: [3, 3, 0, ...]} for 3x3)
+// weights: float32 array, count specified by weight_count
+// bias: float32 array, count specified by bias_count (or nullptr/0 for no bias)
+void* network_add_convolution(void* network, void* input, int32_t nb_outputs, const nvinfer1::Dims& kernel_dims, const void* weights, int64_t weight_count, const void* bias, int64_t bias_count);
 void* network_add_pooling(void* network, void* input, int32_t type, const int32_t* window_size);
 void* network_add_concatenation(void* network, void** inputs, int32_t nb_inputs);
-void* network_add_constant(void* network, const int32_t* dims, int32_t nb_dims, const void* weights, int32_t data_type, int64_t count);
-void* network_add_scale(void* network, void* input, int32_t mode, const void* shift, const void* scale, const void* power);
-void* network_add_slice(void* network, void* input, const int32_t* start, const int32_t* size, const int32_t* stride, int32_t nb_dims);
+void* network_add_constant(void* network, const nvinfer1::Dims& dims, const void* weights, int32_t data_type, int64_t count);
+// Add scale layer
+// shift, scale, power: float32 arrays, count specified by weight_count
+// weight_count depends on mode: 1 (Uniform), C (Channel), or N (Elementwise)
+void* network_add_scale(void* network, void* input, int32_t mode, const void* shift, const void* scale, const void* power, int64_t weight_count);
+void* network_add_slice(void* network, void* input, const nvinfer1::Dims& start, const nvinfer1::Dims& size, const nvinfer1::Dims& stride);
 void* network_add_assertion(void* network, void* condition, const char* message);
 void* network_add_loop(void* network);
 void* network_add_if_conditional(void* network);
