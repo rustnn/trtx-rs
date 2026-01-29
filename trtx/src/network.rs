@@ -80,11 +80,11 @@ impl ShuffleLayer {
                 let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<
                     trtx_sys::nvinfer1::IShuffleLayer,
                 >(self.inner);
-                
+
                 // Convert i32 to i64 for Dims
                 let dims_i64: Vec<i64> = dims.iter().map(|&d| d as i64).collect();
                 let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
-                
+
                 layer_pin.as_mut().setReshapeDimensions(&dims_obj);
             }
             Ok(())
@@ -233,7 +233,12 @@ impl NetworkDefinition {
     }
 
     /// Add an input tensor to the network
-    pub fn add_input(&mut self, name: &str, data_type: i32, dims: &[i32]) -> Result<Tensor> {
+    pub fn add_input(
+        &mut self,
+        name: &str,
+        data_type: trtx_sys::nvinfer1::DataType,
+        dims: &[i32],
+    ) -> Result<Tensor> {
         #[cfg(not(feature = "mock"))]
         {
             let name_cstr = std::ffi::CString::new(name)?;
@@ -250,7 +255,7 @@ impl NetworkDefinition {
             let tensor_ptr = unsafe {
                 network_pin.as_mut().addInput(
                     name_cstr.as_ptr(),
-                    std::mem::transmute(data_type),
+                    data_type,
                     &dims_struct,
                 )
             };
@@ -379,7 +384,7 @@ impl NetworkDefinition {
     pub fn add_activation(
         &mut self,
         input: &Tensor,
-        activation_type: i32,
+        activation_type: trtx_sys::nvinfer1::ActivationType,
     ) -> Result<ActivationLayer> {
         #[cfg(not(feature = "mock"))]
         {
@@ -391,7 +396,7 @@ impl NetworkDefinition {
 
                 let layer_ptr = network_pin.as_mut().addActivation(
                     std::pin::Pin::new_unchecked(input_ref),
-                    std::mem::transmute::<i32, trtx_sys::nvinfer1::ActivationType>(activation_type),
+                    activation_type,
                 );
 
                 if layer_ptr.is_null() {
@@ -414,7 +419,11 @@ impl NetworkDefinition {
     /// # Arguments
     /// * `input` - Input tensor
     /// * `op` - Unary operation type (e.g., EXP, LOG, SQRT, ABS, NEG, CEIL, FLOOR, etc.)
-    pub fn add_unary(&mut self, input: &Tensor, op: i32) -> Result<UnaryLayer> {
+    pub fn add_unary(
+        &mut self,
+        input: &Tensor,
+        op: trtx_sys::nvinfer1::UnaryOperation,
+    ) -> Result<UnaryLayer> {
         #[cfg(not(feature = "mock"))]
         {
             let layer_ptr = unsafe {
@@ -425,7 +434,7 @@ impl NetworkDefinition {
 
                 let layer_ptr = network_pin.as_mut().addUnary(
                     std::pin::Pin::new_unchecked(input_ref),
-                    std::mem::transmute::<i32, trtx_sys::nvinfer1::UnaryOperation>(op),
+                    op,
                 );
 
                 if layer_ptr.is_null() {
@@ -453,9 +462,9 @@ impl NetworkDefinition {
                     trtx_sys::nvinfer1::INetworkDefinition,
                 >(self.inner);
 
-                let layer_ptr = network_pin.as_mut().addIdentity(
-                    std::pin::Pin::new_unchecked(input_ref),
-                );
+                let layer_ptr = network_pin
+                    .as_mut()
+                    .addIdentity(std::pin::Pin::new_unchecked(input_ref));
 
                 if layer_ptr.is_null() {
                     return Err(Error::Runtime("Failed to add identity layer".to_string()));
@@ -476,11 +485,15 @@ impl NetworkDefinition {
     ///
     /// # Arguments
     /// * `input` - Input tensor to cast
-    /// * `to_type` - Target data type (0=kFLOAT, 1=kHALF, 2=kINT8, 3=kINT32, 4=kUINT8, 5=kBOOL, ...)
+    /// * `to_type` - Target data type (e.g., DataType::kFLOAT, DataType::kBOOL, etc.)
     ///
     /// # Returns
     /// A CastLayer that performs type conversion
-    pub fn add_cast(&mut self, input: &Tensor, to_type: i32) -> Result<CastLayer> {
+    pub fn add_cast(
+        &mut self,
+        input: &Tensor,
+        to_type: trtx_sys::nvinfer1::DataType,
+    ) -> Result<CastLayer> {
         #[cfg(not(feature = "mock"))]
         {
             let layer_ptr = unsafe {
@@ -491,7 +504,7 @@ impl NetworkDefinition {
 
                 let layer_ptr = network_pin.as_mut().addCast(
                     std::pin::Pin::new_unchecked(input_ref),
-                    std::mem::transmute(to_type), // Cast i32 to DataType enum
+                    to_type,
                 );
 
                 if layer_ptr.is_null() {
@@ -514,7 +527,7 @@ impl NetworkDefinition {
         &mut self,
         input1: &Tensor,
         input2: &Tensor,
-        op: i32,
+        op: trtx_sys::nvinfer1::ElementWiseOperation,
     ) -> Result<ElementWiseLayer> {
         #[cfg(not(feature = "mock"))]
         {
@@ -528,7 +541,7 @@ impl NetworkDefinition {
                 let layer_ptr = network_pin.as_mut().addElementWise(
                     std::pin::Pin::new_unchecked(input1_ref),
                     std::pin::Pin::new_unchecked(input2_ref),
-                    std::mem::transmute::<i32, trtx_sys::nvinfer1::ElementWiseOperation>(op),
+                    op,
                 );
 
                 if layer_ptr.is_null() {
@@ -552,7 +565,7 @@ impl NetworkDefinition {
     pub fn add_pooling(
         &mut self,
         input: &Tensor,
-        pooling_type: i32,
+        pooling_type: trtx_sys::nvinfer1::PoolingType,
         window_size: &[i32; 2],
     ) -> Result<PoolingLayer> {
         #[cfg(not(feature = "mock"))]
@@ -570,7 +583,7 @@ impl NetworkDefinition {
 
             let layer_ptr = network_pin.as_mut().addPoolingNd(
                 input_pin.as_mut(),
-                unsafe { std::mem::transmute(pooling_type) },
+                pooling_type,
                 &window_dims,
             );
 
@@ -797,7 +810,7 @@ impl NetworkDefinition {
     /// # Arguments
     /// * `dims` - Dimensions of the tensor
     /// * `weights` - Raw byte data for the tensor
-    /// * `data_type` - TensorRT data type (0=kFLOAT, 1=kHALF, 2=kINT8, 3=kINT32, 4=kUINT8)
+    /// * `data_type` - TensorRT data type (e.g., DataType::kFLOAT, DataType::kINT32)
     ///
     /// # Note
     /// The `weights` slice must contain the correct number of bytes for the given
@@ -806,24 +819,27 @@ impl NetworkDefinition {
         &mut self,
         dims: &[i32],
         weights: &[u8],
-        data_type: i32,
+        data_type: trtx_sys::nvinfer1::DataType,
     ) -> Result<ConstantLayer> {
         #[cfg(not(feature = "mock"))]
         {
+            use trtx_sys::nvinfer1::DataType;
+            
             // Calculate element count from dimensions
             let element_count: i64 = dims.iter().map(|&d| d as i64).product();
 
             // Calculate expected bytes based on data type
             let bytes_per_element = match data_type {
-                0 => 4, // kFLOAT
-                1 => 2, // kHALF
-                2 => 1, // kINT8
-                3 => 4, // kINT32
-                4 => 1, // kUINT8
+                DataType::kFLOAT => 4,
+                DataType::kHALF => 2,
+                DataType::kINT8 => 1,
+                DataType::kINT32 => 4,
+                DataType::kUINT8 => 1,
+                DataType::kBOOL => 1,
                 _ => {
                     return Err(Error::Runtime(format!(
                         "Unsupported data type: {}",
-                        data_type
+                        crate::datatype_name(&data_type)
                     )))
                 }
             };
@@ -843,7 +859,7 @@ impl NetworkDefinition {
 
             // Create Weights struct
             let weights_struct = trtx_sys::nvinfer1::Weights::new_with_type(
-                unsafe { std::mem::transmute(data_type) },
+                data_type,
                 weights.as_ptr() as *const std::ffi::c_void,
                 element_count,
             );
@@ -1014,7 +1030,7 @@ impl NetworkDefinition {
     pub fn add_reduce(
         &mut self,
         input: &Tensor,
-        op: i32,
+        op: trtx_sys::nvinfer1::ReduceOperation,
         axes: u32,
         keep_dims: bool,
     ) -> Result<ReduceLayer> {
@@ -1028,7 +1044,7 @@ impl NetworkDefinition {
 
                 let layer_ptr = network_pin.as_mut().addReduce(
                     std::pin::Pin::new_unchecked(input_ref),
-                    std::mem::transmute::<i32, trtx_sys::nvinfer1::ReduceOperation>(op),
+                    op,
                     axes,
                     keep_dims,
                 );
@@ -1301,11 +1317,10 @@ impl NetworkDefinition {
             let input_ref = unsafe { &mut *(input.inner as *mut trtx_sys::nvinfer1::ITensor) };
             let mut input_pin = unsafe { std::pin::Pin::new_unchecked(input_ref) };
 
-            let layer_ptr = network_pin.as_mut().addPaddingNd(
-                input_pin.as_mut(),
-                &pre_dims,
-                &post_dims,
-            );
+            let layer_ptr =
+                network_pin
+                    .as_mut()
+                    .addPaddingNd(input_pin.as_mut(), &pre_dims, &post_dims);
 
             if layer_ptr.is_null() {
                 return Err(Error::Runtime("Failed to add padding layer".to_string()));

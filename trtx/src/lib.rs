@@ -94,6 +94,7 @@
 pub mod autocxx_helpers;
 pub mod builder;
 pub mod cuda;
+pub mod enum_helpers;
 pub mod error;
 pub mod executor;
 pub mod logger;
@@ -104,6 +105,10 @@ pub mod runtime;
 // Re-export commonly used types
 pub use builder::{Builder, BuilderConfig};
 pub use cuda::{synchronize, DeviceBuffer};
+pub use enum_helpers::{
+    activation_type_name, datatype_name, elementwise_op_name, pooling_type_name, reduce_op_name,
+    unary_op_name,
+};
 pub use error::{Error, Result};
 pub use executor::{run_onnx_with_tensorrt, run_onnx_zeroed, TensorInput, TensorOutput};
 pub use logger::{LogHandler, Logger, Severity, StderrLogger};
@@ -113,5 +118,6 @@ pub use runtime::{CudaEngine, ExecutionContext, Runtime};
 
 // Re-export TensorRT operation enums
 pub use trtx_sys::nvinfer1::{
-    ActivationType, ElementWiseOperation, MatrixOperation, PoolingType, UnaryOperation,
+    ActivationType, DataType, ElementWiseOperation, MatrixOperation, PoolingType, ReduceOperation,
+    UnaryOperation,
 };

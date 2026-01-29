@@ -94,6 +94,7 @@ pub mod real_bindings {
         generate!("nvinfer1::ElementWiseOperation")
         generate!("nvinfer1::MatrixOperation")
         generate!("nvinfer1::UnaryOperation")
+        generate!("nvinfer1::ReduceOperation")
         generate_pod!("nvinfer1::Weights")
 
         // NOTE: createInferBuilder/Runtime moved to logger_bridge.cpp (autocxx struggles with these)
