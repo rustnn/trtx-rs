@@ -68,6 +68,34 @@ macro_rules! define_layer {
 
 // Define all layer types
 define_layer!(ShuffleLayer, trtx_sys::nvinfer1::IShuffleLayer);
+
+impl ShuffleLayer {
+    pub fn set_reshape_dimensions(&mut self, dims: &[i32]) -> Result<()> {
+        #[cfg(not(feature = "mock"))]
+        {
+            if self.inner.is_null() {
+                return Err(Error::Runtime("Invalid shuffle layer".to_string()));
+            }
+            unsafe {
+                let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::IShuffleLayer,
+                >(self.inner);
+                
+                // Convert i32 to i64 for Dims
+                let dims_i64: Vec<i64> = dims.iter().map(|&d| d as i64).collect();
+                let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
+                
+                layer_pin.as_mut().setReshapeDimensions(&dims_obj);
+            }
+            Ok(())
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(())
+        }
+    }
+}
+
 define_layer!(ActivationLayer, trtx_sys::nvinfer1::IActivationLayer);
 define_layer!(ElementWiseLayer, trtx_sys::nvinfer1::IElementWiseLayer);
 define_layer!(ResizeLayer, trtx_sys::nvinfer1::IResizeLayer);
@@ -88,6 +116,8 @@ define_layer!(ScaleLayer, trtx_sys::nvinfer1::IScaleLayer);
 define_layer!(SliceLayer, trtx_sys::nvinfer1::ISliceLayer);
 define_layer!(UnaryLayer, trtx_sys::nvinfer1::IUnaryLayer);
 define_layer!(IdentityLayer, trtx_sys::nvinfer1::IIdentityLayer);
+define_layer!(PaddingLayer, trtx_sys::nvinfer1::IPaddingLayer);
+define_layer!(CastLayer, trtx_sys::nvinfer1::ICastLayer);
 
 impl Tensor {
     /// Get the tensor name
@@ -439,6 +469,43 @@ impl NetworkDefinition {
         #[cfg(feature = "mock")]
         {
             Ok(IdentityLayer::from_ptr(std::ptr::null_mut()))
+        }
+    }
+
+    /// Add a cast layer to convert tensor data type
+    ///
+    /// # Arguments
+    /// * `input` - Input tensor to cast
+    /// * `to_type` - Target data type (0=kFLOAT, 1=kHALF, 2=kINT8, 3=kINT32, 4=kUINT8, 5=kBOOL, ...)
+    ///
+    /// # Returns
+    /// A CastLayer that performs type conversion
+    pub fn add_cast(&mut self, input: &Tensor, to_type: i32) -> Result<CastLayer> {
+        #[cfg(not(feature = "mock"))]
+        {
+            let layer_ptr = unsafe {
+                let input_ref = &mut *(input.inner as *mut trtx_sys::nvinfer1::ITensor);
+                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::INetworkDefinition,
+                >(self.inner);
+
+                let layer_ptr = network_pin.as_mut().addCast(
+                    std::pin::Pin::new_unchecked(input_ref),
+                    std::mem::transmute(to_type), // Cast i32 to DataType enum
+                );
+
+                if layer_ptr.is_null() {
+                    return Err(Error::Runtime("Failed to add cast layer".to_string()));
+                }
+
+                layer_ptr as *mut std::ffi::c_void
+            };
+
+            Ok(CastLayer::from_ptr(layer_ptr))
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(CastLayer::from_ptr(std::ptr::null_mut()))
         }
     }
 
@@ -1191,6 +1258,63 @@ impl NetworkDefinition {
         #[cfg(feature = "mock")]
         {
             Ok(SelectLayer::from_ptr(std::ptr::null_mut()))
+        }
+    }
+
+    /// Add a Padding layer
+    ///
+    /// Adds padding to the input tensor edges.
+    ///
+    /// # Arguments
+    /// * `input` - Input tensor
+    /// * `pre_padding` - Padding to add before each dimension
+    /// * `post_padding` - Padding to add after each dimension
+    ///
+    /// # Returns
+    /// Returns a PaddingLayer that can be configured with padding mode (constant, edge, reflect)
+    pub fn add_padding(
+        &mut self,
+        input: &Tensor,
+        pre_padding: &[i32],
+        post_padding: &[i32],
+    ) -> Result<PaddingLayer> {
+        #[cfg(not(feature = "mock"))]
+        {
+            if pre_padding.len() != post_padding.len() {
+                return Err(Error::Runtime(
+                    "pre_padding and post_padding must have the same length".to_string(),
+                ));
+            }
+
+            // Convert i32 dims to i64 and create Dims structures
+            let pre_i64: Vec<i64> = pre_padding.iter().map(|&d| d as i64).collect();
+            let post_i64: Vec<i64> = post_padding.iter().map(|&d| d as i64).collect();
+
+            let pre_dims = trtx_sys::Dims::from_slice(&pre_i64);
+            let post_dims = trtx_sys::Dims::from_slice(&post_i64);
+
+            // Direct autocxx call to INetworkDefinition::addPadding
+            let network_ref =
+                unsafe { &mut *(self.inner as *mut trtx_sys::nvinfer1::INetworkDefinition) };
+            let mut network_pin = unsafe { std::pin::Pin::new_unchecked(network_ref) };
+
+            let input_ref = unsafe { &mut *(input.inner as *mut trtx_sys::nvinfer1::ITensor) };
+            let mut input_pin = unsafe { std::pin::Pin::new_unchecked(input_ref) };
+
+            let layer_ptr = network_pin.as_mut().addPaddingNd(
+                input_pin.as_mut(),
+                &pre_dims,
+                &post_dims,
+            );
+
+            if layer_ptr.is_null() {
+                return Err(Error::Runtime("Failed to add padding layer".to_string()));
+            }
+            Ok(PaddingLayer::from_ptr(layer_ptr as *mut _))
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(PaddingLayer::from_ptr(std::ptr::null_mut()))
         }
     }
 

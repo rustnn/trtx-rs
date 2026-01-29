@@ -71,6 +71,8 @@ pub mod real_bindings {
         generate!("nvinfer1::ISelectLayer")
         generate!("nvinfer1::IUnaryLayer")
         generate!("nvinfer1::IIdentityLayer")
+        generate!("nvinfer1::IPaddingLayer")
+        generate!("nvinfer1::ICastLayer")
         generate!("nvinfer1::IAssertionLayer")
         generate!("nvinfer1::ILoop")
         generate!("nvinfer1::IIfConditional")
