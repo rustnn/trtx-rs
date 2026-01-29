@@ -118,6 +118,10 @@ pub use runtime::{CudaEngine, ExecutionContext, Runtime};
 
 // Re-export TensorRT operation enums
 pub use trtx_sys::nvinfer1::{
-    ActivationType, DataType, ElementWiseOperation, MatrixOperation, PoolingType, ReduceOperation,
-    UnaryOperation,
+    ActivationType, DataType, ElementWiseOperation, GatherMode, InterpolationMode, MatrixOperation,
+    PoolingType, ReduceOperation, ResizeCoordinateTransformation, ResizeRoundMode, ResizeSelector,
+    ScatterMode, UnaryOperation,
 };
+
+// Re-export ResizeMode typedef (InterpolationMode alias)
+pub use trtx_sys::ResizeMode;

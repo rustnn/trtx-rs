@@ -68,11 +68,15 @@ pub mod real_bindings {
         generate!("nvinfer1::IResizeLayer")
         generate!("nvinfer1::ITopKLayer")
         generate!("nvinfer1::IGatherLayer")
+        generate!("nvinfer1::IScatterLayer")
         generate!("nvinfer1::ISelectLayer")
         generate!("nvinfer1::IUnaryLayer")
         generate!("nvinfer1::IIdentityLayer")
         generate!("nvinfer1::IPaddingLayer")
         generate!("nvinfer1::ICastLayer")
+        generate!("nvinfer1::IDeconvolutionLayer")
+        generate!("nvinfer1::IQuantizeLayer")
+        generate!("nvinfer1::IDequantizeLayer")
         generate!("nvinfer1::IAssertionLayer")
         generate!("nvinfer1::ILoop")
         generate!("nvinfer1::IIfConditional")
@@ -95,6 +99,12 @@ pub mod real_bindings {
         generate!("nvinfer1::MatrixOperation")
         generate!("nvinfer1::UnaryOperation")
         generate!("nvinfer1::ReduceOperation")
+        generate!("nvinfer1::GatherMode")
+        generate!("nvinfer1::ScatterMode")
+        generate!("nvinfer1::InterpolationMode")
+        generate!("nvinfer1::ResizeCoordinateTransformation")
+        generate!("nvinfer1::ResizeSelector")
+        generate!("nvinfer1::ResizeRoundMode")
         generate_pod!("nvinfer1::Weights")
 
         // NOTE: createInferBuilder/Runtime moved to logger_bridge.cpp (autocxx struggles with these)
@@ -316,6 +326,10 @@ pub mod real_bindings {
     // Re-export Dims64 as Dims to match TensorRT's typedef
     pub use nvinfer1::Dims64;
     pub type Dims = Dims64;
+
+    // Re-export InterpolationMode as ResizeMode to match TensorRT's typedef
+    pub use nvinfer1::InterpolationMode;
+    pub type ResizeMode = InterpolationMode;
 
     /// Helper methods for Dims construction (avoiding name collision with generated constructor)
     impl Dims64 {

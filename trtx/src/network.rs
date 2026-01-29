@@ -99,8 +99,126 @@ impl ShuffleLayer {
 define_layer!(ActivationLayer, trtx_sys::nvinfer1::IActivationLayer);
 define_layer!(ElementWiseLayer, trtx_sys::nvinfer1::IElementWiseLayer);
 define_layer!(ResizeLayer, trtx_sys::nvinfer1::IResizeLayer);
+
+impl ResizeLayer {
+    pub fn set_output_dimensions(&mut self, dims: &[i32]) -> Result<()> {
+        #[cfg(not(feature = "mock"))]
+        {
+            if self.inner.is_null() {
+                return Err(Error::Runtime("Invalid resize layer".to_string()));
+            }
+            unsafe {
+                let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::IResizeLayer,
+                >(self.inner);
+
+                // Convert i32 to i64 for Dims
+                let dims_i64: Vec<i64> = dims.iter().map(|&d| d as i64).collect();
+                let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
+
+                layer_pin.as_mut().setOutputDimensions(&dims_obj);
+            }
+            Ok(())
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(())
+        }
+    }
+
+    pub fn set_resize_mode(&mut self, mode: trtx_sys::ResizeMode) -> Result<()> {
+        #[cfg(not(feature = "mock"))]
+        {
+            if self.inner.is_null() {
+                return Err(Error::Runtime("Invalid resize layer".to_string()));
+            }
+            unsafe {
+                let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::IResizeLayer,
+                >(self.inner);
+
+                layer_pin.as_mut().setResizeMode(mode);
+            }
+            Ok(())
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(())
+        }
+    }
+}
 define_layer!(TopKLayer, trtx_sys::nvinfer1::ITopKLayer);
 define_layer!(GatherLayer, trtx_sys::nvinfer1::IGatherLayer);
+
+impl GatherLayer {
+    pub fn set_gather_mode(&mut self, mode: trtx_sys::nvinfer1::GatherMode) -> Result<()> {
+        #[cfg(not(feature = "mock"))]
+        {
+            if self.inner.is_null() {
+                return Err(Error::Runtime("Invalid gather layer".to_string()));
+            }
+            unsafe {
+                let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::IGatherLayer,
+                >(self.inner);
+
+                layer_pin.as_mut().setMode(mode);  // Correct method name
+            }
+            Ok(())
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(())
+        }
+    }
+}
+
+define_layer!(ScatterLayer, trtx_sys::nvinfer1::IScatterLayer);
+
+impl ScatterLayer {
+    pub fn set_scatter_mode(&mut self, mode: trtx_sys::nvinfer1::ScatterMode) -> Result<()> {
+        #[cfg(not(feature = "mock"))]
+        {
+            if self.inner.is_null() {
+                return Err(Error::Runtime("Invalid scatter layer".to_string()));
+            }
+            unsafe {
+                let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::IScatterLayer,
+                >(self.inner);
+
+                layer_pin.as_mut().setMode(mode);
+            }
+            Ok(())
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(())
+        }
+    }
+
+    pub fn set_axis(&mut self, axis: i32) -> Result<()> {
+        #[cfg(not(feature = "mock"))]
+        {
+            if self.inner.is_null() {
+                return Err(Error::Runtime("Invalid scatter layer".to_string()));
+            }
+            unsafe {
+                let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::IScatterLayer,
+                >(self.inner);
+
+                layer_pin.as_mut().setAxis(axis);  // setAxis expects i32
+            }
+            Ok(())
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(())
+        }
+    }
+}
+
 define_layer!(SelectLayer, trtx_sys::nvinfer1::ISelectLayer);
 define_layer!(
     MatrixMultiplyLayer,
@@ -110,6 +228,9 @@ define_layer!(SoftMaxLayer, trtx_sys::nvinfer1::ISoftMaxLayer);
 define_layer!(ReduceLayer, trtx_sys::nvinfer1::IReduceLayer);
 define_layer!(PoolingLayer, trtx_sys::nvinfer1::IPoolingLayer);
 define_layer!(ConvolutionLayer, trtx_sys::nvinfer1::IConvolutionLayer);
+define_layer!(DeconvolutionLayer, trtx_sys::nvinfer1::IDeconvolutionLayer);
+define_layer!(QuantizeLayer, trtx_sys::nvinfer1::IQuantizeLayer);
+define_layer!(DequantizeLayer, trtx_sys::nvinfer1::IDequantizeLayer);
 define_layer!(ConstantLayer, trtx_sys::nvinfer1::IConstantLayer);
 define_layer!(ConcatenationLayer, trtx_sys::nvinfer1::IConcatenationLayer);
 define_layer!(ScaleLayer, trtx_sys::nvinfer1::IScaleLayer);
@@ -777,6 +898,91 @@ impl NetworkDefinition {
         }
     }
 
+    /// Add a deconvolution (transpose convolution) layer
+    pub fn add_deconvolution(
+        &mut self,
+        input: &Tensor,
+        nb_output_maps: i32,
+        kernel_size: &[i32; 2],
+        kernel_weights: &[u8],
+        bias_weights: Option<&[u8]>,
+    ) -> Result<DeconvolutionLayer> {
+        #[cfg(not(feature = "mock"))]
+        {
+            // Calculate weight count based on input dimensions
+            let input_dims = input.dimensions()?;
+            let input_channels = if input_dims.len() >= 4 {
+                // Format: [N, C, H, W] - channels at index 1
+                input_dims[1] as i64
+            } else if input_dims.len() >= 3 {
+                // Format: [C, H, W] - channels at index 0
+                input_dims[0] as i64
+            } else {
+                return Err(Error::InvalidArgument(format!(
+                    "Invalid input dimensions for deconvolution: {:?}",
+                    input_dims
+                )));
+            };
+
+            // weight_count = nb_outputs * input_channels * kernel_h * kernel_w (in floats)
+            let weight_count = nb_output_maps as i64
+                * input_channels
+                * kernel_size[0] as i64
+                * kernel_size[1] as i64;
+
+            let bias_count = if bias_weights.is_some() {
+                nb_output_maps as i64
+            } else {
+                0
+            };
+
+            let bias_ptr = bias_weights
+                .map(|b| b.as_ptr() as *const std::ffi::c_void)
+                .unwrap_or(std::ptr::null());
+
+            // Create Dims structure for kernel (i64 dimensions for Dims64)
+            let kernel_dims = trtx_sys::Dims::new_2d(kernel_size[0] as i64, kernel_size[1] as i64);
+
+            // Create Weights structs
+            let kernel_w = trtx_sys::nvinfer1::Weights::new_float(
+                kernel_weights.as_ptr() as *const std::ffi::c_void,
+                weight_count,
+            );
+            let bias_w = trtx_sys::nvinfer1::Weights::new_float(bias_ptr, bias_count);
+
+            // Try direct autocxx call
+            let layer_ptr = unsafe {
+                // Cast void* to Pin<&mut INetworkDefinition>
+                let network_ptr = self.inner as *mut trtx_sys::nvinfer1::INetworkDefinition;
+                let mut network_pin = std::pin::Pin::new_unchecked(&mut *network_ptr);
+
+                // Cast void* to Pin<&mut ITensor>
+                let input_ptr = input.inner as *mut trtx_sys::nvinfer1::ITensor;
+                let input_ref = std::pin::Pin::new_unchecked(&mut *input_ptr);
+
+                // Call autocxx-generated method
+                network_pin.as_mut().addDeconvolutionNd(
+                    input_ref,
+                    nb_output_maps as i64, // Convert i32 to i64
+                    kernel_dims,  // Pass by value, not by reference
+                    kernel_w, // Passing Weights by value
+                    bias_w,
+                ) as *mut std::ffi::c_void
+            };
+
+            if layer_ptr.is_null() {
+                return Err(Error::Runtime(
+                    "Failed to add deconvolution layer".to_string(),
+                ));
+            }
+            Ok(DeconvolutionLayer::from_ptr(layer_ptr))
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(DeconvolutionLayer::from_ptr(std::ptr::null_mut()))
+        }
+    }
+
     /// Add a concatenation layer
     pub fn add_concatenation(&mut self, inputs: &[&Tensor]) -> Result<ConcatenationLayer> {
         #[cfg(not(feature = "mock"))]
@@ -1229,6 +1435,136 @@ impl NetworkDefinition {
         #[cfg(feature = "mock")]
         {
             Ok(GatherLayer::from_ptr(std::ptr::null_mut()))
+        }
+    }
+
+    /// Add a Scatter layer (scatter elements into tensor)
+    ///
+    /// # Arguments
+    /// * `data` - Data tensor to scatter into
+    /// * `indices` - Indices where to scatter
+    /// * `updates` - Values to scatter
+    /// * `mode` - Scatter mode (kELEMENT or kND)
+    pub fn add_scatter(
+        &mut self,
+        data: &Tensor,
+        indices: &Tensor,
+        updates: &Tensor,
+        mode: trtx_sys::nvinfer1::ScatterMode,
+    ) -> Result<ScatterLayer> {
+        #[cfg(not(feature = "mock"))]
+        {
+            let layer_ptr = unsafe {
+                let data_ref = &mut *(data.inner as *mut trtx_sys::nvinfer1::ITensor);
+                let indices_ref = &mut *(indices.inner as *mut trtx_sys::nvinfer1::ITensor);
+                let updates_ref = &mut *(updates.inner as *mut trtx_sys::nvinfer1::ITensor);
+                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::INetworkDefinition,
+                >(self.inner);
+
+                let layer_ptr = network_pin.as_mut().addScatter(
+                    std::pin::Pin::new_unchecked(data_ref),
+                    std::pin::Pin::new_unchecked(indices_ref),
+                    std::pin::Pin::new_unchecked(updates_ref),
+                    mode,  // Pass ScatterMode, not axis
+                );
+
+                if layer_ptr.is_null() {
+                    return Err(Error::Runtime("Failed to add scatter layer".to_string()));
+                }
+
+                layer_ptr as *mut std::ffi::c_void
+            };
+
+            Ok(ScatterLayer::from_ptr(layer_ptr))
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(ScatterLayer::from_ptr(std::ptr::null_mut()))
+        }
+    }
+
+    /// Add a Quantize layer (float to quantized integer)
+    ///
+    /// # Arguments
+    /// * `input` - Input tensor (float)
+    /// * `scale` - Quantization scale tensor
+    /// * `output_type` - Output data type (typically kINT8 or kUINT8)
+    pub fn add_quantize(
+        &mut self,
+        input: &Tensor,
+        scale: &Tensor,
+        output_type: trtx_sys::nvinfer1::DataType,
+    ) -> Result<QuantizeLayer> {
+        #[cfg(not(feature = "mock"))]
+        {
+            let layer_ptr = unsafe {
+                let input_ref = &mut *(input.inner as *mut trtx_sys::nvinfer1::ITensor);
+                let scale_ref = &mut *(scale.inner as *mut trtx_sys::nvinfer1::ITensor);
+                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::INetworkDefinition,
+                >(self.inner);
+
+                let layer_ptr = network_pin.as_mut().addQuantize(
+                    std::pin::Pin::new_unchecked(input_ref),
+                    std::pin::Pin::new_unchecked(scale_ref),
+                    output_type,  // Third parameter: output data type
+                );
+
+                if layer_ptr.is_null() {
+                    return Err(Error::Runtime("Failed to add quantize layer".to_string()));
+                }
+
+                layer_ptr as *mut std::ffi::c_void
+            };
+
+            Ok(QuantizeLayer::from_ptr(layer_ptr))
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(QuantizeLayer::from_ptr(std::ptr::null_mut()))
+        }
+    }
+
+    /// Add a Dequantize layer (quantized integer to float)
+    ///
+    /// # Arguments
+    /// * `input` - Input tensor (quantized)
+    /// * `scale` - Dequantization scale tensor
+    /// * `output_type` - Output data type (typically kFLOAT or kHALF)
+    pub fn add_dequantize(
+        &mut self,
+        input: &Tensor,
+        scale: &Tensor,
+        output_type: trtx_sys::nvinfer1::DataType,
+    ) -> Result<DequantizeLayer> {
+        #[cfg(not(feature = "mock"))]
+        {
+            let layer_ptr = unsafe {
+                let input_ref = &mut *(input.inner as *mut trtx_sys::nvinfer1::ITensor);
+                let scale_ref = &mut *(scale.inner as *mut trtx_sys::nvinfer1::ITensor);
+                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::INetworkDefinition,
+                >(self.inner);
+
+                let layer_ptr = network_pin.as_mut().addDequantize(
+                    std::pin::Pin::new_unchecked(input_ref),
+                    std::pin::Pin::new_unchecked(scale_ref),
+                    output_type,  // Third parameter: output data type
+                );
+
+                if layer_ptr.is_null() {
+                    return Err(Error::Runtime("Failed to add dequantize layer".to_string()));
+                }
+
+                layer_ptr as *mut std::ffi::c_void
+            };
+
+            Ok(DequantizeLayer::from_ptr(layer_ptr))
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(DequantizeLayer::from_ptr(std::ptr::null_mut()))
         }
     }
 
