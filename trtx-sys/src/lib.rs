@@ -78,8 +78,12 @@ pub mod real_bindings {
         generate!("nvinfer1::IQuantizeLayer")
         generate!("nvinfer1::IDequantizeLayer")
         generate!("nvinfer1::IAssertionLayer")
+        generate!("nvinfer1::ICumulativeLayer")
         generate!("nvinfer1::ILoop")
         generate!("nvinfer1::IIfConditional")
+        // NOTE: IRNNv2Layer is deprecated (TRT_DEPRECATED) and autocxx cannot generate bindings for it
+        // RNN operations (lstm, lstmCell, gru, gruCell) remain deferred until we can work around this
+        // generate!("nvinfer1::IRNNv2Layer")
 
         generate!("nvinfer1::IRuntime")
         generate!("nvinfer1::ICudaEngine")
@@ -99,12 +103,18 @@ pub mod real_bindings {
         generate!("nvinfer1::MatrixOperation")
         generate!("nvinfer1::UnaryOperation")
         generate!("nvinfer1::ReduceOperation")
+        generate!("nvinfer1::CumulativeOperation")
         generate!("nvinfer1::GatherMode")
         generate!("nvinfer1::ScatterMode")
         generate!("nvinfer1::InterpolationMode")
         generate!("nvinfer1::ResizeCoordinateTransformation")
         generate!("nvinfer1::ResizeSelector")
         generate!("nvinfer1::ResizeRoundMode")
+        // NOTE: RNN enums commented out because IRNNv2Layer (deprecated) cannot be generated
+        // generate!("nvinfer1::RNNOperation")
+        // generate!("nvinfer1::RNNDirection")
+        // generate!("nvinfer1::RNNInputMode")
+        // generate!("nvinfer1::RNNGateType")
         generate_pod!("nvinfer1::Weights")
 
         // NOTE: createInferBuilder/Runtime moved to logger_bridge.cpp (autocxx struggles with these)

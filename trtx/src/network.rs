@@ -219,6 +219,8 @@ impl ScatterLayer {
     }
 }
 
+// NOTE: RNNv2Layer impl removed - IRNNv2Layer is deprecated and autocxx cannot generate bindings
+
 define_layer!(SelectLayer, trtx_sys::nvinfer1::ISelectLayer);
 define_layer!(
     MatrixMultiplyLayer,
@@ -226,13 +228,40 @@ define_layer!(
 );
 define_layer!(SoftMaxLayer, trtx_sys::nvinfer1::ISoftMaxLayer);
 define_layer!(ReduceLayer, trtx_sys::nvinfer1::IReduceLayer);
+define_layer!(CumulativeLayer, trtx_sys::nvinfer1::ICumulativeLayer);
 define_layer!(PoolingLayer, trtx_sys::nvinfer1::IPoolingLayer);
 define_layer!(ConvolutionLayer, trtx_sys::nvinfer1::IConvolutionLayer);
 define_layer!(DeconvolutionLayer, trtx_sys::nvinfer1::IDeconvolutionLayer);
 define_layer!(QuantizeLayer, trtx_sys::nvinfer1::IQuantizeLayer);
 define_layer!(DequantizeLayer, trtx_sys::nvinfer1::IDequantizeLayer);
+// NOTE: RNNv2Layer commented out - IRNNv2Layer is deprecated and autocxx cannot generate it
+// define_layer!(RNNv2Layer, trtx_sys::nvinfer1::IRNNv2Layer);
 define_layer!(ConstantLayer, trtx_sys::nvinfer1::IConstantLayer);
 define_layer!(ConcatenationLayer, trtx_sys::nvinfer1::IConcatenationLayer);
+
+impl ConcatenationLayer {
+    /// Set the axis along which concatenation occurs
+    pub fn set_axis(&mut self, axis: i32) -> Result<()> {
+        #[cfg(not(feature = "mock"))]
+        {
+            if self.inner.is_null() {
+                return Err(Error::Runtime("Invalid concatenation layer".to_string()));
+            }
+            unsafe {
+                let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::IConcatenationLayer,
+                >(self.inner);
+                layer_pin.as_mut().setAxis(axis);
+            }
+            Ok(())
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(())
+        }
+    }
+}
+
 define_layer!(ScaleLayer, trtx_sys::nvinfer1::IScaleLayer);
 define_layer!(SliceLayer, trtx_sys::nvinfer1::ISliceLayer);
 define_layer!(UnaryLayer, trtx_sys::nvinfer1::IUnaryLayer);
@@ -1270,6 +1299,84 @@ impl NetworkDefinition {
         }
     }
 
+    /// Add a Cumulative layer (e.g., cumulative sum)
+    ///
+    /// # Arguments
+    /// * `input` - Input tensor
+    /// * `axis` - Axis along which to compute cumulative operation
+    /// * `op` - Cumulative operation (e.g., SUM)
+    /// * `exclusive` - If true, compute exclusive cumulative (default: false)
+    /// * `reverse` - If true, compute reverse cumulative (default: false)
+    pub fn add_cumulative(
+        &mut self,
+        input: &Tensor,
+        axis: i32,
+        op: trtx_sys::nvinfer1::CumulativeOperation,
+        exclusive: bool,
+        reverse: bool,
+    ) -> Result<CumulativeLayer> {
+        #[cfg(not(feature = "mock"))]
+        {
+            // Create a constant tensor for the axis (must be build-time constant)
+            // Note: TensorRT requires a true 0D scalar tensor (shape []) for axis
+            // The API validates: axisDims.nbDims == 0
+            let axis_bytes = axis.to_le_bytes();
+            let axis_constant = self.add_constant(&[], &axis_bytes, trtx_sys::nvinfer1::DataType::kINT32)?;
+            let axis_tensor = axis_constant.get_output(0)?;
+
+            self.add_cumulative_with_axis_tensor(input, &axis_tensor, op, exclusive, reverse)
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(CumulativeLayer::from_ptr(std::ptr::null_mut()))
+        }
+    }
+
+    /// Add a Cumulative layer with pre-created axis tensor
+    /// 
+    /// This variant allows the caller to manage the axis constant's lifetime.
+    /// The axis tensor must be a true 0D scalar (shape []) constant with INT32 type.
+    /// TensorRT validates that axisDims.nbDims == 0.
+    pub fn add_cumulative_with_axis_tensor(
+        &mut self,
+        input: &Tensor,
+        axis_tensor: &Tensor,
+        op: trtx_sys::nvinfer1::CumulativeOperation,
+        exclusive: bool,
+        reverse: bool,
+    ) -> Result<CumulativeLayer> {
+        #[cfg(not(feature = "mock"))]
+        {
+            let layer_ptr = unsafe {
+                let input_ref = &mut *(input.inner as *mut trtx_sys::nvinfer1::ITensor);
+                let axis_ref = &mut *(axis_tensor.inner as *mut trtx_sys::nvinfer1::ITensor);
+                let mut network_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::INetworkDefinition,
+                >(self.inner);
+
+                let layer_ptr = network_pin.as_mut().addCumulative(
+                    std::pin::Pin::new_unchecked(input_ref),
+                    std::pin::Pin::new_unchecked(axis_ref),
+                    op,
+                    exclusive,
+                    reverse,
+                );
+
+                if layer_ptr.is_null() {
+                    return Err(Error::Runtime("Failed to add cumulative layer".to_string()));
+                }
+
+                layer_ptr as *mut std::ffi::c_void
+            };
+
+            Ok(CumulativeLayer::from_ptr(layer_ptr))
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(CumulativeLayer::from_ptr(std::ptr::null_mut()))
+        }
+    }
+
     /// Add a Slice layer (tensor slicing)
     ///
     /// # Arguments
@@ -1567,6 +1674,8 @@ impl NetworkDefinition {
             Ok(DequantizeLayer::from_ptr(std::ptr::null_mut()))
         }
     }
+
+    // NOTE: add_rnn_v2() removed - IRNNv2Layer is deprecated and autocxx cannot generate bindings
 
     /// Add a Select layer (conditional selection)
     ///

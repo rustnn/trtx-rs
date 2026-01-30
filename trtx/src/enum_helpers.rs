@@ -4,9 +4,9 @@
 //! These are useful for error messages, debugging, and logging.
 
 use trtx_sys::nvinfer1::{
-    ActivationType, DataType, ElementWiseOperation, GatherMode, InterpolationMode, PoolingType,
-    ReduceOperation, ResizeCoordinateTransformation, ResizeRoundMode, ResizeSelector, ScatterMode,
-    UnaryOperation,
+    ActivationType, CumulativeOperation, DataType, ElementWiseOperation, GatherMode,
+    InterpolationMode, PoolingType, ReduceOperation, ResizeCoordinateTransformation,
+    ResizeRoundMode, ResizeSelector, ScatterMode, UnaryOperation,
 };
 
 // ============================================================================
@@ -143,6 +143,17 @@ pub fn reduce_op_name(op: &ReduceOperation) -> &'static str {
 }
 
 // ============================================================================
+// CumulativeOperation
+// ============================================================================
+
+/// Get the string name of a CumulativeOperation enum variant
+pub fn cumulative_op_name(op: &CumulativeOperation) -> &'static str {
+    match *op {
+        CumulativeOperation::kSUM => "kSUM",
+    }
+}
+
+// ============================================================================
 // GatherMode
 // ============================================================================
 
@@ -219,6 +230,8 @@ pub fn resize_round_mode_name(mode: &ResizeRoundMode) -> &'static str {
         ResizeRoundMode::kCEIL => "kCEIL",
     }
 }
+
+// NOTE: RNN enum helper functions removed - IRNNv2Layer is deprecated and bindings unavailable
 
 #[cfg(test)]
 mod tests {
