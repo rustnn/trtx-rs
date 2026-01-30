@@ -3,22 +3,21 @@
 use crate::error::Result;
 use std::ffi::{c_void, CStr};
 use std::os::raw::c_char;
-use trtx_sys::*;
 
 /// Severity level for log messages
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(i32)]
 pub enum Severity {
     /// Internal error (most severe)
-    InternalError = TrtxLoggerSeverity::TRTX_SEVERITY_INTERNAL_ERROR as i32,
+    InternalError = 0,
     /// Error
-    Error = TrtxLoggerSeverity::TRTX_SEVERITY_ERROR as i32,
+    Error = 1,
     /// Warning
-    Warning = TrtxLoggerSeverity::TRTX_SEVERITY_WARNING as i32,
+    Warning = 2,
     /// Info
-    Info = TrtxLoggerSeverity::TRTX_SEVERITY_INFO as i32,
+    Info = 3,
     /// Verbose (most detailed)
-    Verbose = TrtxLoggerSeverity::TRTX_SEVERITY_VERBOSE as i32,
+    Verbose = 4,
 }
 
 /// Trait for handling log messages from TensorRT
@@ -39,45 +38,77 @@ impl LogHandler for StderrLogger {
 
 /// Logger wrapper that interfaces with TensorRT-RTX
 pub struct Logger {
-    inner: *mut TrtxLogger,
-    // Keep the raw user_data pointer for cleanup in Drop
-    user_data: *mut c_void,
+    #[cfg(not(feature = "mock"))]
+    bridge: *mut trtx_sys::RustLoggerBridge,
+    #[cfg(not(feature = "mock"))]
+    user_data: *mut std::ffi::c_void, // Keep track of user_data for cleanup
+    #[cfg(feature = "mock")]
+    inner: *mut trtx_sys::TrtxLogger,
+    #[cfg(feature = "mock")]
+    _handler: Box<dyn LogHandler>,
 }
 
 impl Logger {
     /// Create a new logger with a custom handler
     pub fn new<H: LogHandler + 'static>(handler: H) -> Result<Self> {
-        // Double-box: Box<Box<dyn LogHandler>> to get a thin pointer
         let handler_box: Box<dyn LogHandler> = Box::new(handler);
+        // Double-box so we have a stable pointer to pass around
         let user_data = Box::into_raw(Box::new(handler_box)) as *mut c_void;
 
-        let mut logger_ptr: *mut TrtxLogger = std::ptr::null_mut();
-        let mut error_msg = [0i8; 1024];
+        #[cfg(not(feature = "mock"))]
+        {
+            let bridge =
+                unsafe { trtx_sys::create_rust_logger_bridge(Self::log_callback, user_data) };
 
-        let result = unsafe {
-            trtx_logger_create(
-                Some(Self::log_callback),
-                user_data,
-                &mut logger_ptr,
-                error_msg.as_mut_ptr(),
-                error_msg.len(),
-            )
-        };
-
-        if result != TRTX_SUCCESS as i32 {
-            // Clean up user_data (double-boxed)
-            unsafe {
-                let _ = Box::from_raw(user_data as *mut Box<dyn LogHandler>);
+            if bridge.is_null() {
+                // Clean up user_data (double-boxed)
+                unsafe {
+                    let outer = Box::from_raw(user_data as *mut Box<dyn LogHandler>);
+                    let _ = *outer; // Drop the inner box
+                }
+                return Err(crate::error::Error::Runtime(
+                    "Failed to create logger bridge".to_string(),
+                ));
             }
-            return Err(crate::error::Error::from_ffi(result, &error_msg));
+
+            // DON'T reconstruct - keep user_data alive for the callback
+            // We'll clean it up in Drop
+            Ok(Logger { bridge, user_data })
         }
 
-        // DON'T reconstruct the box here - keep user_data alive for callbacks
-        // We'll clean it up in Drop
-        Ok(Logger {
-            inner: logger_ptr,
-            user_data,
-        })
+        #[cfg(feature = "mock")]
+        {
+            let mut logger_ptr: *mut trtx_sys::TrtxLogger = std::ptr::null_mut();
+            let mut error_msg = [0i8; 1024];
+
+            let result = unsafe {
+                trtx_sys::trtx_logger_create(
+                    Some(Self::log_callback_mock),
+                    user_data,
+                    &mut logger_ptr,
+                    error_msg.as_mut_ptr(),
+                    error_msg.len(),
+                )
+            };
+
+            if result != trtx_sys::TRTX_SUCCESS as i32 {
+                // Clean up user_data (double-boxed)
+                unsafe {
+                    let outer = Box::from_raw(user_data as *mut Box<dyn LogHandler>);
+                    let _ = *outer; // Drop the inner box
+                }
+                return Err(crate::error::Error::from_ffi(result, &error_msg));
+            }
+
+            // Reconstruct the double-boxed handler
+            let outer_box = unsafe { Box::from_raw(user_data as *mut Box<dyn LogHandler>) };
+            let handler_box = *outer_box; // Extract inner box
+
+            Ok(Logger {
+                inner: logger_ptr,
+                _handler: handler_box,
+            })
+        }
     }
 
     /// Create a logger that prints to stderr
@@ -85,15 +116,50 @@ impl Logger {
         Self::new(StderrLogger)
     }
 
-    /// Get the raw pointer (for internal use)
-    pub(crate) fn as_ptr(&self) -> *mut TrtxLogger {
+    /// Get the raw ILogger pointer (for internal use with autocxx)
+    #[cfg(not(feature = "mock"))]
+    pub(crate) fn as_logger_ptr(&self) -> *mut c_void {
+        unsafe { trtx_sys::get_logger_interface(self.bridge) }
+    }
+
+    /// Get the raw pointer (for internal use in mock mode)
+    #[cfg(feature = "mock")]
+    pub(crate) fn as_ptr(&self) -> *mut trtx_sys::TrtxLogger {
         self.inner
     }
 
-    /// C callback function that bridges to Rust trait
-    extern "C" fn log_callback(
+    /// C callback function that bridges to Rust trait (real mode)
+    #[cfg(not(feature = "mock"))]
+    extern "C" fn log_callback(user_data: *mut c_void, severity: i32, msg: *const c_char) {
+        if user_data.is_null() || msg.is_null() {
+            return;
+        }
+
+        unsafe {
+            // user_data is *mut Box<dyn LogHandler> (after we pass it through the bridge)
+            let handler_box = &*(user_data as *const Box<dyn LogHandler>);
+            let msg_str = CStr::from_ptr(msg);
+
+            let severity = match severity {
+                0 => Severity::InternalError,
+                1 => Severity::Error,
+                2 => Severity::Warning,
+                3 => Severity::Info,
+                4 => Severity::Verbose,
+                _ => Severity::Verbose, // Default fallback
+            };
+
+            if let Ok(msg) = msg_str.to_str() {
+                handler_box.log(severity, msg);
+            }
+        }
+    }
+
+    /// C callback function that bridges to Rust trait (mock mode)
+    #[cfg(feature = "mock")]
+    extern "C" fn log_callback_mock(
         user_data: *mut c_void,
-        severity: TrtxLoggerSeverity,
+        severity: trtx_sys::TrtxLoggerSeverity,
         msg: *const c_char,
     ) {
         if user_data.is_null() || msg.is_null() {
@@ -101,21 +167,21 @@ impl Logger {
         }
 
         unsafe {
-            // user_data is *mut Box<dyn LogHandler> (thin pointer to outer box)
-            let handler_box = &*(user_data as *const Box<dyn LogHandler>);
+            let handler = &*(user_data as *const Box<dyn LogHandler>);
             let msg_str = CStr::from_ptr(msg);
 
             let severity = match severity {
-                TrtxLoggerSeverity::TRTX_SEVERITY_INTERNAL_ERROR => Severity::InternalError,
-                TrtxLoggerSeverity::TRTX_SEVERITY_ERROR => Severity::Error,
-                TrtxLoggerSeverity::TRTX_SEVERITY_WARNING => Severity::Warning,
-                TrtxLoggerSeverity::TRTX_SEVERITY_INFO => Severity::Info,
-                TrtxLoggerSeverity::TRTX_SEVERITY_VERBOSE => Severity::Verbose,
+                trtx_sys::TrtxLoggerSeverity::TRTX_SEVERITY_INTERNAL_ERROR => {
+                    Severity::InternalError
+                }
+                trtx_sys::TrtxLoggerSeverity::TRTX_SEVERITY_ERROR => Severity::Error,
+                trtx_sys::TrtxLoggerSeverity::TRTX_SEVERITY_WARNING => Severity::Warning,
+                trtx_sys::TrtxLoggerSeverity::TRTX_SEVERITY_INFO => Severity::Info,
+                trtx_sys::TrtxLoggerSeverity::TRTX_SEVERITY_VERBOSE => Severity::Verbose,
             };
 
             if let Ok(msg) = msg_str.to_str() {
-                // Dereference the box to get &dyn LogHandler and call log
-                handler_box.log(severity, msg);
+                handler.log(severity, msg);
             }
         }
     }
@@ -123,17 +189,28 @@ impl Logger {
 
 impl Drop for Logger {
     fn drop(&mut self) {
-        // Destroy the TensorRT logger first
-        if !self.inner.is_null() {
-            unsafe {
-                trtx_logger_destroy(self.inner);
+        #[cfg(not(feature = "mock"))]
+        {
+            if !self.bridge.is_null() {
+                unsafe {
+                    trtx_sys::destroy_rust_logger_bridge(self.bridge);
+                }
+            }
+            // Clean up the user_data (double-boxed handler)
+            if !self.user_data.is_null() {
+                unsafe {
+                    let outer = Box::from_raw(self.user_data as *mut Box<dyn LogHandler>);
+                    let _ = *outer; // Drop the inner box
+                }
             }
         }
 
-        // Then clean up the user_data (double-boxed handler)
-        if !self.user_data.is_null() {
-            unsafe {
-                let _ = Box::from_raw(self.user_data as *mut Box<dyn LogHandler>);
+        #[cfg(feature = "mock")]
+        {
+            if !self.inner.is_null() {
+                unsafe {
+                    trtx_sys::trtx_logger_destroy(self.inner);
+                }
             }
         }
     }

@@ -60,10 +60,10 @@ fn build_engine_from_onnx(logger: &Logger, onnx_bytes: &[u8]) -> Result<Vec<u8>>
     let builder = Builder::new(logger)?;
 
     // Create network with explicit batch
-    let network = builder.create_network(network_flags::EXPLICIT_BATCH)?;
+    let mut network = builder.create_network(network_flags::EXPLICIT_BATCH)?;
 
     // Parse ONNX model
-    let parser = OnnxParser::new(&network, logger)?;
+    let parser = OnnxParser::new(&mut network, logger)?;
     parser.parse(onnx_bytes)?;
 
     // Configure builder
@@ -73,7 +73,7 @@ fn build_engine_from_onnx(logger: &Logger, onnx_bytes: &[u8]) -> Result<Vec<u8>>
     config.set_memory_pool_limit(crate::builder::MemoryPoolType::Workspace, 1 << 30)?;
 
     // Build serialized engine
-    builder.build_serialized_network(&network, &config)
+    builder.build_serialized_network(&mut network, &mut config)
 }
 
 /// Execute TensorRT engine with inputs
