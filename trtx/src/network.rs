@@ -231,6 +231,99 @@ define_layer!(ReduceLayer, trtx_sys::nvinfer1::IReduceLayer);
 define_layer!(CumulativeLayer, trtx_sys::nvinfer1::ICumulativeLayer);
 define_layer!(PoolingLayer, trtx_sys::nvinfer1::IPoolingLayer);
 define_layer!(ConvolutionLayer, trtx_sys::nvinfer1::IConvolutionLayer);
+
+impl ConvolutionLayer {
+    pub fn set_stride(&mut self, stride: &[i32; 2]) -> Result<()> {
+        #[cfg(not(feature = "mock"))]
+        {
+            if self.inner.is_null() {
+                return Err(Error::Runtime("Invalid convolution layer".to_string()));
+            }
+            unsafe {
+                let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::IConvolutionLayer,
+                >(self.inner);
+
+                let dims_i64: Vec<i64> = stride.iter().map(|&s| s as i64).collect();
+                let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
+                layer_pin.as_mut().setStrideNd(&dims_obj);
+            }
+            Ok(())
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(())
+        }
+    }
+
+    pub fn set_padding(&mut self, padding: &[i32; 2]) -> Result<()> {
+        #[cfg(not(feature = "mock"))]
+        {
+            if self.inner.is_null() {
+                return Err(Error::Runtime("Invalid convolution layer".to_string()));
+            }
+            unsafe {
+                let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::IConvolutionLayer,
+                >(self.inner);
+
+                let dims_i64: Vec<i64> = padding.iter().map(|&p| p as i64).collect();
+                let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
+                layer_pin.as_mut().setPaddingNd(&dims_obj);
+            }
+            Ok(())
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(())
+        }
+    }
+
+    pub fn set_dilation(&mut self, dilation: &[i32; 2]) -> Result<()> {
+        #[cfg(not(feature = "mock"))]
+        {
+            if self.inner.is_null() {
+                return Err(Error::Runtime("Invalid convolution layer".to_string()));
+            }
+            unsafe {
+                let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::IConvolutionLayer,
+                >(self.inner);
+
+                let dims_i64: Vec<i64> = dilation.iter().map(|&d| d as i64).collect();
+                let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
+                layer_pin.as_mut().setDilationNd(&dims_obj);
+            }
+            Ok(())
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(())
+        }
+    }
+
+    pub fn set_num_groups(&mut self, num_groups: i32) -> Result<()> {
+        #[cfg(not(feature = "mock"))]
+        {
+            if self.inner.is_null() {
+                return Err(Error::Runtime("Invalid convolution layer".to_string()));
+            }
+            unsafe {
+                let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<
+                    trtx_sys::nvinfer1::IConvolutionLayer,
+                >(self.inner);
+
+                layer_pin.as_mut().setNbGroups(num_groups as i64);
+            }
+            Ok(())
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(())
+        }
+    }
+}
+
 define_layer!(DeconvolutionLayer, trtx_sys::nvinfer1::IDeconvolutionLayer);
 define_layer!(QuantizeLayer, trtx_sys::nvinfer1::IQuantizeLayer);
 define_layer!(DequantizeLayer, trtx_sys::nvinfer1::IDequantizeLayer);
@@ -321,6 +414,12 @@ impl Tensor {
             if result.is_null() {
                 return Err(Error::Runtime(
                     "Failed to get tensor dimensions".to_string(),
+                ));
+            }
+            // Check if nb_dims is valid (TensorRT returns -1 if dimensions aren't set)
+            if nb_dims < 0 {
+                return Err(Error::Runtime(
+                    "Tensor dimensions not set (nbDims = -1)".to_string(),
                 ));
             }
             Ok(dims[..nb_dims as usize].to_vec())
@@ -853,26 +952,9 @@ impl NetworkDefinition {
     ) -> Result<ConvolutionLayer> {
         #[cfg(not(feature = "mock"))]
         {
-            // Calculate weight count based on input dimensions
-            let input_dims = input.dimensions()?;
-            let input_channels = if input_dims.len() >= 4 {
-                // Format: [N, C, H, W] - channels at index 1
-                input_dims[1] as i64
-            } else if input_dims.len() >= 3 {
-                // Format: [C, H, W] - channels at index 0
-                input_dims[0] as i64
-            } else {
-                return Err(Error::InvalidArgument(format!(
-                    "Invalid input dimensions for convolution: {:?}",
-                    input_dims
-                )));
-            };
-
-            // weight_count = nb_outputs * input_channels * kernel_h * kernel_w (in floats)
-            let weight_count = nb_output_maps as i64
-                * input_channels
-                * kernel_size[0] as i64
-                * kernel_size[1] as i64;
+            // Get actual weight count directly from buffer size
+            // Assuming float32 weights (4 bytes per weight)
+            let weight_count = (kernel_weights.len() / 4) as i64;
 
             let bias_count = if bias_weights.is_some() {
                 nb_output_maps as i64
@@ -919,6 +1001,7 @@ impl NetworkDefinition {
                     "Failed to add convolution layer".to_string(),
                 ));
             }
+            
             Ok(ConvolutionLayer::from_ptr(layer_ptr))
         }
         #[cfg(feature = "mock")]

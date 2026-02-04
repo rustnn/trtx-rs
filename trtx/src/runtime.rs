@@ -93,6 +93,44 @@ impl CudaEngine {
         }
     }
 
+    /// Get the shape of a tensor by name
+    pub fn get_tensor_shape(&self, name: &str) -> Result<Vec<i64>> {
+        #[cfg(not(feature = "mock"))]
+        {
+            if self.inner.is_null() {
+                return Err(Error::Runtime("Invalid engine".to_string()));
+            }
+
+            let name_cstr = std::ffi::CString::new(name)?;
+
+            // Use autocxx Pin to call getTensorShape directly
+            let dims = unsafe {
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ICudaEngine>(self.inner)
+                    .getTensorShape(name_cstr.as_ptr())
+            };
+
+            // Extract dimensions from Dims structure
+            let nb_dims = dims.nbDims as usize;
+            if nb_dims > 8 {
+                return Err(Error::Runtime("Tensor has too many dimensions".to_string()));
+            }
+
+            let mut shape = Vec::with_capacity(nb_dims);
+            for i in 0..nb_dims {
+                shape.push(dims.d[i]);
+            }
+
+            Ok(shape)
+        }
+
+        #[cfg(feature = "mock")]
+        {
+            // Mock implementation: return a reasonable default shape
+            // In real usage, this would query the actual engine
+            Ok(vec![1, 1000])
+        }
+    }
+
     /// Create an execution context for inference
     pub fn create_execution_context(&self) -> Result<ExecutionContext<'_>> {
         #[cfg(feature = "mock")]
