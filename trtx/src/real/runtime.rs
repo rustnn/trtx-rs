@@ -102,6 +102,11 @@ pub struct ExecutionContext<'a> {
 }
 
 impl<'a> ExecutionContext<'a> {
+    /// Binds a tensor to a device memory address.
+    ///
+    /// # Safety
+    /// `data` must point to valid CUDA memory with at least the tensor's size in bytes,
+    /// and remain valid for the duration of inference.
     pub unsafe fn set_tensor_address(
         &mut self,
         name: &str,
@@ -122,6 +127,11 @@ impl<'a> ExecutionContext<'a> {
         Ok(())
     }
 
+    /// Enqueues inference on the given CUDA stream.
+    ///
+    /// # Safety
+    /// `cuda_stream` must be a valid CUDA stream, and all tensor addresses must
+    /// point to valid device memory.
     pub unsafe fn enqueue_v3(&mut self, cuda_stream: *mut std::ffi::c_void) -> Result<()> {
         if self.inner.is_null() {
             return Err(Error::Runtime("Invalid execution context".to_string()));
