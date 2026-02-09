@@ -5,6 +5,7 @@
 use crate::error::Result;
 
 /// Tensor handle (opaque pointer)
+#[allow(dead_code)] // inner is used by real::network and mock::network implspub struct Tensor {
 pub struct Tensor {
     pub(crate) inner: *mut std::ffi::c_void,
 }
@@ -63,9 +64,3 @@ define_network_layer!(CastLayer);
 pub struct NetworkDefinition {
     pub(crate) inner: *mut std::ffi::c_void,
 }
-
-// Load implementations from real or mock
-#[cfg(not(feature = "mock"))]
-use crate::real::network;
-#[cfg(feature = "mock")]
-use crate::mock::network;

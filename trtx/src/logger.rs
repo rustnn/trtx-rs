@@ -2,8 +2,6 @@
 //!
 //! Delegates to real/ or mock/ based on feature flag.
 
-use crate::error::Result;
-
 /// Severity level for log messages
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(i32)]

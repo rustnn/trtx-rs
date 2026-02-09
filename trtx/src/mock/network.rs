@@ -10,11 +10,6 @@ use crate::error::Result;
 // Helper functions (used by other mock modules via crate::mock::)
 //==============================================================================
 
-/// Null pointer for layer creation (mock mode)
-pub(crate) fn null_layer_ptr() -> *mut std::ffi::c_void {
-    std::ptr::null_mut()
-}
-
 /// Default tensor shape for mock (e.g., [1, 3, 224, 224])
 pub(crate) fn default_tensor_dimensions() -> Vec<i32> {
     vec![1, 3, 224, 224]

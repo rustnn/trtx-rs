@@ -2,8 +2,6 @@
 //!
 //! Delegates to real/ or mock/ based on feature flag.
 
-use crate::logger::Logger;
-
 /// Network definition builder flags
 pub mod network_flags {
     /// Explicit batch sizes

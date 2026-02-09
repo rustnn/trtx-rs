@@ -5,8 +5,6 @@ use crate::error::Result;
 use crate::logger::Logger;
 use crate::network::NetworkDefinition;
 
-use super::from_ffi;
-
 /// Builder configuration (mock mode)
 pub struct BuilderConfig {
     pub(crate) inner: *mut trtx_sys::TrtxBuilderConfig,
@@ -18,10 +16,6 @@ impl BuilderConfig {
     }
 
     pub(crate) fn as_ptr(&self) -> *mut trtx_sys::TrtxBuilderConfig {
-        self.inner
-    }
-
-    pub(crate) fn as_mut_ptr(&mut self) -> *mut trtx_sys::TrtxBuilderConfig {
         self.inner
     }
 }

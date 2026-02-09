@@ -150,7 +150,12 @@ pub fn reduce_op_name(op: &ReduceOperation) -> &'static str {
 pub fn cumulative_op_name(op: &CumulativeOperation) -> &'static str {
     match *op {
         CumulativeOperation::kSUM => "kSUM",
-        _ => "other", // Real TensorRT-RTX API may have fewer variants than mock
+        #[cfg(feature = "mock")]
+        CumulativeOperation::kPROD => "kPROD",
+        #[cfg(feature = "mock")]
+        CumulativeOperation::kMIN => "kMIN",
+        #[cfg(feature = "mock")]
+        CumulativeOperation::kMAX => "kMAX",
     }
 }
 
@@ -203,7 +208,8 @@ pub fn resize_coord_transform_name(transform: &ResizeCoordinateTransformation) -
         ResizeCoordinateTransformation::kALIGN_CORNERS => "kALIGN_CORNERS",
         ResizeCoordinateTransformation::kASYMMETRIC => "kASYMMETRIC",
         ResizeCoordinateTransformation::kHALF_PIXEL => "kHALF_PIXEL",
-        _ => "other", // Real TensorRT-RTX API may have fewer variants than mock
+        #[cfg(feature = "mock")]
+        ResizeCoordinateTransformation::kHALF_PIXEL_SYMMETRIC => "kHALF_PIXEL_SYMMETRIC",
     }
 }
 
@@ -215,8 +221,9 @@ pub fn resize_coord_transform_name(transform: &ResizeCoordinateTransformation) -
 pub fn resize_selector_name(selector: &ResizeSelector) -> &'static str {
     match *selector {
         ResizeSelector::kFORMULA => "kFORMULA",
+        #[cfg(feature = "mock")]
+        ResizeSelector::kSIZES => "kSIZES",
         ResizeSelector::kUPPER => "kUPPER",
-        _ => "other", // Real TensorRT-RTX API may have fewer variants than mock
     }
 }
 
@@ -229,9 +236,10 @@ pub fn resize_round_mode_name(mode: &ResizeRoundMode) -> &'static str {
     match *mode {
         ResizeRoundMode::kFLOOR => "kFLOOR",
         ResizeRoundMode::kCEIL => "kCEIL",
+        #[cfg(feature = "mock")]
+        ResizeRoundMode::kROUND => "kROUND",
         ResizeRoundMode::kHALF_UP => "kHALF_UP",
         ResizeRoundMode::kHALF_DOWN => "kHALF_DOWN",
-        _ => "other", // Real TensorRT-RTX API may have fewer variants than mock
     }
 }
 
