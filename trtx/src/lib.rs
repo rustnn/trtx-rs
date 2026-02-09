@@ -48,14 +48,14 @@
 //!
 //! // Build phase
 //! let builder = Builder::new(&logger)?;
-//! let network = builder.create_network(network_flags::EXPLICIT_BATCH)?;
+//! let mut network = builder.create_network(network_flags::EXPLICIT_BATCH)?;
 //! let mut config = builder.create_config()?;
 //!
 //! // Configure memory
 //! config.set_memory_pool_limit(MemoryPoolType::Workspace, 1 << 30)?;
 //!
 //! // Build and serialize
-//! let engine_data = builder.build_serialized_network(&network, &config)?;
+//! let engine_data = builder.build_serialized_network(&mut network, &mut config)?;
 //! std::fs::write("model.engine", &engine_data)?;
 //!
 //! // Inference phase
@@ -91,19 +91,43 @@
 // Allow unnecessary casts - they're needed for real mode (u32) but not mock mode (i32)
 #![cfg_attr(feature = "mock", allow(clippy::unnecessary_cast))]
 
+#[cfg(not(feature = "mock"))]
+mod real;
+
+#[cfg(feature = "mock")]
+pub mod mock;
+
+pub mod autocxx_helpers;
 pub mod builder;
 pub mod cuda;
+pub mod enum_helpers;
 pub mod error;
 pub mod executor;
 pub mod logger;
+pub mod network;
 pub mod onnx_parser;
 pub mod runtime;
 
 // Re-export commonly used types
-pub use builder::{Builder, BuilderConfig, NetworkDefinition};
-pub use cuda::{synchronize, DeviceBuffer};
+pub use builder::{Builder, BuilderConfig};
+pub use cuda::{get_default_stream, synchronize, DeviceBuffer};
+pub use enum_helpers::{
+    activation_type_name, datatype_name, elementwise_op_name, pooling_type_name, reduce_op_name,
+    unary_op_name,
+};
 pub use error::{Error, Result};
 pub use executor::{run_onnx_with_tensorrt, run_onnx_zeroed, TensorInput, TensorOutput};
 pub use logger::{LogHandler, Logger, Severity, StderrLogger};
+pub use network::{NetworkDefinition, Tensor};
 pub use onnx_parser::OnnxParser;
 pub use runtime::{CudaEngine, ExecutionContext, Runtime};
+
+// Re-export TensorRT operation enums
+pub use trtx_sys::nvinfer1::{
+    ActivationType, CumulativeOperation, DataType, ElementWiseOperation, GatherMode,
+    InterpolationMode, MatrixOperation, PoolingType, ReduceOperation,
+    ResizeCoordinateTransformation, ResizeRoundMode, ResizeSelector, ScatterMode, UnaryOperation,
+};
+
+// Re-export ResizeMode typedef (InterpolationMode alias)
+pub use trtx_sys::ResizeMode;

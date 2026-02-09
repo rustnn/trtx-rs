@@ -10,14 +10,20 @@ readme = "../README.md"
 keywords = ["tensorrt", "inference", "deep-learning", "nvidia", "gpu"]
 categories = ["api-bindings", "science"]
 
-[features]
-default = []
-# Mock mode for development without TensorRT-RTX installed
-mock = ["trtx-sys/mock"]
-
 [dependencies]
 trtx-sys = { version = "0.2.0", path = "../trtx-sys", default-features = false }
 thiserror = "2.0"
+cxx = "1.0"
+libc = "0.2"
+
+# cudarc for safe CUDA operations (required when real mode is enabled)
+# Using cuda-12050 as fallback; CUDA 13.x should be compatible
+cudarc = { version = "0.11", features = ["driver", "cuda-12050"], optional = true }
+
+[features]
+default = ["real"]   # real TensorRT-RTX with cudarc by default
+mock   = ["trtx-sys/mock"] # mock implementation (no CUDA required)
+real   = ["dep:cudarc"]    # real TensorRT-RTX (CUDA always required)
 
 [dev-dependencies]
 # For examples and tests

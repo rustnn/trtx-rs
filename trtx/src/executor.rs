@@ -60,10 +60,10 @@ fn build_engine_from_onnx(logger: &Logger, onnx_bytes: &[u8]) -> Result<Vec<u8>>
     let builder = Builder::new(logger)?;
 
     // Create network with explicit batch
-    let network = builder.create_network(network_flags::EXPLICIT_BATCH)?;
+    let mut network = builder.create_network(network_flags::EXPLICIT_BATCH)?;
 
     // Parse ONNX model
-    let parser = OnnxParser::new(&network, logger)?;
+    let parser = OnnxParser::new(&mut network, logger)?;
     parser.parse(onnx_bytes)?;
 
     // Configure builder
@@ -73,7 +73,7 @@ fn build_engine_from_onnx(logger: &Logger, onnx_bytes: &[u8]) -> Result<Vec<u8>>
     config.set_memory_pool_limit(crate::builder::MemoryPoolType::Workspace, 1 << 30)?;
 
     // Build serialized engine
-    builder.build_serialized_network(&network, &config)
+    builder.build_serialized_network(&mut network, &mut config)
 }
 
 /// Execute TensorRT engine with inputs
@@ -100,7 +100,32 @@ fn execute_engine(
 
         // Check if this is an input or output
         if let Some(input) = inputs.iter().find(|inp| inp.name == name) {
-            // Input tensor - allocate and copy data
+            // Input tensor - validate shape matches engine expectations
+            let expected_shape_i64 = engine.get_tensor_shape(&name)?;
+            let expected_shape: Vec<usize> =
+                expected_shape_i64.iter().map(|&d| d as usize).collect();
+            let expected_elements: usize = expected_shape.iter().product();
+            let provided_elements: usize = input.shape.iter().product();
+
+            if provided_elements != expected_elements {
+                return Err(crate::Error::InvalidArgument(format!(
+                    "Input tensor '{}' shape mismatch: expected {:?} ({} elements), got {:?} ({} elements)",
+                    name, expected_shape, expected_elements, input.shape, provided_elements
+                )));
+            }
+
+            // Validate data length matches shape
+            if input.data.len() != provided_elements {
+                return Err(crate::Error::InvalidArgument(format!(
+                    "Input tensor '{}' data length ({}) doesn't match shape {:?} ({} elements)",
+                    name,
+                    input.data.len(),
+                    input.shape,
+                    provided_elements
+                )));
+            }
+
+            // Allocate and copy data
             let size_bytes = input.data.len() * std::mem::size_of::<f32>();
             let mut buffer = DeviceBuffer::new(size_bytes)?;
 
@@ -116,17 +141,20 @@ fn execute_engine(
 
             device_buffers.push((name.clone(), buffer));
         } else {
-            // Output tensor - allocate buffer
-            // Note: In a real implementation, we would query the tensor shape
-            // For now, we'll use a reasonable default size
-            let estimated_size = 1000 * std::mem::size_of::<f32>();
-            let buffer = DeviceBuffer::new(estimated_size)?;
+            // Output tensor - query actual shape from engine
+            let shape_i64 = engine.get_tensor_shape(&name)?;
+            let shape: Vec<usize> = shape_i64.iter().map(|&d| d as usize).collect();
+
+            // Calculate actual buffer size needed
+            let num_elements: usize = shape.iter().product();
+            let size_bytes = num_elements * std::mem::size_of::<f32>();
+            let buffer = DeviceBuffer::new(size_bytes)?;
 
             unsafe {
                 context.set_tensor_address(&name, buffer.as_ptr())?;
             }
 
-            output_info.push((name.clone(), vec![1, 1000])); // Dummy shape
+            output_info.push((name.clone(), shape));
             device_buffers.push((name.clone(), buffer));
         }
     }
@@ -145,9 +173,9 @@ fn execute_engine(
     for (name, shape) in output_info {
         if let Some((_, buffer)) = device_buffers.iter().find(|(n, _)| n == &name) {
             let size_bytes = shape.iter().product::<usize>() * std::mem::size_of::<f32>();
-            let mut host_data = vec![0u8; size_bytes];
+            let mut host_data: Vec<u8> = vec![0u8; size_bytes];
 
-            buffer.copy_to_host(&mut host_data)?;
+            buffer.copy_to_host(host_data.as_mut_slice())?;
 
             // Convert bytes to f32
             let data: Vec<f32> = unsafe {
@@ -209,9 +237,9 @@ mod tests {
         let dummy_onnx = vec![0u8; 100];
         let inputs = vec![("input".to_string(), vec![1, 3, 224, 224])];
 
-        let result = run_onnx_zeroed(&dummy_onnx, &inputs);
+        let _result = run_onnx_zeroed(&dummy_onnx, &inputs);
         // In mock mode, this should succeed
         #[cfg(feature = "mock")]
-        assert!(result.is_ok());
+        assert!(_result.is_ok());
     }
 }
