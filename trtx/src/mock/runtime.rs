@@ -123,10 +123,7 @@ fn get_nb_io_tensors(engine_ptr: *mut trtx_sys::TrtxCudaEngine) -> Result<i32> {
     Ok(count)
 }
 
-fn get_tensor_name(
-    engine_ptr: *mut trtx_sys::TrtxCudaEngine,
-    index: i32,
-) -> Result<String> {
+fn get_tensor_name(engine_ptr: *mut trtx_sys::TrtxCudaEngine, index: i32) -> Result<String> {
     let mut name_ptr: *const i8 = std::ptr::null();
     let mut error_msg = [0i8; 1024];
 

@@ -86,7 +86,9 @@ impl<'a> Builder<'a> {
                 .createBuilderConfig()
         };
         if config_ptr.is_null() {
-            return Err(Error::Runtime("Failed to create builder config".to_string()));
+            return Err(Error::Runtime(
+                "Failed to create builder config".to_string(),
+            ));
         }
         Ok(BuilderConfig {
             inner: config_ptr as *mut _,

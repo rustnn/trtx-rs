@@ -102,25 +102,29 @@ fn execute_engine(
         if let Some(input) = inputs.iter().find(|inp| inp.name == name) {
             // Input tensor - validate shape matches engine expectations
             let expected_shape_i64 = engine.get_tensor_shape(&name)?;
-            let expected_shape: Vec<usize> = expected_shape_i64.iter().map(|&d| d as usize).collect();
+            let expected_shape: Vec<usize> =
+                expected_shape_i64.iter().map(|&d| d as usize).collect();
             let expected_elements: usize = expected_shape.iter().product();
             let provided_elements: usize = input.shape.iter().product();
-            
+
             if provided_elements != expected_elements {
                 return Err(crate::Error::InvalidArgument(format!(
                     "Input tensor '{}' shape mismatch: expected {:?} ({} elements), got {:?} ({} elements)",
                     name, expected_shape, expected_elements, input.shape, provided_elements
                 )));
             }
-            
+
             // Validate data length matches shape
             if input.data.len() != provided_elements {
                 return Err(crate::Error::InvalidArgument(format!(
                     "Input tensor '{}' data length ({}) doesn't match shape {:?} ({} elements)",
-                    name, input.data.len(), input.shape, provided_elements
+                    name,
+                    input.data.len(),
+                    input.shape,
+                    provided_elements
                 )));
             }
-            
+
             // Allocate and copy data
             let size_bytes = input.data.len() * std::mem::size_of::<f32>();
             let mut buffer = DeviceBuffer::new(size_bytes)?;
@@ -140,7 +144,7 @@ fn execute_engine(
             // Output tensor - query actual shape from engine
             let shape_i64 = engine.get_tensor_shape(&name)?;
             let shape: Vec<usize> = shape_i64.iter().map(|&d| d as usize).collect();
-            
+
             // Calculate actual buffer size needed
             let num_elements: usize = shape.iter().product();
             let size_bytes = num_elements * std::mem::size_of::<f32>();

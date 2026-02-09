@@ -54,7 +54,8 @@ unsafe impl Send for DeviceBuffer {}
 /// Synchronize CUDA device
 pub fn synchronize() -> Result<()> {
     let mut error_msg = [0i8; 1024];
-    let result = unsafe { trtx_sys::trtx_cuda_synchronize(error_msg.as_mut_ptr(), error_msg.len()) };
+    let result =
+        unsafe { trtx_sys::trtx_cuda_synchronize(error_msg.as_mut_ptr(), error_msg.len()) };
     if result != trtx_sys::TRTX_SUCCESS as i32 {
         return Err(from_ffi(result, &error_msg));
     }

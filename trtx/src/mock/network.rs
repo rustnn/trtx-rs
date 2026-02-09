@@ -3,8 +3,8 @@
 //! Helper functions and impl blocks for mock mode.
 //! Most mock implementations return null pointers or default values.
 
-use crate::network::*;
 use crate::error::Result;
+use crate::network::*;
 
 //==============================================================================
 // Helper functions (used by other mock modules via crate::mock::)
@@ -322,7 +322,13 @@ impl NetworkDefinition {
     pub fn add_resize(&mut self, _input: &Tensor) -> Result<ResizeLayer> {
         Ok(ResizeLayer::from_ptr(std::ptr::null_mut()))
     }
-    pub fn add_topk(&mut self, _input: &Tensor, _op: i32, _k: i32, _axes: u32) -> Result<TopKLayer> {
+    pub fn add_topk(
+        &mut self,
+        _input: &Tensor,
+        _op: i32,
+        _k: i32,
+        _axes: u32,
+    ) -> Result<TopKLayer> {
         Ok(TopKLayer::from_ptr(std::ptr::null_mut()))
     }
     pub fn add_gather(

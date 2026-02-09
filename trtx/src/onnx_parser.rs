@@ -2,10 +2,10 @@
 //!
 //! Delegates to real/ or mock/ based on feature flag.
 
-#[cfg(not(feature = "mock"))]
-pub use crate::real::onnx_parser::OnnxParser;
 #[cfg(feature = "mock")]
 pub use crate::mock::onnx_parser::OnnxParser;
+#[cfg(not(feature = "mock"))]
+pub use crate::real::onnx_parser::OnnxParser;
 
 #[cfg(test)]
 mod tests {
@@ -40,6 +40,10 @@ mod tests {
             .unwrap();
         let parser = OnnxParser::new(&mut network, &logger).unwrap();
         let result = parser.parse(&model_bytes);
-        assert!(result.is_ok(), "Failed to parse ONNX model: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Failed to parse ONNX model: {:?}",
+            result.err()
+        );
     }
 }

@@ -74,7 +74,9 @@ unsafe impl Send for Builder<'_> {}
 //------------------------------------------------------------------------------
 
 /// Create builder via FFI (mock mode)
-pub(crate) fn trtx_builder_create(logger_ptr: *mut trtx_sys::TrtxLogger) -> Result<*mut trtx_sys::TrtxBuilder> {
+pub(crate) fn trtx_builder_create(
+    logger_ptr: *mut trtx_sys::TrtxLogger,
+) -> Result<*mut trtx_sys::TrtxBuilder> {
     let mut builder_ptr: *mut trtx_sys::TrtxBuilder = std::ptr::null_mut();
     let mut error_msg = [0i8; 1024];
 
@@ -147,7 +149,9 @@ fn create_network(
         return Err(super::from_ffi(result, &error_msg));
     }
 
-    Ok(NetworkDefinition::from_ptr(network_ptr as *mut std::ffi::c_void))
+    Ok(NetworkDefinition::from_ptr(
+        network_ptr as *mut std::ffi::c_void,
+    ))
 }
 
 fn create_config(

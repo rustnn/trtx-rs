@@ -1,8 +1,8 @@
 //! Real TensorRT network implementation
 //! No #[cfg] - this module is only compiled when mock feature is disabled
 
-use crate::network::*;
 use crate::error::{Error, Result};
+use crate::network::*;
 
 /// Macro to implement Layer trait for real TensorRT types
 macro_rules! impl_layer_real {
@@ -38,7 +38,10 @@ impl_layer_real!(TopKLayer, trtx_sys::nvinfer1::ITopKLayer);
 impl_layer_real!(GatherLayer, trtx_sys::nvinfer1::IGatherLayer);
 impl_layer_real!(ScatterLayer, trtx_sys::nvinfer1::IScatterLayer);
 impl_layer_real!(SelectLayer, trtx_sys::nvinfer1::ISelectLayer);
-impl_layer_real!(MatrixMultiplyLayer, trtx_sys::nvinfer1::IMatrixMultiplyLayer);
+impl_layer_real!(
+    MatrixMultiplyLayer,
+    trtx_sys::nvinfer1::IMatrixMultiplyLayer
+);
 impl_layer_real!(SoftMaxLayer, trtx_sys::nvinfer1::ISoftMaxLayer);
 impl_layer_real!(ReduceLayer, trtx_sys::nvinfer1::IReduceLayer);
 impl_layer_real!(CumulativeLayer, trtx_sys::nvinfer1::ICumulativeLayer);
@@ -240,9 +243,8 @@ impl Tensor {
     pub fn dimensions(&self) -> Result<Vec<i32>> {
         let mut dims = [0i32; 8];
         let mut nb_dims = 0i32;
-        let result = unsafe {
-            trtx_sys::tensor_get_dimensions(self.inner, dims.as_mut_ptr(), &mut nb_dims)
-        };
+        let result =
+            unsafe { trtx_sys::tensor_get_dimensions(self.inner, dims.as_mut_ptr(), &mut nb_dims) };
         if result.is_null() {
             return Err(Error::Runtime(
                 "Failed to get tensor dimensions".to_string(),
@@ -284,11 +286,9 @@ impl NetworkDefinition {
             unsafe { &mut *(self.inner as *mut trtx_sys::nvinfer1::INetworkDefinition) };
         let mut network_pin = unsafe { std::pin::Pin::new_unchecked(network_ref) };
         let tensor_ptr = unsafe {
-            network_pin.as_mut().addInput(
-                name_cstr.as_ptr(),
-                data_type,
-                &dims_struct,
-            )
+            network_pin
+                .as_mut()
+                .addInput(name_cstr.as_ptr(), data_type, &dims_struct)
         };
         if tensor_ptr.is_null() {
             return Err(Error::Runtime(format!("Failed to add input: {}", name)));
@@ -373,10 +373,9 @@ impl NetworkDefinition {
             let mut network_pin = crate::autocxx_helpers::cast_and_pin::<
                 trtx_sys::nvinfer1::INetworkDefinition,
             >(self.inner);
-            let layer_ptr = network_pin.as_mut().addActivation(
-                std::pin::Pin::new_unchecked(input_ref),
-                activation_type,
-            );
+            let layer_ptr = network_pin
+                .as_mut()
+                .addActivation(std::pin::Pin::new_unchecked(input_ref), activation_type);
             if layer_ptr.is_null() {
                 return Err(Error::Runtime("Failed to add activation layer".to_string()));
             }
@@ -433,10 +432,9 @@ impl NetworkDefinition {
             let mut network_pin = crate::autocxx_helpers::cast_and_pin::<
                 trtx_sys::nvinfer1::INetworkDefinition,
             >(self.inner);
-            let layer_ptr = network_pin.as_mut().addCast(
-                std::pin::Pin::new_unchecked(input_ref),
-                to_type,
-            );
+            let layer_ptr = network_pin
+                .as_mut()
+                .addCast(std::pin::Pin::new_unchecked(input_ref), to_type);
             if layer_ptr.is_null() {
                 return Err(Error::Runtime("Failed to add cast layer".to_string()));
             }
@@ -478,18 +476,16 @@ impl NetworkDefinition {
         pooling_type: trtx_sys::nvinfer1::PoolingType,
         window_size: &[i32; 2],
     ) -> Result<PoolingLayer> {
-        let window_dims =
-            trtx_sys::Dims::new_2d(window_size[0] as i64, window_size[1] as i64);
+        let window_dims = trtx_sys::Dims::new_2d(window_size[0] as i64, window_size[1] as i64);
         let network_ref =
             unsafe { &mut *(self.inner as *mut trtx_sys::nvinfer1::INetworkDefinition) };
         let mut network_pin = unsafe { std::pin::Pin::new_unchecked(network_ref) };
         let input_ref = unsafe { &mut *(input.inner as *mut trtx_sys::nvinfer1::ITensor) };
         let mut input_pin = unsafe { std::pin::Pin::new_unchecked(input_ref) };
-        let layer_ptr = network_pin.as_mut().addPoolingNd(
-            input_pin.as_mut(),
-            pooling_type,
-            &window_dims,
-        );
+        let layer_ptr =
+            network_pin
+                .as_mut()
+                .addPoolingNd(input_pin.as_mut(), pooling_type, &window_dims);
         if layer_ptr.is_null() {
             return Err(Error::Runtime("Failed to add pooling layer".to_string()));
         }
@@ -559,8 +555,7 @@ impl NetworkDefinition {
         let bias_ptr = bias_weights
             .map(|b| b.as_ptr() as *const std::ffi::c_void)
             .unwrap_or(std::ptr::null());
-        let kernel_dims =
-            trtx_sys::Dims::new_2d(kernel_size[0] as i64, kernel_size[1] as i64);
+        let kernel_dims = trtx_sys::Dims::new_2d(kernel_size[0] as i64, kernel_size[1] as i64);
         let kernel_w = trtx_sys::nvinfer1::Weights::new_float(
             kernel_weights.as_ptr() as *const std::ffi::c_void,
             weight_count,
@@ -606,10 +601,8 @@ impl NetworkDefinition {
                 input_dims
             )));
         };
-        let weight_count = nb_output_maps as i64
-            * input_channels
-            * kernel_size[0] as i64
-            * kernel_size[1] as i64;
+        let weight_count =
+            nb_output_maps as i64 * input_channels * kernel_size[0] as i64 * kernel_size[1] as i64;
         let bias_count = if bias_weights.is_some() {
             nb_output_maps as i64
         } else {
@@ -618,8 +611,7 @@ impl NetworkDefinition {
         let bias_ptr = bias_weights
             .map(|b| b.as_ptr() as *const std::ffi::c_void)
             .unwrap_or(std::ptr::null());
-        let kernel_dims =
-            trtx_sys::Dims::new_2d(kernel_size[0] as i64, kernel_size[1] as i64);
+        let kernel_dims = trtx_sys::Dims::new_2d(kernel_size[0] as i64, kernel_size[1] as i64);
         let kernel_w = trtx_sys::nvinfer1::Weights::new_float(
             kernel_weights.as_ptr() as *const std::ffi::c_void,
             weight_count,
@@ -647,14 +639,14 @@ impl NetworkDefinition {
     }
 
     pub fn add_concatenation(&mut self, inputs: &[&Tensor]) -> Result<ConcatenationLayer> {
-        let mut input_ptrs: Vec<*mut std::ffi::c_void> =
-            inputs.iter().map(|t| t.inner).collect();
-        let layer_ptr =
-            unsafe { trtx_sys::network_add_concatenation(
+        let mut input_ptrs: Vec<*mut std::ffi::c_void> = inputs.iter().map(|t| t.inner).collect();
+        let layer_ptr = unsafe {
+            trtx_sys::network_add_concatenation(
                 self.inner,
                 input_ptrs.as_mut_ptr(),
                 inputs.len() as i32,
-            ) };
+            )
+        };
         if layer_ptr.is_null() {
             return Err(Error::Runtime(
                 "Failed to add concatenation layer".to_string(),
@@ -703,8 +695,9 @@ impl NetworkDefinition {
         let layer_ptr = unsafe {
             let network_ptr = self.inner as *mut trtx_sys::nvinfer1::INetworkDefinition;
             let mut network_pin = std::pin::Pin::new_unchecked(&mut *network_ptr);
-            network_pin.as_mut().addConstant(&dims_struct, weights_struct)
-                as *mut std::ffi::c_void
+            network_pin
+                .as_mut()
+                .addConstant(&dims_struct, weights_struct) as *mut std::ffi::c_void
         };
         if layer_ptr.is_null() {
             return Err(Error::Runtime("Failed to add constant tensor".to_string()));
@@ -1093,8 +1086,9 @@ impl NetworkDefinition {
 
     pub fn add_assertion(&mut self, condition: &Tensor, message: &str) -> Result<()> {
         let message_cstr = std::ffi::CString::new(message)?;
-        let layer_ptr =
-            unsafe { trtx_sys::network_add_assertion(self.inner, condition.inner, message_cstr.as_ptr()) };
+        let layer_ptr = unsafe {
+            trtx_sys::network_add_assertion(self.inner, condition.inner, message_cstr.as_ptr())
+        };
         if layer_ptr.is_null() {
             return Err(Error::Runtime("Failed to add assertion layer".to_string()));
         }

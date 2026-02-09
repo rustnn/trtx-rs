@@ -2,10 +2,10 @@
 //!
 //! Delegates to real/ or mock/ based on feature flag.
 
-#[cfg(not(feature = "mock"))]
-pub use crate::real::cuda::*;
 #[cfg(feature = "mock")]
 pub use crate::mock::cuda::*;
+#[cfg(not(feature = "mock"))]
+pub use crate::real::cuda::*;
 
 #[cfg(test)]
 mod tests {

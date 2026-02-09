@@ -111,10 +111,11 @@ impl<'a> ExecutionContext<'a> {
             return Err(Error::Runtime("Invalid execution context".to_string()));
         }
         let name_cstr = std::ffi::CString::new(name)?;
-        let success = crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::IExecutionContext>(
-            self.inner,
-        )
-        .setTensorAddress(name_cstr.as_ptr(), data as *mut _);
+        let success =
+            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::IExecutionContext>(
+                self.inner,
+            )
+            .setTensorAddress(name_cstr.as_ptr(), data as *mut _);
         if !success {
             return Err(Error::Runtime("Failed to set tensor address".to_string()));
         }
@@ -125,10 +126,11 @@ impl<'a> ExecutionContext<'a> {
         if self.inner.is_null() {
             return Err(Error::Runtime("Invalid execution context".to_string()));
         }
-        let success = crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::IExecutionContext>(
-            self.inner,
-        )
-        .enqueueV3(cuda_stream as *mut _);
+        let success =
+            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::IExecutionContext>(
+                self.inner,
+            )
+            .enqueueV3(cuda_stream as *mut _);
         if !success {
             return Err(Error::Runtime("Failed to enqueue inference".to_string()));
         }
