@@ -150,6 +150,7 @@ pub fn reduce_op_name(op: &ReduceOperation) -> &'static str {
 pub fn cumulative_op_name(op: &CumulativeOperation) -> &'static str {
     match *op {
         CumulativeOperation::kSUM => "kSUM",
+        _ => "other", // Real TensorRT-RTX API may have fewer variants than mock
     }
 }
 
@@ -202,6 +203,7 @@ pub fn resize_coord_transform_name(transform: &ResizeCoordinateTransformation) -
         ResizeCoordinateTransformation::kALIGN_CORNERS => "kALIGN_CORNERS",
         ResizeCoordinateTransformation::kASYMMETRIC => "kASYMMETRIC",
         ResizeCoordinateTransformation::kHALF_PIXEL => "kHALF_PIXEL",
+        _ => "other", // Real TensorRT-RTX API may have fewer variants than mock
     }
 }
 
@@ -214,6 +216,7 @@ pub fn resize_selector_name(selector: &ResizeSelector) -> &'static str {
     match *selector {
         ResizeSelector::kFORMULA => "kFORMULA",
         ResizeSelector::kUPPER => "kUPPER",
+        _ => "other", // Real TensorRT-RTX API may have fewer variants than mock
     }
 }
 
@@ -224,10 +227,11 @@ pub fn resize_selector_name(selector: &ResizeSelector) -> &'static str {
 /// Get the string name of a ResizeRoundMode enum variant
 pub fn resize_round_mode_name(mode: &ResizeRoundMode) -> &'static str {
     match *mode {
-        ResizeRoundMode::kHALF_UP => "kHALF_UP",
-        ResizeRoundMode::kHALF_DOWN => "kHALF_DOWN",
         ResizeRoundMode::kFLOOR => "kFLOOR",
         ResizeRoundMode::kCEIL => "kCEIL",
+        ResizeRoundMode::kHALF_UP => "kHALF_UP",
+        ResizeRoundMode::kHALF_DOWN => "kHALF_DOWN",
+        _ => "other", // Real TensorRT-RTX API may have fewer variants than mock
     }
 }
 

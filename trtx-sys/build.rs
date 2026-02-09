@@ -370,6 +370,313 @@ extern "C" {
 
     pub fn trtx_cuda_get_default_stream() -> *mut ::std::os::raw::c_void;
 }
+
+// Mock nvinfer1 module - stub types for trtx crate compatibility in mock mode
+pub mod nvinfer1 {
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum DataType {
+        kFLOAT = 0,
+        kHALF = 1,
+        kINT8 = 2,
+        kINT32 = 3,
+        kBOOL = 4,
+        kUINT8 = 5,
+        kFP8 = 6,
+        kBF16 = 7,
+        kINT64 = 8,
+        kINT4 = 9,
+        kFP4 = 10,
+        kE8M0 = 11,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum ActivationType {
+        kRELU = 0,
+        kSIGMOID = 1,
+        kTANH = 2,
+        kLEAKY_RELU = 3,
+        kELU = 4,
+        kSELU = 5,
+        kSOFTSIGN = 6,
+        kSOFTPLUS = 7,
+        kCLIP = 8,
+        kHARD_SIGMOID = 9,
+        kSCALED_TANH = 10,
+        kTHRESHOLDED_RELU = 11,
+        kGELU_ERF = 12,
+        kGELU_TANH = 13,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum PoolingType {
+        kMAX = 0,
+        kAVERAGE = 1,
+        kMAX_AVERAGE_BLEND = 2,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum ElementWiseOperation {
+        kSUM = 0,
+        kPROD = 1,
+        kMAX = 2,
+        kMIN = 3,
+        kSUB = 4,
+        kDIV = 5,
+        kPOW = 6,
+        kFLOOR_DIV = 7,
+        kAND = 8,
+        kOR = 9,
+        kXOR = 10,
+        kEQUAL = 11,
+        kGREATER = 12,
+        kLESS = 13,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum MatrixOperation {
+        kNONE = 0,
+        kTRANSPOSE = 1,
+        kVECTOR = 2,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum UnaryOperation {
+        kEXP = 0,
+        kLOG = 1,
+        kSQRT = 2,
+        kRECIP = 3,
+        kABS = 4,
+        kNEG = 5,
+        kSIN = 6,
+        kCOS = 7,
+        kTAN = 8,
+        kSINH = 9,
+        kCOSH = 10,
+        kASIN = 11,
+        kACOS = 12,
+        kATAN = 13,
+        kASINH = 14,
+        kACOSH = 15,
+        kATANH = 16,
+        kCEIL = 17,
+        kFLOOR = 18,
+        kERF = 19,
+        kNOT = 20,
+        kROUND = 21,
+        kSIGN = 22,
+        kISINF = 23,
+        kISNAN = 24,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum ReduceOperation {
+        kSUM = 0,
+        kPROD = 1,
+        kMAX = 2,
+        kMIN = 3,
+        kAVG = 4,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum CumulativeOperation {
+        kSUM = 0,
+        kPROD = 1,
+        kMIN = 2,
+        kMAX = 3,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum GatherMode {
+        kDEFAULT = 0,
+        kELEMENT = 1,
+        kND = 2,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum ScatterMode {
+        kELEMENT = 0,
+        kND = 1,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum InterpolationMode {
+        kNEAREST = 0,
+        kLINEAR = 1,
+        kCUBIC = 2,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum ResizeCoordinateTransformation {
+        kASYMMETRIC = 0,
+        kALIGN_CORNERS = 1,
+        kHALF_PIXEL = 2,
+        kHALF_PIXEL_SYMMETRIC = 3,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum ResizeRoundMode {
+        kFLOOR = 0,
+        kCEIL = 1,
+        kROUND = 2,
+        kHALF_UP = 3,
+        kHALF_DOWN = 4,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum ResizeSelector {
+        kFORMULA = 0,
+        kSIZES = 1,
+        kUPPER = 2,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum TopKOperation {
+        kMAX = 0,
+        kMIN = 1,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum ScaleMode {
+        kUNIFORM = 0,
+        kCHANNEL = 1,
+        kELEMENTWISE = 2,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum ExecutionContextAllocationStrategy {
+        kSTATIC = 0,
+        kUSER_MANAGED = 1,
+    }
+
+    // Layer interface types (opaque stubs for mock - only used in type positions)
+    #[repr(C)]
+    pub struct IShuffleLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct IActivationLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct IResizeLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct ITopKLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct IGatherLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct IScatterLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct ISelectLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct IMatrixMultiplyLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct ISoftMaxLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct IReduceLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct ICumulativeLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct IPoolingLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct IConvolutionLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct IDeconvolutionLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct IQuantizeLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct IDequantizeLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct IConstantLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct IConcatenationLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct IScaleLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct ISliceLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct IUnaryLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct IIdentityLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct IPaddingLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct ICastLayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct ITensor { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct ILayer { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct INetworkDefinition { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct ICudaEngine { _unused: [u8; 0] }
+    #[repr(C)]
+    pub struct IExecutionContext { _unused: [u8; 0] }
+
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    pub struct Weights {
+        pub type_: DataType,
+        pub values: *const ::std::ffi::c_void,
+        pub count: i64,
+    }
+
+    impl Weights {
+        pub fn new_float(values_ptr: *const ::std::ffi::c_void, count_val: i64) -> Self {
+            Self { type_: DataType::kFLOAT, values: values_ptr, count: count_val }
+        }
+        pub fn new_with_type(
+            data_type: DataType,
+            values_ptr: *const ::std::ffi::c_void,
+            count_val: i64,
+        ) -> Self {
+            Self { type_: data_type, values: values_ptr, count: count_val }
+        }
+    }
+}
+
+// Dims64/Dims - mock version
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct Dims64 {
+    pub nbDims: i32,
+    pub d: [i64; 8],
+}
+
+pub type Dims = Dims64;
+
+impl Dims64 {
+    pub fn from_slice(dims: &[i64]) -> Self {
+        let mut d = [0i64; 8];
+        let nb_dims = dims.len().min(8) as i32;
+        d[..nb_dims as usize].copy_from_slice(&dims[..nb_dims as usize]);
+        Self { nbDims: nb_dims, d }
+    }
+    pub fn new_2d(d0: i64, d1: i64) -> Self {
+        Self { nbDims: 2, d: [d0, d1, 0, 0, 0, 0, 0, 0] }
+    }
+    pub fn new_3d(d0: i64, d1: i64, d2: i64) -> Self {
+        Self { nbDims: 3, d: [d0, d1, d2, 0, 0, 0, 0, 0] }
+    }
+    pub fn new_4d(d0: i64, d1: i64, d2: i64, d3: i64) -> Self {
+        Self { nbDims: 4, d: [d0, d1, d2, d3, 0, 0, 0, 0] }
+    }
+}
+
+// ResizeMode is InterpolationMode in TensorRT
+pub use nvinfer1::InterpolationMode as ResizeMode;
 "#;
 
     std::fs::write(out_path.join("bindings.rs"), mock_bindings)

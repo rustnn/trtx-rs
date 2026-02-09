@@ -169,9 +169,9 @@ fn execute_engine(
     for (name, shape) in output_info {
         if let Some((_, buffer)) = device_buffers.iter().find(|(n, _)| n == &name) {
             let size_bytes = shape.iter().product::<usize>() * std::mem::size_of::<f32>();
-            let mut host_data = vec![0u8; size_bytes];
+            let mut host_data: Vec<u8> = vec![0u8; size_bytes];
 
-            buffer.copy_to_host(&mut host_data)?;
+            buffer.copy_to_host(host_data.as_mut_slice())?;
 
             // Convert bytes to f32
             let data: Vec<f32> = unsafe {

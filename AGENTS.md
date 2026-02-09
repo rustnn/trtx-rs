@@ -11,36 +11,42 @@ trtx-rs provides safe Rust bindings to NVIDIA TensorRT-RTX for high-performance 
 
 ## Build Commands
 
-### Development (Mock Mode - No GPU Required)
+### Default (Real TensorRT-RTX + cudarc)
 
-Mock mode allows development without TensorRT-RTX installed:
-
-```bash
-# Build
-make build                    # Debug build with mock feature
-make build-release            # Release build with mock feature
-
-# Test
-make test                     # Run all tests with mock
-make test-mock               # Verbose test output
-
-# Single test
-cargo test --features mock test_name
-
-# Run example
-cargo run --features mock --example rustnn_executor
-```
-
-### Production (Real TensorRT-RTX)
+By default, trtx builds with real TensorRT-RTX and cudarc for CUDA operations:
 
 ```bash
 # Set environment
 export TENSORRT_RTX_DIR=/path/to/tensorrt-rtx
 export CUDA_ROOT=/usr/local/cuda
 
-# Build without mock
-cargo build --release
-cargo test
+# Build (uses real TensorRT-RTX)
+make build                    # Debug build
+make build-release            # Release build
+
+# Test
+make test                     # Run all tests
+
+# Run example
+cargo run --example rustnn_executor
+```
+
+### Mock Mode (No GPU Required)
+
+Use mock mode when TensorRT-RTX is not installed (e.g., CI, macOS):
+
+```bash
+# Build with mock
+make build-mock               # Debug build with mock
+cargo build --features mock
+
+# Test with mock
+make test-mock                # Verbose output
+cargo test --features mock
+
+# Run example
+make run-example-mock
+cargo run --features mock --example rustnn_executor
 ```
 
 ### Code Quality
@@ -138,12 +144,12 @@ Return `TRTX_SUCCESS` (0) on success, error code on failure.
 
 ## Mock Mode
 
-Mock mode is **critical** for development. It provides stub implementations allowing:
+Mock mode provides stub implementations for development without TensorRT-RTX:
 - Development on machines without TensorRT-RTX (e.g., macOS)
 - CI/CD on any platform
 - API validation without GPU
 
-**Always test with mock:** When adding new FFI functions, update both real bindings AND mock implementations.
+**Use `--features mock`** when TensorRT-RTX is not available. When adding new FFI functions, update both real bindings AND mock implementations in `trtx-sys/build.rs` and `trtx-sys/mock.c`.
 
 ### Mock Implementation Files
 

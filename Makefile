@@ -1,4 +1,4 @@
-.PHONY: help build build-release test test-mock clippy clippy-fix fmt fmt-check clean package publish-dry publish install check-all
+.PHONY: help build build-release build-mock test test-mock clippy clippy-fix fmt fmt-check clean package publish-dry publish install check-all run-example run-example-mock
 
 # Default target
 help:
@@ -6,9 +6,10 @@ help:
 	@echo "================"
 	@echo ""
 	@echo "Common targets:"
-	@echo "  make build          - Build in debug mode with mock feature"
-	@echo "  make build-release  - Build in release mode with mock feature"
-	@echo "  make test           - Run all tests with mock feature"
+	@echo "  make build          - Build in debug mode (real TensorRT-RTX)"
+	@echo "  make build-release  - Build in release mode (real TensorRT-RTX)"
+	@echo "  make build-mock     - Build with mock feature (no GPU needed)"
+	@echo "  make test           - Run all tests (real TensorRT-RTX)"
 	@echo "  make clippy         - Run clippy lints"
 	@echo "  make fmt            - Format code"
 	@echo "  make clean          - Clean build artifacts"
@@ -23,26 +24,29 @@ help:
 	@echo "  make fmt-check      - Check code formatting"
 	@echo "  make clippy-fix     - Auto-fix clippy warnings"
 
-# Build targets
+# Build targets (default: real TensorRT-RTX)
 build:
-	cargo build --features mock
+	cargo build
 
 build-release:
-	cargo build --release --features mock
+	cargo build --release
+
+build-mock:
+	cargo build --features mock
 
 # Test targets
 test:
-	cargo test --features mock
+	cargo test
 
 test-mock:
 	cargo test --features mock --verbose
 
 # Linting targets
 clippy:
-	cargo clippy --features mock --all-targets -- -D warnings
+	cargo clippy --all-targets -- -D warnings
 
 clippy-fix:
-	cargo clippy --fix --features mock --all-targets --allow-dirty
+	cargo clippy --fix --all-targets --allow-dirty
 
 # Formatting targets
 fmt:
@@ -62,32 +66,35 @@ check-all: fmt-check clippy test
 # Packaging targets
 package:
 	@echo "Packaging trtx-sys..."
-	cargo package --features mock -p trtx-sys --allow-dirty
+	cargo package -p trtx-sys --allow-dirty
 	@echo "Packaging trtx..."
-	cargo package --features mock -p trtx --allow-dirty
+	cargo package -p trtx --allow-dirty
 	@echo "✓ Both packages created successfully"
 
 # Publishing targets
 publish-dry:
 	@echo "Dry-run publishing trtx-sys..."
-	cargo publish --dry-run --features mock -p trtx-sys
+	cargo publish --dry-run -p trtx-sys
 	@echo "Dry-run publishing trtx..."
-	cargo publish --dry-run --features mock -p trtx
+	cargo publish --dry-run -p trtx
 	@echo "✓ Dry-run completed successfully"
 
 publish:
 	@echo "Publishing trtx-sys to crates.io..."
-	cargo publish --features mock -p trtx-sys
+	cargo publish -p trtx-sys
 	@echo "Waiting 30 seconds for trtx-sys to be available..."
 	@sleep 30
 	@echo "Publishing trtx to crates.io..."
-	cargo publish --features mock -p trtx
+	cargo publish -p trtx
 	@echo "✓ Both crates published successfully!"
 
 # Install from local (for testing)
 install:
-	cargo install --path trtx --features mock --force
+	cargo install --path trtx --force
 
 # Run example
 run-example:
+	cargo run --example rustnn_executor
+
+run-example-mock:
 	cargo run --features mock --example rustnn_executor

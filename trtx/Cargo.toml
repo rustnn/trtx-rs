@@ -21,10 +21,10 @@ libc = "0.2"
 cudarc = { version = "0.11", features = ["driver", "cuda-12050"], optional = true }
 
 [features]
-default = ["use-cudarc"]
-# Mock mode for development without TensorRT-RTX installed
-mock = ["trtx-sys/mock"]
-use-cudarc = ["cudarc"]
+default = ["real", "use-cudarc"]  # real TensorRT-RTX with cudarc by default
+mock   = ["trtx-sys/mock"]       # mock implementation (only when explicitly requested)
+real   = []                      # real TensorRT-RTX implementation
+use-cudarc = ["cudarc"]          # CUDA memory management (for real mode)
 
 [dev-dependencies]
 # For examples and tests
