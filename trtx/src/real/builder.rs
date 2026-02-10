@@ -126,7 +126,8 @@ impl<'a> Builder<'a> {
         let data = unsafe {
             let host_memory = &*serialized_engine;
             let size_raw = host_memory.size();
-            let size = size_raw.0 as usize;
+            #[allow(clippy::useless_conversion)]
+            let size = size_raw.into();
             let data_ptr = host_memory.data();
             let slice = std::slice::from_raw_parts(data_ptr as *const u8, size);
             slice.to_vec()
