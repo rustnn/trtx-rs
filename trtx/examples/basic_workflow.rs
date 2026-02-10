@@ -16,6 +16,11 @@ use trtx::builder::{network_flags, MemoryPoolType};
 use trtx::{Builder, Logger, Runtime};
 
 fn main() -> Result<(), Box<dyn Error>> {
+    #[cfg(feature = "dlopen_tensorrt_rtx")]
+    trtx::dynamically_load_tensorrt(None::<String>).unwrap();
+    #[cfg(feature = "dlopen_tensorrt_onnxparser")]
+    trtx::dynamically_load_tensorrt_onnxparser(None::<String>).unwrap();
+
     println!("TensorRT-RTX Basic Workflow Example");
     println!("=====================================\n");
 

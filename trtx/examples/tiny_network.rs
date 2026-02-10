@@ -16,6 +16,11 @@ use trtx::network::Layer; // Import Layer trait for get_output method
 use trtx::{ActivationType, Builder, DataType, Logger, Runtime};
 
 fn main() -> Result<()> {
+    #[cfg(feature = "dlopen_tensorrt_rtx")]
+    trtx::dynamically_load_tensorrt(None::<String>).unwrap();
+    #[cfg(feature = "dlopen_tensorrt_onnxparser")]
+    trtx::dynamically_load_tensorrt_onnxparser(None::<String>).unwrap();
+
     println!("=== Tiny Network Example ===\n");
 
     // 1. Create logger

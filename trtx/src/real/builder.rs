@@ -51,9 +51,36 @@ pub struct Builder<'a> {
 }
 
 impl<'a> Builder<'a> {
+    #[cfg(not(feature = "link_tensorrt_rtx"))]
+    #[cfg(not(feature = "dlopen_tensorrt_rtx"))]
+    pub fn new(logger: &'a Logger) -> Result<Self> {
+        Err(Error::TrtRtxLibraryNotLoaded)
+    }
+
+    #[cfg(any(feature = "link_tensorrt_rtx", feature = "dlopen_tensorrt_rtx"))]
     pub fn new(logger: &'a Logger) -> Result<Self> {
         let logger_ptr = logger.as_logger_ptr();
-        let builder_ptr = unsafe { trtx_sys::create_infer_builder(logger_ptr) };
+        let builder_ptr = {
+            #[cfg(feature = "link_tensorrt_rtx")]
+            unsafe {
+                trtx_sys::create_infer_builder(logger_ptr)
+            }
+            #[cfg(not(feature = "link_tensorrt_rtx"))]
+            #[cfg(feature = "dlopen_tensorrt_rtx")]
+            unsafe {
+                use libloading::Symbol;
+                use std::ffi::c_void;
+
+                use crate::TRTLIB;
+
+                let lock = TRTLIB.read()?;
+                let create_infer_builder: Symbol<fn(*mut c_void, u32) -> *mut c_void> = lock
+                    .as_ref()
+                    .ok_or(Error::TrtRtxLibraryNotLoaded)?
+                    .get(b"createInferBuilder_INTERNAL")?;
+                create_infer_builder(logger_ptr, trtx_sys::get_tensorrt_version())
+            }
+        };
         if builder_ptr.is_null() {
             return Err(Error::Runtime("Failed to create builder".to_string()));
         }

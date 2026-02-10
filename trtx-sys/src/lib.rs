@@ -135,6 +135,7 @@ pub mod real_bindings {
 
     // Logger bridge C functions
     extern "C" {
+        pub fn get_tensorrt_version() -> u32;
         pub fn create_rust_logger_bridge(
             callback: RustLogCallback,
             user_data: *mut std::ffi::c_void,
@@ -145,11 +146,14 @@ pub mod real_bindings {
         pub fn get_logger_interface(logger: *mut RustLoggerBridge) -> *mut std::ffi::c_void; // Returns ILogger*
 
         // TensorRT factory functions (wrapped as simple C functions)
+        #[cfg(feature = "link_tensorrt_rtx")]
         pub fn create_infer_builder(logger: *mut std::ffi::c_void) -> *mut std::ffi::c_void; // Returns IBuilder*
 
+        #[cfg(feature = "link_tensorrt_rtx")]
         pub fn create_infer_runtime(logger: *mut std::ffi::c_void) -> *mut std::ffi::c_void; // Returns IRuntime*
 
         // ONNX Parser factory function
+        #[cfg(feature = "link_tensorrt_onnxparser")]
         pub fn create_onnx_parser(
             network: *mut std::ffi::c_void,
             logger: *mut std::ffi::c_void,
@@ -323,6 +327,7 @@ pub mod real_bindings {
         pub use super::ffi::nvinfer1::*;
     }
 
+    #[cfg(feature = "onnxparser")]
     pub mod nvonnxparser {
         pub use super::ffi::nvonnxparser::*;
     }

@@ -40,6 +40,28 @@ pub enum Error {
     /// IO error
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+
+    #[error("TensorRT library not loaded")]
+    TrtRtxLibraryNotLoaded,
+
+    #[error("TensorRT onnxparser library not loaded")]
+    TrtOnnxParserLibraryNotLoaded,
+
+    #[cfg(any(
+        feature = "dlopen_tensorrt_rtx",
+        feature = "dlopen_tensorrt_onnxparser"
+    ))]
+    #[error("Dynamic loading error: {0}")]
+    Libloading(#[from] libloading::Error),
+
+    #[error("Would unwrap a poisened lock")]
+    LockPoisining,
+}
+
+impl<T> From<std::sync::PoisonError<T>> for Error {
+    fn from(_: std::sync::PoisonError<T>) -> Self {
+        Error::LockPoisining
+    }
 }
 
 impl Error {

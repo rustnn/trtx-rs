@@ -3,6 +3,10 @@ use std::path::PathBuf;
 
 fn main() {
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let link_trt = env::var("CARGO_FEATURE_LINK_TENSORRT_RTX").is_ok();
+    let link_trt_onnxparser = env::var("CARGO_FEATURE_LINK_TENSORRT_ONNXPARSER").is_ok();
+    println!("cargo:rerun-if-env-changed=CARGO_FEATURE_LINK_TENSORRT_RTX");
+    println!("cargo:rerun-if-env-changed=CARGO_FEATURE_LINK_TENSORRT_ONNXPARSER");
 
     // Check if we're in mock mode
     if env::var("CARGO_FEATURE_MOCK").is_ok() {
@@ -43,11 +47,19 @@ fn main() {
     println!("cargo:rustc-link-search=native={}", lib_dir);
     // TensorRT 10.x uses versioned library names
     if cfg!(target_os = "windows") {
-        println!("cargo:rustc-link-lib=dylib=tensorrt_rtx_1_3");
-        println!("cargo:rustc-link-lib=dylib=tensorrt_onnxparser_rtx_1_3");
+        if link_trt {
+            println!("cargo:rustc-link-lib=dylib=tensorrt_rtx_1_3");
+        }
+        if link_trt_onnxparser {
+            println!("cargo:rustc-link-lib=dylib=tensorrt_onnxparser_rtx_1_3");
+        }
     } else {
-        println!("cargo:rustc-link-lib=dylib=tensorrt_rtx");
-        println!("cargo:rustc-link-lib=dylib=tensorrt_onnxparser_rtx");
+        if link_trt {
+            println!("cargo:rustc-link-lib=dylib=tensorrt_rtx");
+        }
+        if link_trt_onnxparser {
+            println!("cargo:rustc-link-lib=dylib=tensorrt_onnxparser_rtx");
+        }
     }
 
     let cuda_dir = env::var("CUDA_PATH")
@@ -74,6 +86,12 @@ fn main() {
 
     // Also include CUDA headers
     cc_build.include(format!("{}/include", cuda_dir));
+    if link_trt {
+        cc_build.define("TRTX_LINK_TENSORRT_RTX", "1");
+    }
+    if link_trt_onnxparser {
+        cc_build.define("TRTX_LINK_TENSORRT_ONNXPARSER", "1");
+    }
 
     // Use correct C++17 flag based on compiler
     if cfg!(target_os = "windows") && cfg!(target_env = "msvc") {

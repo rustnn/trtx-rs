@@ -105,6 +105,7 @@ pub mod error;
 pub mod executor;
 pub mod logger;
 pub mod network;
+#[cfg(feature = "onnxparser")]
 pub mod onnx_parser;
 pub mod runtime;
 
@@ -116,11 +117,73 @@ pub use enum_helpers::{
     unary_op_name,
 };
 pub use error::{Error, Result};
-pub use executor::{run_onnx_with_tensorrt, run_onnx_zeroed, TensorInput, TensorOutput};
+#[cfg(feature = "onnxparser")]
+pub use executor::{run_onnx_with_tensorrt, run_onnx_zeroed};
+pub use executor::{TensorInput, TensorOutput};
+#[cfg(feature = "dlopen_tensorrt_rtx")]
+use libloading::AsFilename;
 pub use logger::{LogHandler, Logger, Severity, StderrLogger};
 pub use network::{NetworkDefinition, Tensor};
+#[cfg(feature = "onnxparser")]
 pub use onnx_parser::OnnxParser;
 pub use runtime::{CudaEngine, ExecutionContext, Runtime};
+
+#[cfg(feature = "dlopen_tensorrt_rtx")]
+#[cfg(not(any(feature = "link_tensorrt_rtx", feature = "mock")))]
+pub(crate) static TRTLIB: std::sync::RwLock<Option<libloading::Library>> =
+    std::sync::RwLock::new(None);
+
+#[cfg(feature = "dlopen_tensorrt_rtx")]
+pub fn dynamically_load_tensorrt(_filename: Option<impl AsFilename>) -> Result<()> {
+    #[cfg(not(any(feature = "link_tensorrt_rtx", feature = "mock")))]
+    {
+        let lib = if let Some(filename) = _filename {
+            unsafe { libloading::Library::new(filename) }
+        } else {
+            #[cfg(unix)]
+            unsafe {
+                libloading::Library::new("libtensorrt_rtx.so")
+            }
+
+            #[cfg(windows)]
+            unsafe {
+                // TODO: parse DLL version from TensorRT version
+                libloading::Library::new("tensorrt_rtx_1_3.dll")
+            }
+        }?;
+
+        *TRTLIB.write()? = Some(lib);
+    }
+    Ok(())
+}
+
+#[cfg(feature = "dlopen_tensorrt_onnxparser")]
+#[cfg(not(any(feature = "link_tensorrt_onnxparser", feature = "mock")))]
+pub(crate) static TRT_ONNXPARSER_LIB: std::sync::RwLock<Option<libloading::Library>> =
+    std::sync::RwLock::new(None);
+
+#[cfg(feature = "dlopen_tensorrt_rtx")]
+pub fn dynamically_load_tensorrt_onnxparser(_filename: Option<impl AsFilename>) -> Result<()> {
+    #[cfg(not(any(feature = "link_tensorrt_onnxparser", feature = "mock")))]
+    {
+        let lib = if let Some(filename) = _filename {
+            unsafe { libloading::Library::new(filename) }
+        } else {
+            #[cfg(unix)]
+            unsafe {
+                libloading::Library::new("libtensorrt_onnxparser_rtx.so")
+            }
+            #[cfg(windows)]
+            unsafe {
+                // TODO: parse DLL version from TensorRT version
+                libloading::Library::new("tensorrt_onnxparser_rtx_1_3.dll")
+            }
+        }?;
+
+        *TRT_ONNXPARSER_LIB.write()? = Some(lib);
+    }
+    Ok(())
+}
 
 // Re-export TensorRT operation enums
 pub use trtx_sys::nvinfer1::{

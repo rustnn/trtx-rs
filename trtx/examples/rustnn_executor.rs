@@ -11,6 +11,9 @@ use std::error::Error;
 use trtx::executor::{run_onnx_with_tensorrt, run_onnx_zeroed, TensorInput};
 
 fn main() -> Result<(), Box<dyn Error>> {
+    #[cfg(feature = "dlopen_tensorrt_rtx")]
+    trtx::dynamically_load_tensorrt(None::<String>).unwrap();
+
     println!("TensorRT-RTX Executor for rustnn");
     println!("==================================\n");
 

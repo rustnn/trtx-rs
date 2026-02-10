@@ -19,6 +19,9 @@ cc = "1.0"
 default = []
 # Mock mode for development without TensorRT-RTX installed
 mock = []
+onnxparser = []
+link_tensorrt_rtx = []
+link_tensorrt_onnxparser = ["onnxparser"]
 
 [dependencies]
 autocxx = "0.27"

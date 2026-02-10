@@ -6,6 +6,7 @@
 #[cfg(not(feature = "mock"))]
 #[test]
 #[ignore] // Run with: cargo test --test method_call_test -- --ignored
+#[cfg(feature = "link_tensorrt_rtx")]
 fn test_builder_methods_callable() {
     use std::ptr;
 

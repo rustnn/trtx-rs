@@ -10,10 +10,44 @@ pub struct OnnxParser {
 }
 
 impl OnnxParser {
+    #[cfg(not(any(
+        feature = "link_tensorrt_onnxparser",
+        feature = "dlopen_tensorrt_onnxparser"
+    )))]
+    pub fn new(network: &mut NetworkDefinition, logger: &Logger) -> Result<Self> {
+        Err(Error::TrtOnnxParserLibraryNotLoaded)
+    }
+
+    #[cfg(any(
+        feature = "link_tensorrt_onnxparser",
+        feature = "dlopen_tensorrt_onnxparser"
+    ))]
     pub fn new(network: &mut NetworkDefinition, logger: &Logger) -> Result<Self> {
         let network_ptr = network.as_mut_ptr();
         let logger_ptr = logger.as_logger_ptr();
-        let parser_ptr = unsafe { trtx_sys::create_onnx_parser(network_ptr, logger_ptr) };
+        let parser_ptr = {
+            #[cfg(feature = "link_tensorrt_onnxparser")]
+            unsafe {
+                trtx_sys::create_onnx_parser(network_ptr, logger_ptr)
+            }
+            #[cfg(not(feature = "link_tensorrt_onnxparser"))]
+            #[cfg(feature = "dlopen_tensorrt_rtx")]
+            unsafe {
+                use libloading::Symbol;
+                use std::ffi::c_void;
+
+                use crate::TRT_ONNXPARSER_LIB;
+
+                let lock = TRT_ONNXPARSER_LIB
+                    .read()
+                    .map_err(|_| Error::LockPoisining)?;
+                let create_onnx_parser: Symbol<fn(*mut c_void, *mut c_void, u32) -> *mut c_void> =
+                    lock.as_ref()
+                        .ok_or(Error::TrtOnnxParserLibraryNotLoaded)?
+                        .get(b"createNvOnnxParser_INTERNAL")?;
+                create_onnx_parser(network_ptr, logger_ptr, trtx_sys::get_tensorrt_version())
+            }
+        };
         if parser_ptr.is_null() {
             return Err(Error::Runtime("Failed to create ONNX parser".to_string()));
         }
