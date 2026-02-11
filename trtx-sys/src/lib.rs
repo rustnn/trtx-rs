@@ -278,18 +278,6 @@ pub mod real_bindings {
             -> *mut std::ffi::c_void;
         pub fn parser_error_desc(error: *mut std::ffi::c_void) -> *const std::os::raw::c_char;
 
-        // CUDA wrappers
-        pub fn cuda_malloc_wrapper(ptr: *mut *mut std::ffi::c_void, size: usize) -> i32;
-        pub fn cuda_free_wrapper(ptr: *mut std::ffi::c_void) -> i32;
-        pub fn cuda_memcpy_wrapper(
-            dst: *mut std::ffi::c_void,
-            src: *const std::ffi::c_void,
-            count: usize,
-            kind: i32,
-        ) -> i32;
-        pub fn cuda_device_synchronize_wrapper() -> i32;
-        pub fn cuda_get_error_string_wrapper(error: i32) -> *const std::os::raw::c_char;
-
         // Destruction methods
         pub fn delete_builder(builder: *mut std::ffi::c_void);
         pub fn delete_network(network: *mut std::ffi::c_void);
