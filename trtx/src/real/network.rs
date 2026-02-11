@@ -1,6 +1,8 @@
 //! Real TensorRT network implementation
 //! No #[cfg] - this module is only compiled when mock feature is disabled
 
+use trtx_sys::nvinfer1::ScaleMode;
+
 use crate::error::{Error, Result};
 use crate::network::*;
 
@@ -727,31 +729,29 @@ impl NetworkDefinition {
     pub fn add_scale(
         &mut self,
         input: &Tensor,
-        mode: i32,
+        mode: ScaleMode,
         shift: &[u8],
         scale: &[u8],
         power: &[u8],
     ) -> Result<ScaleLayer> {
-        let weight_count = if mode == 0 {
-            1i64
-        } else if mode == 1 {
-            let input_dims = input.dimensions()?;
-            if input_dims.len() >= 4 {
-                input_dims[1] as i64
-            } else if input_dims.len() >= 1 {
-                input_dims[0] as i64
-            } else {
-                1
+        let weight_count = match mode {
+            ScaleMode::kUNIFORM => 1i64,
+            ScaleMode::kCHANNEL => {
+                let input_dims = input.dimensions()?;
+                if input_dims.len() >= 4 {
+                    input_dims[1] as i64
+                } else if !input_dims.is_empty() {
+                    input_dims[0] as i64
+                } else {
+                    1i64
+                }
             }
-        } else if mode == 2 {
-            let input_dims = input.dimensions()?;
-            input_dims.iter().map(|&d| d as i64).product()
-        } else {
-            return Err(Error::InvalidArgument(format!(
-                "Invalid scale mode: {}. Must be 0 (Uniform), 1 (Channel), or 2 (Elementwise)",
-                mode
-            )));
+            ScaleMode::kELEMENTWISE => {
+                let input_dims = input.dimensions()?;
+                input_dims.iter().map(|&d| d as i64).product::<i64>()
+            }
         };
+
         let shift_w = trtx_sys::nvinfer1::Weights::new_float(
             shift.as_ptr() as *const std::ffi::c_void,
             weight_count,
@@ -769,13 +769,10 @@ impl NetworkDefinition {
             let mut network_pin = std::pin::Pin::new_unchecked(&mut *network_ptr);
             let input_ptr = input.inner as *mut trtx_sys::nvinfer1::ITensor;
             let input_ref = std::pin::Pin::new_unchecked(&mut *input_ptr);
-            network_pin.as_mut().addScale(
-                input_ref,
-                std::mem::transmute(mode),
-                shift_w,
-                scale_w,
-                power_w,
-            ) as *mut std::ffi::c_void
+            network_pin
+                .as_mut()
+                .addScale(input_ref, mode, shift_w, scale_w, power_w)
+                as *mut std::ffi::c_void
         };
         if layer_ptr.is_null() {
             return Err(Error::Runtime("Failed to add scale layer".to_string()));

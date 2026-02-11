@@ -191,7 +191,8 @@ pub fn dynamically_load_tensorrt_onnxparser(_filename: Option<impl AsFilename>) 
 pub use trtx_sys::nvinfer1::{
     ActivationType, CumulativeOperation, DataType, ElementWiseOperation, GatherMode,
     InterpolationMode, MatrixOperation, PoolingType, ReduceOperation,
-    ResizeCoordinateTransformation, ResizeRoundMode, ResizeSelector, ScatterMode, UnaryOperation,
+    ResizeCoordinateTransformation, ResizeRoundMode, ResizeSelector, ScaleMode, ScatterMode,
+    UnaryOperation,
 };
 
 // Re-export ResizeMode typedef (InterpolationMode alias)
