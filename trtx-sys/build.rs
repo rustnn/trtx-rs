@@ -41,51 +41,36 @@ fn main() {
         }
     };
 
-    let include_dir = format!("{}/include", trtx_dir);
-    let lib_dir = format!("{}/lib", trtx_dir);
+    let crate_root = env::var("CARGO_MANIFEST_DIR").unwrap();
+    #[cfg(feature = "v_1_3")]
+    let trt_version = "1.3";
+
+    let include_dir = format!("{crate_root}/TensorRT-Headers/TRT-RTX-{trt_version}");
+    let cuda_shim_include_dir = format!("{crate_root}/TensorRT-Headers");
+    let lib_dir = format!("{trtx_dir}/lib");
+
+    #[cfg(unix)]
+    let trt_version_suffix = "";
+
+    #[cfg(all(windows, feature = "v_1_3"))]
+    let trt_version_suffix = "_1_3";
 
     println!("cargo:rustc-link-search=native={}", lib_dir);
-    // TensorRT 10.x uses versioned library names
-    if cfg!(target_os = "windows") {
-        if link_trt {
-            println!("cargo:rustc-link-lib=dylib=tensorrt_rtx_1_3");
-        }
-        if link_trt_onnxparser {
-            println!("cargo:rustc-link-lib=dylib=tensorrt_onnxparser_rtx_1_3");
-        }
-    } else {
-        if link_trt {
-            println!("cargo:rustc-link-lib=dylib=tensorrt_rtx");
-        }
-        if link_trt_onnxparser {
-            println!("cargo:rustc-link-lib=dylib=tensorrt_onnxparser_rtx");
-        }
+    if link_trt {
+        println!("cargo:rustc-link-lib=dylib=tensorrt_rtx{trt_version_suffix}");
     }
-
-    let cuda_dir = env::var("CUDA_PATH")
-        .or_else(|_| env::var("CUDA_ROOT"))
-        .or_else(|_| env::var("CUDA_HOME"))
-        .unwrap_or_else(|_| "/usr/local/cuda".to_string());
-
-    println!("cargo:warning=CUDA_DIR={}", cuda_dir);
-
-    // Also need CUDA runtime
-    if cfg!(target_os = "windows") {
-        println!("cargo:rustc-link-search=native={}\\lib\\x64", cuda_dir);
-    } else {
-        println!("cargo:rustc-link-search=native={}/lib64", cuda_dir);
+    if link_trt_onnxparser {
+        println!("cargo:rustc-link-lib=dylib=tensorrt_onnxparser{trt_version_suffix}");
     }
-    println!("cargo:rustc-link-lib=dylib=cudart");
 
     // Build logger bridge C++ wrapper
     let mut cc_build = cc::Build::new();
     cc_build
         .cpp(true)
         .file("logger_bridge.cpp")
-        .include(&include_dir);
+        .include(&include_dir)
+        .include(&cuda_shim_include_dir);
 
-    // Also include CUDA headers
-    cc_build.include(format!("{}/include", cuda_dir));
     if link_trt {
         cc_build.define("TRTX_LINK_TENSORRT_RTX", "1");
     }
@@ -108,23 +93,17 @@ fn main() {
 
     // Build autocxx bindings for main TensorRT API
     // Prepare CUDA include paths for autocxx clang parser
-    let mut clang_args = vec![
-        "-std=c++17".to_string(),
-        "-Wno-unused-parameter".to_string(), // Suppress unused parameter warnings from TensorRT headers
-        "-Wno-deprecated-declarations".to_string(), // Suppress deprecated warnings from TensorRT headers
+    let clang_args = vec![
+        "-std=c++17",
+        "-Wno-unused-parameter", // Suppress unused parameter warnings from TensorRT headers
+        "-Wno-deprecated-declarations", // Suppress deprecated warnings from TensorRT headers
     ];
 
-    clang_args.push(format!("-I{}/include", cuda_dir));
-
-    let clang_args_refs: Vec<&str> = clang_args.iter().map(|s| s.as_str()).collect();
-
-    let mut autocxx_build = autocxx_build::Builder::new("src/lib.rs", [&include_dir])
-        .extra_clang_args(&clang_args_refs)
-        .build()
-        .expect("Failed to build autocxx bindings");
-
-    // Add CUDA include paths for C++ compilation phase as well
-    autocxx_build.include(format!("{}/include", cuda_dir));
+    let mut autocxx_build =
+        autocxx_build::Builder::new("src/lib.rs", [&include_dir, &cuda_shim_include_dir])
+            .extra_clang_args(&clang_args)
+            .build()
+            .expect("Failed to build autocxx bindings");
 
     // Set C++17 standard and suppress warnings
     if cfg!(target_os = "windows") && cfg!(target_env = "msvc") {

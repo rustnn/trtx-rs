@@ -142,12 +142,13 @@ pub fn dynamically_load_tensorrt(_filename: Option<impl AsFilename>) -> Result<(
         } else {
             #[cfg(unix)]
             unsafe {
-                libloading::Library::new("libtensorrt_rtx.so")
+                #[cfg(feature = "v_1_3")]
+                libloading::Library::new("libtensorrt_rtx.so.1.3.0")
             }
 
             #[cfg(windows)]
             unsafe {
-                // TODO: parse DLL version from TensorRT version
+                #[cfg(feature = "v_1_3")]
                 libloading::Library::new("tensorrt_rtx_1_3.dll")
             }
         }?;
@@ -171,11 +172,12 @@ pub fn dynamically_load_tensorrt_onnxparser(_filename: Option<impl AsFilename>) 
         } else {
             #[cfg(unix)]
             unsafe {
-                libloading::Library::new("libtensorrt_onnxparser_rtx.so")
+                #[cfg(feature = "v_1_3")]
+                libloading::Library::new("libtensorrt_onnxparser_rtx.so.1.3.0")
             }
             #[cfg(windows)]
             unsafe {
-                // TODO: parse DLL version from TensorRT version
+                #[cfg(feature = "v_1_3")]
                 libloading::Library::new("tensorrt_onnxparser_rtx_1_3.dll")
             }
         }?;
@@ -189,7 +191,8 @@ pub fn dynamically_load_tensorrt_onnxparser(_filename: Option<impl AsFilename>) 
 pub use trtx_sys::nvinfer1::{
     ActivationType, CumulativeOperation, DataType, ElementWiseOperation, GatherMode,
     InterpolationMode, MatrixOperation, PoolingType, ReduceOperation,
-    ResizeCoordinateTransformation, ResizeRoundMode, ResizeSelector, ScatterMode, UnaryOperation,
+    ResizeCoordinateTransformation, ResizeRoundMode, ResizeSelector, ScaleMode, ScatterMode,
+    UnaryOperation,
 };
 
 // Re-export ResizeMode typedef (InterpolationMode alias)

@@ -41,7 +41,6 @@ pub mod real_bindings {
     include_cpp! {
         #include "NvInfer.h"
         #include "NvOnnxParser.h"
-        #include "cuda_runtime.h"
 
         safety!(unsafe_ffi)
 
@@ -123,14 +122,6 @@ pub mod real_bindings {
         generate!("nvonnxparser::IParser")
         // NOTE: createParser also moved to logger_bridge.cpp
 
-        // CUDA functions
-        generate!("cudaMalloc")
-        generate!("cudaFree")
-        generate!("cudaMemcpy")
-        generate!("cudaMemcpyKind")
-        generate!("cudaDeviceSynchronize")
-        generate!("cudaGetErrorString")
-        generate!("cudaError_t")
     }
 
     // Logger bridge C functions
@@ -331,12 +322,6 @@ pub mod real_bindings {
     pub mod nvonnxparser {
         pub use super::ffi::nvonnxparser::*;
     }
-
-    // Re-export CUDA functions
-    pub use ffi::{
-        cudaDeviceSynchronize, cudaError_t, cudaFree, cudaGetErrorString, cudaMalloc, cudaMemcpy,
-        cudaMemcpyKind,
-    };
 
     // Re-export Dims64 as Dims to match TensorRT's typedef
     pub use nvinfer1::Dims64;
