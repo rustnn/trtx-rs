@@ -33,7 +33,10 @@ trtx-rs/
 
 ### Required (building) 
 
-1. **Clang**: Clang is required for autocxx. On Windows, install it with `winget install LLVM.LLVM`.
+1. **NVIDIA TensorRT-RTX 1.3**: Download and install from [NVIDIA Developer](https://developer.nvidia.com/tensorrt)
+2. **CUDA Runtime**: Version compatible with your TensorRT-RTX installation
+3. **Clang**: Required for autocxx. On Windows: `winget install LLVM.LLVM`
+4. **NVIDIA GPU**: Compatible with TensorRT-RTX requirements
 
 TensorRT is by default dynamically loaded. So, the TensorRT SDK is only required for building
 with Cargo features `link_tensorrt_rtx`/ `link_tensorrt_onnxparser` which would link the TensorRT libraries.
@@ -52,7 +55,7 @@ Use `TENSORRT_RTX_DIR` to point to the TensorRT SDK root directory (the path tha
 
 ### Development Without TensorRT-RTX (Mock Mode)
 
-If you're developing on a machine without TensorRT-RTX (e.g., macOS, or for testing), you can use the `mock` feature:
+If you're developing on a machine without TensorRT-RTX (e.g., macOS, or for testing), you can use the `mock` feature. This enables the **trtx mock layer** (safe Rust stubs in `trtx` that mirror the real API), not the low-level FFI:
 
 ```bash
 # Build with mock mode
@@ -94,7 +97,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-trtx = "0.1"
+trtx = "0.3"
 ```
 
 ## Usage
@@ -277,20 +280,22 @@ cargo run --features mock --example basic_workflow
 
 See the `trtx/examples/` directory for complete examples:
 
-- `basic_build.rs`: Building an engine from scratch
-- `inference.rs`: Running inference with a pre-built engine
+- `basic_workflow.rs`: Build and serialize an engine (optionally from ONNX), then run inference
+- `tiny_network.rs`: Build a small ReLU-based network from scratch using the Network API (no ONNX)
+- `rustnn_executor.rs`: rustnn-compatible executor integration
 
 ## Architecture
 
 ### trtx-sys (FFI Layer)
 
-- Raw `bindgen`-generated bindings
-- C wrapper functions for exception handling
-- No safety guarantees
-- Internal use only
+- **autocxx**-generated bindings for the TensorRT-RTX C++ API
+- Slim C++ logger bridge for virtual method handling (e.g., log callbacks)
+- Optional mock FFI (when `mock` feature is enabled) so the crate can build without TensorRT installed
+- No safety guarantees; internal use only
 
 ### trtx (Safe Wrapper)
 
+- **Mock layer**: When the `mock` feature is enabled, the trtx crate uses a Rust mock layer (`trtx/src/mock/`) that mirrors the real API—this is the “mock mode” you use for development without GPU. Real implementation lives in `trtx/src/real/`.
 - RAII-based resource management
 - Type-safe API
 - Lifetime tracking
@@ -377,14 +382,15 @@ This project is in early development. APIs may change before 1.0 release.
 
 ### Implemented
 
-- ✅ Core FFI layer with mock mode support
+- ✅ Core FFI layer (autocxx); trtx **mock layer** for development without TensorRT (no GPU)
 - ✅ Logger interface with custom handlers
 - ✅ Builder API for engine creation
 - ✅ Runtime and engine deserialization
 - ✅ Execution context
 - ✅ Error handling with detailed messages
+- ✅ **Network API**: TensorRT-RTX `INetworkDefinition` supported—build networks in Rust without ONNX
 - ✅ **ONNX parser bindings** (nvonnxparser integration)
-- ✅ **CUDA memory management** (malloc, memcpy, free wrappers)
+- ✅ **CUDA**: cudarc integration for memory management and device sync
 - ✅ **rustnn-compatible executor API** (ready for integration)
 - ✅ RAII-based resource management
 
