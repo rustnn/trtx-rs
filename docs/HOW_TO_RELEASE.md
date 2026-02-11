@@ -31,7 +31,7 @@ git push origin main
 git push origin vX.Y.Z
 
 # 4) create GitHub release
-gh release create vX.Y.Z --title "vX.Y.Z" --notes-file CHANGELOG.md
+gh release create vX.Y.Z --title "vX.Y.Z" --generate-notes
 ```
 
 ## Notes
