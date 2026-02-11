@@ -55,7 +55,7 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all -- --check
 
-      - name: Run clippy
+      - name: Run clippy (mock mode)
         run: cargo clippy --features mock --all-targets -- -D warnings
 
       - name: Build (mock mode)
@@ -66,6 +66,18 @@ jobs:
 
       - name: Build documentation
         run: cargo doc --features mock --no-deps
+
+      - name: Run clippy (real mode)
+        run: cargo clippy --features real --all-targets -- -D warnings
+
+      - name: Build (real mode)
+        run: cargo build --features real --verbose
+
+      - name: Run tests (real mode)
+        run: cargo test --features real --verbose
+
+      - name: Build documentation (real mode)
+        run: cargo doc --features real --no-deps
 
   examples:
     name: Examples
