@@ -16,12 +16,15 @@ autocxx-build = "0.27"
 cc = "1.0"
 
 [features]
-default = []
+default = ["v_1_3"]
 # Mock mode for development without TensorRT-RTX installed
 mock = []
 onnxparser = []
 link_tensorrt_rtx = []
 link_tensorrt_onnxparser = ["onnxparser"]
+
+# versions
+v_1_3 = []
 
 [dependencies]
 autocxx = "0.27"
