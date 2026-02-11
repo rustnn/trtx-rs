@@ -31,21 +31,24 @@ trtx-rs/
 
 ## Prerequisites
 
-### Required
+### Required (building) 
+
+1. **Clang**: Clang is required for autocxx. On Windows, install it with `winget install LLVM.LLVM`.
+
+TensorRT is by default dynamically loaded. So, the TensorRT SDK is only required for building
+with Cargo features `link_tensorrt_rtx`/ `link_tensorrt_onnxparser` which would link the TensorRT libraries.
+Use `TENSORRT_RTX_DIR` to point to the TensorRT SDK root directory (the path that contains the `lib` folder with the shared libraries).
+
+### Required (GPU execution) 
 
 1. **NVIDIA TensorRT-RTX**: Download and install from [NVIDIA Developer](https://developer.nvidia.com/tensorrt)
-2. **CUDA Runtime**: Version compatible with your TensorRT-RTX installation
-3. **Clang**: Clang is required for autocxx. On Windows install it with `winget install LLVM.LLVM`.
-3. **NVIDIA GPU**: Compatible with TensorRT-RTX requirements
+     - The TensorRT libraries should be in a location where they can be dynamically loaded.
+       (e.g. by setting PATH on Windows or LD_LIBRARY_PATH on Linux)
+     - This crate currently requires TensorRT RTX version 1.3 (see Cargo feature `v_1_3`).
+       Other versions, might become available in future.
 
-### Environment Setup
+2. **NVIDIA GPU**: Compatible with TensorRT-RTX requirements
 
-Set the installation path if TensorRT-RTX is not in a standard location:
-
-```bash
-export TENSORRT_RTX_DIR=/path/to/tensorrt-rtx
-export CUDA_ROOT=/usr/local/cuda
-```
 
 ### Development Without TensorRT-RTX (Mock Mode)
 
@@ -70,6 +73,21 @@ Mock mode provides stub implementations that allow you to:
 
 **Note:** Mock mode only validates structure and API usage. For actual inference, you need real TensorRT-RTX.
 
+## Cargo features
+
+The `trtx` crate has the following Cargo features:
+
+- `default`: "real", "dlopen_tensorrt_onnxparser", "dlopen_tensorrt_rtx", "onnxparser", "v_1_3"
+- `mock`: use this library in mock mode. TensorRT libraries and a Nvidia are no longer necessary for execution
+- `real`: opposite of `mock` mode. TensorRT and Nvidia GPU are required for execution
+- `dlopen_tensorrt_rtx`: enables dynamic loading of the TensorRT library via `trtx::dynamically_load_tensorrt`
+- `dlopen_tensorrt_onnxparser`: enables dynamic loading of the TensorRT ONNX parser library via `trtx::dynamically_load_tensorrt_onnxparser`
+- `links_tensorrt_rtx`: links the TensorRT library, `trtx::dynamically_load_tensorrt` is now optional
+- `links_tensorrt_onnxparser`: links the TensorRT ONNX parser library, `trtx::dynamically_load_tensorrt_onnxparser` is now optional
+- `onnxparser`: Enables the ONNX parser functionality of this crate. Optional if not using ONNX as the input format for TensorRT,
+  but using the builder library instead
+- `v_1_3`: Needs to be always enabled. Future TensorRT versions might be selectable by higher version numbers in future
+
 ## Installation
 
 Add to your `Cargo.toml`:
@@ -88,6 +106,10 @@ use trtx::{Logger, Builder};
 use trtx::builder::{network_flags, MemoryPoolType};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Dynamically load TensorRT with optional path
+    // when using the crate's dlopen_tensorrt_rtx feature (the default, no-op when link_tensorrt_rtx is also enabled)
+    trtx::dynamically_load_tensorrt(None::<String>).unwrap();
+
     // Create logger
     let logger = Logger::stderr()?;
 
@@ -118,6 +140,10 @@ use trtx::{Logger, Runtime};
 use std::fs;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Dynamically load TensorRT with optional path
+    // when using the crate's dlopen_tensorrt_rtx feature (the default, no-op when link_tensorrt_rtx is also enabled)
+    trtx::dynamically_load_tensorrt(None::<String>).unwrap();
+
     // Create logger and runtime
     let logger = Logger::stderr()?;
     let runtime = Runtime::new(&logger)?;
