@@ -52,6 +52,7 @@
 
 #include "logger_bridge.hpp"
 #include <NvOnnxParser.h>
+#include <cstdint>
 #include <cstring>
 
 //==============================================================================
@@ -116,6 +117,7 @@ nvinfer1::ILogger* get_logger_interface(RustLoggerBridge* logger) {
 // Simpler to keep these thin wrappers than to work around autocxx limitations.
 
 // Factory functions for TensorRT
+#ifdef TRTX_LINK_TENSORRT_RTX
 void* create_infer_builder(void* logger) {
     if (!logger) {
         return nullptr;
@@ -139,7 +141,9 @@ void* create_infer_runtime(void* logger) {
         return nullptr;
     }
 }
+#endif
 
+#ifdef TRTX_LINK_TENSORRT_ONNXPARSER
 // ONNX Parser factory function
 void* create_onnx_parser(void* network, void* logger) {
     if (!network || !logger) {
@@ -153,6 +157,7 @@ void* create_onnx_parser(void* network, void* logger) {
         return nullptr;
     }
 }
+#endif
 
 //==============================================================================
 // SECTION 3: BUILDER & CONFIG METHODS (POTENTIALLY REDUNDANT)
@@ -419,6 +424,10 @@ void delete_parser(void* parser) {
     if (parser) {
         delete static_cast<nvonnxparser::IParser*>(parser);
     }
+}
+
+uint32_t get_tensorrt_version() {
+    return NV_TENSORRT_VERSION;
 }
 
 } // extern "C"

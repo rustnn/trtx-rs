@@ -15,15 +15,34 @@ trtx-sys = { version = "0.2.0", path = "../trtx-sys", default-features = false }
 thiserror = "2.0"
 cxx = "1.0"
 libc = "0.2"
+libloading = { version = "0.9", optional = true }
 
 # cudarc for safe CUDA operations (required when real mode is enabled)
 # Using cuda-12050 as fallback; CUDA 13.x should be compatible
 cudarc = { version = "0.11", features = ["driver", "cuda-12050"], optional = true }
 
 [features]
-default = ["real"]   # real TensorRT-RTX with cudarc by default
+# real TensorRT-RTX with cudarc by and dynamic loading by default
+default = ["real", "dlopen_tensorrt_onnxparser", "dlopen_tensorrt_rtx", "onnxparser"]
 mock   = ["trtx-sys/mock"] # mock implementation (no CUDA required)
 real   = ["dep:cudarc"]    # real TensorRT-RTX (CUDA always required)
+link_tensorrt_rtx = ["trtx-sys/link_tensorrt_rtx"]
+dlopen_tensorrt_rtx = ["libloading"]
+link_tensorrt_onnxparser = ["trtx-sys/link_tensorrt_onnxparser", "onnxparser"]
+dlopen_tensorrt_onnxparser = ["libloading"]
+onnxparser = ["trtx-sys/onnxparser"]
 
 [dev-dependencies]
 # For examples and tests
+
+[[example]]
+name = "tiny_network"
+required-features = []
+
+[[example]]
+name = "basic_workflow"
+required-features = ["onnxparser"]
+
+[[example]]
+name = "rustnn_executor"
+required-features = ["onnxparser"]
