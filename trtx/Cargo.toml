@@ -25,7 +25,7 @@ cudarc = { version = "0.11", features = ["driver", "cuda-12050"], optional = tru
 # real TensorRT-RTX with cudarc by and dynamic loading by default
 default = ["real", "dlopen_tensorrt_onnxparser", "dlopen_tensorrt_rtx", "onnxparser", "v_1_3"]
 mock   = ["trtx-sys/mock"] # mock implementation (no CUDA required)
-real   = ["dep:cudarc"]    # real TensorRT-RTX (CUDA always required)
+real   = ["dep:cudarc", "trtx-sys/v_1_3"]    # real TensorRT-RTX
 link_tensorrt_rtx = ["trtx-sys/link_tensorrt_rtx"]
 dlopen_tensorrt_rtx = ["libloading"]
 link_tensorrt_onnxparser = ["trtx-sys/link_tensorrt_onnxparser", "onnxparser"]

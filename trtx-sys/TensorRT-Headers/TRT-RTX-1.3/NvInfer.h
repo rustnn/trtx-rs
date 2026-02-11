@@ -10066,7 +10066,7 @@ public:
     //!
     //! \deprecated Deprecated in TensorRT-RTX 1.2. Timing cache operations are no-ops in TensorRT-RTX.
     //!
-    TRT_DEPRECATED nvinfer1::ITimingCache* createTimingCache(void const* blob, std::size_t size) const noexcept
+    TRT_DEPRECATED nvinfer1::ITimingCache* createTimingCache(void const* blob, size_t size) const noexcept
     {
         return mImpl->createTimingCache(blob, size);
     }
@@ -10135,7 +10135,7 @@ public:
     //!
     //! \see getMemoryPoolLimit, MemoryPoolType
     //!
-    void setMemoryPoolLimit(MemoryPoolType pool, std::size_t poolSize) noexcept
+    void setMemoryPoolLimit(MemoryPoolType pool, size_t poolSize) noexcept
     {
         mImpl->setMemoryPoolLimit(pool, poolSize);
     }
@@ -10154,7 +10154,7 @@ public:
     //!
     //! \see setMemoryPoolLimit
     //!
-    std::size_t getMemoryPoolLimit(MemoryPoolType pool) const noexcept
+    size_t getMemoryPoolLimit(MemoryPoolType pool) const noexcept
     {
         return mImpl->getMemoryPoolLimit(pool);
     }

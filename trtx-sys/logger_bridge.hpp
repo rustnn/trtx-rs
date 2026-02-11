@@ -1,6 +1,10 @@
 #ifndef TRTX_LOGGER_BRIDGE_H
 #define TRTX_LOGGER_BRIDGE_H
 
+#include <cstddef>
+namespace std {
+typedef std::size_t size_t;
+}
 #include <NvInfer.h>
 
 #include <type_traits>// This will cause a compiler error if Weights isn't a POD

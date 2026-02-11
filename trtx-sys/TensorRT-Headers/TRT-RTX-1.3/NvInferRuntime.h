@@ -150,7 +150,7 @@ public:
     }
 
     //! The size in bytes of the data that was allocated.
-    std::size_t size() const noexcept
+    size_t size() const noexcept
     {
         return mImpl->size();
     }
@@ -2019,7 +2019,7 @@ public:
     //!
     //! \return The engine, or nullptr if it could not be deserialized.
     //!
-    ICudaEngine* deserializeCudaEngine(void const* blob, std::size_t size) noexcept
+    ICudaEngine* deserializeCudaEngine(void const* blob, size_t size) noexcept
     {
         return mImpl->deserializeCudaEngine(blob, size);
     }

@@ -241,7 +241,7 @@ class VHostMemory : public VRoot
 {
 public:
     virtual void* data() const noexcept = 0;
-    virtual std::size_t size() const noexcept = 0;
+    virtual size_t size() const noexcept = 0;
     virtual DataType type() const noexcept = 0;
 };
 
@@ -269,7 +269,7 @@ class VRuntime : public VRoot
 {
 public:
     virtual IRuntime* getPImpl() noexcept = 0;
-    virtual nvinfer1::ICudaEngine* deserializeCudaEngine(void const* blob, std::size_t size) noexcept = 0;
+    virtual nvinfer1::ICudaEngine* deserializeCudaEngine(void const* blob, size_t size) noexcept = 0;
     virtual nvinfer1::ICudaEngine* deserializeCudaEngine(IStreamReader& streamReader) noexcept = 0;
     virtual void setDLACore(int32_t dlaCore) noexcept = 0;
     virtual int32_t getDLACore() const noexcept = 0;
@@ -1275,11 +1275,11 @@ public:
     virtual ProfilingVerbosity getProfilingVerbosity() const noexcept = 0;
     virtual bool setTacticSources(TacticSources tacticSources) noexcept = 0;
     virtual TacticSources getTacticSources() const noexcept = 0;
-    virtual nvinfer1::ITimingCache* createTimingCache(void const* blob, std::size_t size) const noexcept = 0;
+    virtual nvinfer1::ITimingCache* createTimingCache(void const* blob, size_t size) const noexcept = 0;
     virtual bool setTimingCache(ITimingCache const& cache, bool ignoreMismatch) noexcept = 0;
     virtual nvinfer1::ITimingCache const* getTimingCache() const noexcept = 0;
-    virtual void setMemoryPoolLimit(MemoryPoolType pool, std::size_t poolSize) noexcept = 0;
-    virtual std::size_t getMemoryPoolLimit(MemoryPoolType pool) const noexcept = 0;
+    virtual void setMemoryPoolLimit(MemoryPoolType pool, size_t poolSize) noexcept = 0;
+    virtual size_t getMemoryPoolLimit(MemoryPoolType pool) const noexcept = 0;
     virtual void setPreviewFeature(PreviewFeature feature, bool enable) noexcept = 0;
     virtual bool getPreviewFeature(PreviewFeature feature) const noexcept = 0;
     virtual void setBuilderOptimizationLevel(int32_t level) noexcept = 0;
