@@ -205,5 +205,6 @@ Mock mode provides stub implementations for development without TensorRT-RTX:
 - Design documentation: `docs/DESIGN.md`
 - FFI guide: `docs/FFI_GUIDE.md`
 - Integration notes: `docs/RUSTNN_INTEGRATION.md`
+- Release process: `docs/HOW_TO_RELEASE.md`
 - Windows GPU setup: `docs/WINDOWS_GPU_SETUP.md`
 - Pre-commit hooks: `.githooks/` (run `cp .githooks/pre-commit .git/hooks/pre-commit`)
