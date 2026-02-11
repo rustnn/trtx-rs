@@ -41,10 +41,10 @@ pub enum Error {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
-    #[error("TensorRT library not loaded")]
+    #[error("TensorRT library not loaded. A successful call to trtx::dynamically_load_tensorrt is required to load the TensorRT library")]
     TrtRtxLibraryNotLoaded,
 
-    #[error("TensorRT onnxparser library not loaded")]
+    #[error("TensorRT onnxparser library not loaded. A successful call to trtx::dynamically_load_tensorrt_onnxparser is required to load the TensorRT ONNX parser library")]
     TrtOnnxParserLibraryNotLoaded,
 
     #[cfg(any(
