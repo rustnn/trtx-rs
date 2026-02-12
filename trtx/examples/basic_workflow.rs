@@ -16,6 +16,9 @@ use trtx::builder::{network_flags, MemoryPoolType};
 use trtx::{Builder, Logger, Runtime};
 
 fn main() -> Result<(), Box<dyn Error>> {
+    // Initialize logging use pretty_env_logger crate
+    pretty_env_logger::init();
+
     #[cfg(feature = "dlopen_tensorrt_rtx")]
     trtx::dynamically_load_tensorrt(None::<String>).unwrap();
     #[cfg(feature = "dlopen_tensorrt_onnxparser")]
@@ -26,7 +29,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // Step 1: Create logger
     println!("1. Creating logger...");
-    let logger = Logger::stderr()?;
+    let logger = Logger::log_crate()?;
     println!("   ✓ Logger created\n");
 
     // Step 2: Build phase
