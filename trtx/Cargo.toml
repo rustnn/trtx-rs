@@ -20,6 +20,7 @@ libloading = { version = "0.9", optional = true }
 # cudarc for safe CUDA operations (required when real mode is enabled)
 # Using cuda-12050 as fallback; CUDA 13.x should be compatible
 cudarc = { version = "0.11", features = ["driver", "cuda-12050"], optional = true }
+log = "0.4.29"
 
 [features]
 # real TensorRT-RTX with cudarc by and dynamic loading by default
@@ -37,6 +38,7 @@ v_1_3 = ["trtx-sys/v_1_3"]
 
 [dev-dependencies]
 # For examples and tests
+pretty_env_logger = "0.5"
 
 [[example]]
 name = "tiny_network"
