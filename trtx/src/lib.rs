@@ -137,6 +137,9 @@ pub(crate) static TRTLIB: std::sync::RwLock<Option<libloading::Library>> =
 pub fn dynamically_load_tensorrt(_filename: Option<impl AsFilename>) -> Result<()> {
     #[cfg(not(any(feature = "link_tensorrt_rtx", feature = "mock")))]
     {
+        if TRTLIB.read()?.is_some() {
+            return Ok(());
+        }
         let lib = if let Some(filename) = _filename {
             unsafe { libloading::Library::new(filename) }
         } else {
@@ -167,6 +170,9 @@ pub(crate) static TRT_ONNXPARSER_LIB: std::sync::RwLock<Option<libloading::Libra
 pub fn dynamically_load_tensorrt_onnxparser(_filename: Option<impl AsFilename>) -> Result<()> {
     #[cfg(not(any(feature = "link_tensorrt_onnxparser", feature = "mock")))]
     {
+        if TRT_ONNXPARSER_LIB.read()?.is_some() {
+            return Ok(());
+        }
         let lib = if let Some(filename) = _filename {
             unsafe { libloading::Library::new(filename) }
         } else {
