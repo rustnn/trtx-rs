@@ -651,8 +651,115 @@ pub mod nvinfer1 {
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
     pub enum ProfilingVerbosity {
         kLAYER_NAMES_ONLY = 0,
-        kNONE = 1,           
-        kDETAILED = 2,      
+        kNONE = 1,
+        kDETAILED = 2,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum EngineCapability {
+        kSTANDARD = 0,
+        kSAFETY = 1,
+        kDLA_STANDALONE = 2,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum BuilderFlag {
+        kFP16 = 0,
+        kINT8 = 1,
+        kDEBUG = 2,
+        kGPU_FALLBACK = 3,
+        kREFIT = 4,
+        kDISABLE_TIMING_CACHE = 5,
+        kTF32 = 6,
+        kSPARSE_WEIGHTS = 7,
+        kSAFETY_SCOPE = 8,
+        kOBEY_PRECISION_CONSTRAINTS = 9,
+        kPREFER_PRECISION_CONSTRAINTS = 10,
+        kDIRECT_IO = 11,
+        kREJECT_EMPTY_ALGORITHMS = 12,
+        kVERSION_COMPATIBLE = 13,
+        kEXCLUDE_LEAN_RUNTIME = 14,
+        kFP8 = 15,
+        kERROR_ON_TIMING_CACHE_MISS = 16,
+        kBF16 = 17,
+        kDISABLE_COMPILATION_CACHE = 18,
+        kSTRIP_PLAN = 19,
+        kREFIT_IDENTICAL = 20,
+        kWEIGHT_STREAMING = 21,
+        kINT4 = 22,
+        kREFIT_INDIVIDUAL = 23,
+        kSTRICT_NANS = 24,
+        kMONITOR_MEMORY = 25,
+        kFP4 = 26,
+        kEDITABLE_TIMING_CACHE = 27,
+        kDISTRIBUTIVE_INDEPENDENCE = 28,
+    }
+
+    pub type BuilderFlags = u32;
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum DeviceType {
+        kGPU = 0,
+        kDLA = 1,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum TacticSource {
+        kCUBLAS = 0,
+        kCUBLAS_LT = 1,
+        kCUDNN = 2,
+        kEDGE_MASK_CONVOLUTIONS = 3,
+        kJIT_CONVOLUTIONS = 4,
+    }
+
+    pub type TacticSources = u32;
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum PreviewFeature {
+        kPROFILE_SHARING_0806 = 0,
+        kALIASED_PLUGIN_IO_10_03 = 1,
+        kRUNTIME_ACTIVATION_RESIZE_10_10 = 2,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum HardwareCompatibilityLevel {
+        kNONE = 0,
+        kAMPERE_PLUS = 1,
+        kSAME_COMPUTE_CAPABILITY = 2,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum RuntimePlatform {
+        kSAME_AS_BUILD = 0,
+        kWINDOWS_AMD64 = 1,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum TilingOptimizationLevel {
+        kNONE = 0,
+        kFAST = 1,
+        kMODERATE = 2,
+        kFULL = 3,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum ComputeCapability {
+        kNONE = 0,
+        kCURRENT = 1,
+        kSM75 = 75,
+        kSM80 = 80,
+        kSM86 = 86,
+        kSM89 = 89,
+        kSM120 = 120,
     }
 
     // Layer interface types (opaque stubs for mock - only used in type positions)

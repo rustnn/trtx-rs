@@ -1,45 +1,246 @@
 //! Real TensorRT builder implementation
 
 use std::pin::Pin;
+use std::ptr;
 
 use crate::error::{Error, Result};
 use crate::logger::Logger;
 use crate::network::NetworkDefinition;
-use trtx_sys::nvinfer1::{self, ProfilingVerbosity};
+use trtx_sys::nvinfer1::{self, IBuilderConfig, ProfilingVerbosity};
 
 /// Builder configuration (real mode)
 pub struct BuilderConfig<'builder> {
-    inner: Pin<&'builder mut nvinfer1::IBuilderConfig>,
+    inner: Pin<&'builder mut IBuilderConfig>,
 }
 
 impl<'builder> BuilderConfig<'builder> {
-    pub fn set_memory_pool_limit(
-        &mut self,
-        pool: nvinfer1::MemoryPoolType,
-        size: usize,
-    ) -> Result<()> {
+    /// See [IBuilderConfig::setMemoryPoolLimit]
+    pub fn set_memory_pool_limit(&mut self, pool: nvinfer1::MemoryPoolType, size: usize) {
         self.inner.as_mut().setMemoryPoolLimit(pool, size);
-        Ok(())
     }
 
-    pub fn set_profiling_verbosity(
-        &mut self,
-        verbosity: nvinfer1::ProfilingVerbosity,
-    ) -> Result<()> {
+    /// See [IBuilderConfig::setProfilingVerbosity]
+    pub fn set_profiling_verbosity(&mut self, verbosity: nvinfer1::ProfilingVerbosity) {
         self.inner.as_mut().setProfilingVerbosity(verbosity);
-        Ok(())
     }
 
+    /// See [IBuilderConfig::getProfilingVerbosity]
     pub fn get_profiling_verbosity(&self) -> ProfilingVerbosity {
         self.inner.as_ref().getProfilingVerbosity()
     }
 
-    pub(crate) fn as_mut(&'builder mut self) -> Pin<&'builder mut nvinfer1::IBuilderConfig> {
-        self.inner.as_mut()
+    /// See [IBuilderConfig::setAvgTimingIterations]
+    pub fn set_avg_timing_iterations(&mut self, avg_timing: i32) {
+        self.inner.as_mut().setAvgTimingIterations(avg_timing);
+    }
+
+    /// See [IBuilderConfig::getAvgTimingIterations]
+    pub fn get_avg_timing_iterations(&self) -> i32 {
+        self.inner.as_ref().getAvgTimingIterations()
+    }
+
+    /// See [IBuilderConfig::setEngineCapability]
+    pub fn set_engine_capability(&mut self, capability: nvinfer1::EngineCapability) {
+        self.inner.as_mut().setEngineCapability(capability);
+    }
+
+    /// See [IBuilderConfig::getEngineCapability]
+    pub fn get_engine_capability(&self) -> nvinfer1::EngineCapability {
+        self.inner.as_ref().getEngineCapability()
+    }
+
+    /// See [IBuilderConfig::setFlags]
+    pub fn set_flags(&mut self, flags: nvinfer1::BuilderFlags) {
+        self.inner.as_mut().setFlags(flags);
+    }
+
+    /// See [IBuilderConfig::getFlags]
+    pub fn get_flags(&self) -> nvinfer1::BuilderFlags {
+        self.inner.as_ref().getFlags()
+    }
+
+    /// See [IBuilderConfig::setFlag]
+    pub fn set_flag(&mut self, flag: nvinfer1::BuilderFlag) {
+        self.inner.as_mut().setFlag(flag);
+    }
+
+    /// See [IBuilderConfig::clearFlag]
+    pub fn clear_flag(&mut self, flag: nvinfer1::BuilderFlag) {
+        self.inner.as_mut().clearFlag(flag);
+    }
+
+    /// See [IBuilderConfig::getFlag]
+    pub fn get_flag(&self, flag: nvinfer1::BuilderFlag) -> bool {
+        self.inner.as_ref().getFlag(flag)
+    }
+
+    /// See [IBuilderConfig::setDLACore]
+    pub fn set_dla_core(&mut self, dla_core: i32) {
+        self.inner.as_mut().setDLACore(dla_core);
+    }
+
+    /// See [IBuilderConfig::getDLACore]
+    pub fn get_dla_core(&self) -> i32 {
+        self.inner.as_ref().getDLACore()
+    }
+
+    /// See [IBuilderConfig::setDefaultDeviceType]
+    pub fn set_default_device_type(&mut self, device_type: nvinfer1::DeviceType) {
+        self.inner.as_mut().setDefaultDeviceType(device_type);
+    }
+
+    /// See [IBuilderConfig::getDefaultDeviceType]
+    pub fn get_default_device_type(&self) -> nvinfer1::DeviceType {
+        self.inner.as_ref().getDefaultDeviceType()
+    }
+
+    /// See [IBuilderConfig::reset]
+    pub fn reset(&mut self) {
+        self.inner.as_mut().reset();
+    }
+
+    /// See [IBuilderConfig::getNbOptimizationProfiles]
+    pub fn get_nb_optimization_profiles(&self) -> i32 {
+        self.inner.as_ref().getNbOptimizationProfiles()
+    }
+
+    /// See [IBuilderConfig::setTacticSources]
+    pub fn set_tactic_sources(&mut self, sources: nvinfer1::TacticSources) -> bool {
+        self.inner.as_mut().setTacticSources(sources)
+    }
+
+    /// See [IBuilderConfig::getTacticSources]
+    pub fn get_tactic_sources(&self) -> nvinfer1::TacticSources {
+        self.inner.as_ref().getTacticSources()
+    }
+
+    /// See [IBuilderConfig::getMemoryPoolLimit]
+    pub fn get_memory_pool_limit(&self, pool: nvinfer1::MemoryPoolType) -> usize {
+        self.inner.as_ref().getMemoryPoolLimit(pool)
+    }
+
+    /// See [IBuilderConfig::setPreviewFeature]
+    pub fn set_preview_feature(&mut self, feature: nvinfer1::PreviewFeature, enable: bool) {
+        self.inner.as_mut().setPreviewFeature(feature, enable);
+    }
+
+    /// See [IBuilderConfig::getPreviewFeature]
+    pub fn get_preview_feature(&self, feature: nvinfer1::PreviewFeature) -> bool {
+        self.inner.as_ref().getPreviewFeature(feature)
+    }
+
+    /// See [IBuilderConfig::setBuilderOptimizationLevel]
+    pub fn set_builder_optimization_level(&mut self, level: i32) {
+        self.inner.as_mut().setBuilderOptimizationLevel(level);
+    }
+
+    /// See [IBuilderConfig::getBuilderOptimizationLevel]
+    pub fn get_builder_optimization_level(&mut self) -> i32 {
+        self.inner.as_mut().getBuilderOptimizationLevel()
+    }
+
+    /// See [IBuilderConfig::setHardwareCompatibilityLevel]
+    pub fn set_hardware_compatibility_level(
+        &mut self,
+        level: nvinfer1::HardwareCompatibilityLevel,
+    ) {
+        self.inner.as_mut().setHardwareCompatibilityLevel(level);
+    }
+
+    /// See [IBuilderConfig::getHardwareCompatibilityLevel]
+    pub fn get_hardware_compatibility_level(&self) -> nvinfer1::HardwareCompatibilityLevel {
+        self.inner.as_ref().getHardwareCompatibilityLevel()
+    }
+
+    /// See [IBuilderConfig::setMaxAuxStreams]
+    pub fn set_max_aux_streams(&mut self, nb_streams: i32) {
+        self.inner.as_mut().setMaxAuxStreams(nb_streams);
+    }
+
+    /// See [IBuilderConfig::getMaxAuxStreams]
+    pub fn get_max_aux_streams(&self) -> i32 {
+        self.inner.as_ref().getMaxAuxStreams()
+    }
+
+    /// See [IBuilderConfig::setRuntimePlatform]
+    pub fn set_runtime_platform(&mut self, platform: nvinfer1::RuntimePlatform) {
+        self.inner.as_mut().setRuntimePlatform(platform);
+    }
+
+    /// See [IBuilderConfig::getRuntimePlatform]
+    pub fn get_runtime_platform(&self) -> nvinfer1::RuntimePlatform {
+        self.inner.as_ref().getRuntimePlatform()
+    }
+
+    /// See [IBuilderConfig::setMaxNbTactics]
+    pub fn set_max_nb_tactics(&mut self, max_nb_tactics: i32) {
+        self.inner.as_mut().setMaxNbTactics(max_nb_tactics);
+    }
+
+    /// See [IBuilderConfig::getMaxNbTactics]
+    pub fn get_max_nb_tactics(&self) -> i32 {
+        self.inner.as_ref().getMaxNbTactics()
+    }
+
+    /// See [IBuilderConfig::setTilingOptimizationLevel]
+    pub fn set_tiling_optimization_level(
+        &mut self,
+        level: nvinfer1::TilingOptimizationLevel,
+    ) -> bool {
+        self.inner.as_mut().setTilingOptimizationLevel(level)
+    }
+
+    /// See [IBuilderConfig::getTilingOptimizationLevel]
+    pub fn get_tiling_optimization_level(&self) -> nvinfer1::TilingOptimizationLevel {
+        self.inner.as_ref().getTilingOptimizationLevel()
+    }
+
+    /// See [IBuilderConfig::setL2LimitForTiling]
+    pub fn set_l2_limit_for_tiling(&mut self, size: i64) -> bool {
+        self.inner.as_mut().setL2LimitForTiling(size)
+    }
+
+    /// See [IBuilderConfig::getL2LimitForTiling]
+    pub fn get_l2_limit_for_tiling(&self) -> i64 {
+        self.inner.as_ref().getL2LimitForTiling()
+    }
+
+    /// See [IBuilderConfig::setNbComputeCapabilities]
+    pub fn set_nb_compute_capabilities(&mut self, max_nb_compute_capabilities: i32) -> bool {
+        self.inner
+            .as_mut()
+            .setNbComputeCapabilities(max_nb_compute_capabilities)
+    }
+
+    /// See [IBuilderConfig::getNbComputeCapabilities]
+    pub fn get_nb_compute_capabilities(&self) -> i32 {
+        self.inner.as_ref().getNbComputeCapabilities()
+    }
+
+    /// See [IBuilderConfig::setComputeCapability]
+    pub fn set_compute_capability(
+        &mut self,
+        compute_capability: nvinfer1::ComputeCapability,
+        index: i32,
+    ) -> bool {
+        self.inner
+            .as_mut()
+            .setComputeCapability(compute_capability, index)
+    }
+
+    /// See [IBuilderConfig::getComputeCapability]
+    pub fn get_compute_capability(&self, index: i32) -> nvinfer1::ComputeCapability {
+        self.inner.as_ref().getComputeCapability(index)
     }
 }
 
-unsafe impl Send for BuilderConfig<'_> {}
+impl Drop for BuilderConfig<'_> {
+    fn drop(&mut self) {
+        unsafe {
+            ptr::drop_in_place(self.inner.as_mut().get_unchecked_mut());
+        }
+    }
+}
 
 /// Builder (real mode)
 pub struct Builder<'a> {
@@ -120,10 +321,10 @@ impl<'builder> Builder<'builder> {
         }
     }
 
-    pub fn build_serialized_network<'config>(
-        &self,
-        network: &mut NetworkDefinition,
-        config: &'config mut BuilderConfig<'config>,
+    pub fn build_serialized_network<'network, 'config, 'config_borrow>(
+        &'builder self,
+        network: &'network mut NetworkDefinition,
+        config: &'config_borrow mut BuilderConfig<'config>,
     ) -> Result<Vec<u8>> {
         if self.inner.is_null() {
             return Err(Error::Runtime("Invalid builder".to_string()));
@@ -134,9 +335,10 @@ impl<'builder> Builder<'builder> {
             let builder = &mut *(self.inner as *mut trtx_sys::nvinfer1::IBuilder);
             let network = &mut *(network_ptr as *mut trtx_sys::nvinfer1::INetworkDefinition);
             let mut builder_pin = std::pin::Pin::new_unchecked(builder);
-            builder_pin
-                .as_mut()
-                .buildSerializedNetwork(std::pin::Pin::new_unchecked(network), config.as_mut())
+            builder_pin.as_mut().buildSerializedNetwork(
+                std::pin::Pin::new_unchecked(network),
+                config.inner.as_mut(),
+            )
         };
 
         if serialized_engine.is_null() {
@@ -146,10 +348,11 @@ impl<'builder> Builder<'builder> {
         }
 
         let data = unsafe {
-            let host_memory = &*serialized_engine;
+            let host_memory = serialized_engine.as_mut().unwrap();
             let size = host_memory.size();
             let data_ptr = host_memory.data();
             let slice = std::slice::from_raw_parts(data_ptr as *const u8, size);
+            ptr::drop_in_place(host_memory);
             slice.to_vec()
         };
 
