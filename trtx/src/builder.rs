@@ -8,20 +8,6 @@ pub mod network_flags {
     pub const EXPLICIT_BATCH: u32 = 1 << 0;
 }
 
-/// Memory pool types
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(i32)]
-pub enum MemoryPoolType {
-    /// Workspace memory
-    Workspace = 0,
-    /// DLA managed SRAM
-    DlaManagedSram = 1,
-    /// DLA local DRAM
-    DlaLocalDram = 2,
-    /// DLA global DRAM
-    DlaGlobalDram = 3,
-}
-
 #[cfg(feature = "mock")]
 pub use crate::mock::builder::{Builder, BuilderConfig};
 #[cfg(not(feature = "mock"))]

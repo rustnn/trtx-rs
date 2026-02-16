@@ -109,6 +109,7 @@ pub mod real_bindings {
         generate!("nvinfer1::ResizeCoordinateTransformation")
         generate!("nvinfer1::ResizeSelector")
         generate!("nvinfer1::ResizeRoundMode")
+        generate!("nvinfer1::ProfilingVerbosity")
         // NOTE: RNN enums commented out because IRNNv2Layer (deprecated) cannot be generated
         // generate!("nvinfer1::RNNOperation")
         // generate!("nvinfer1::RNNDirection")

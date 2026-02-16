@@ -62,6 +62,8 @@ pub fn run_onnx_with_tensorrt(
 #[cfg(feature = "onnxparser")]
 fn build_engine_from_onnx(logger: &Logger, onnx_bytes: &[u8]) -> Result<Vec<u8>> {
     // Create builder
+
+    use trtx_sys::nvinfer1;
     let builder = Builder::new(logger)?;
 
     // Create network with explicit batch
@@ -75,7 +77,7 @@ fn build_engine_from_onnx(logger: &Logger, onnx_bytes: &[u8]) -> Result<Vec<u8>>
     let mut config = builder.create_config()?;
 
     // Set workspace memory (1GB)
-    config.set_memory_pool_limit(crate::builder::MemoryPoolType::Workspace, 1 << 30)?;
+    config.set_memory_pool_limit(nvinfer1::MemoryPoolType::kWORKSPACE, 1 << 30)?;
 
     // Build serialized engine
     builder.build_serialized_network(&mut network, &mut config)

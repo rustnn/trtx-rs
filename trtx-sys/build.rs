@@ -636,6 +636,25 @@ pub mod nvinfer1 {
         kUSER_MANAGED = 1,
     }
 
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum MemoryPoolType {
+        kWORKSPACE = 0,
+        kDLA_MANAGED_SRAM = 1,
+        kDLA_LOCAL_DRAM = 2,
+        kDLA_GLOBAL_DRAM = 3,
+        kTACTIC_DRAM = 4,
+        kTACTIC_SHARED_MEMORY = 5,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum ProfilingVerbosity {
+        kLAYER_NAMES_ONLY = 0,
+        kNONE = 1,           
+        kDETAILED = 2,      
+    }
+
     // Layer interface types (opaque stubs for mock - only used in type positions)
     #[repr(C)]
     pub struct IShuffleLayer { _unused: [u8; 0] }

@@ -1,48 +1,45 @@
 //! Real TensorRT builder implementation
 
-use crate::builder::MemoryPoolType;
+use std::pin::Pin;
+
 use crate::error::{Error, Result};
 use crate::logger::Logger;
 use crate::network::NetworkDefinition;
+use trtx_sys::nvinfer1::{self, ProfilingVerbosity};
 
 /// Builder configuration (real mode)
-pub struct BuilderConfig {
-    inner: *mut std::ffi::c_void,
+pub struct BuilderConfig<'builder> {
+    inner: Pin<&'builder mut nvinfer1::IBuilderConfig>,
 }
 
-impl BuilderConfig {
-    pub fn set_memory_pool_limit(&mut self, pool: MemoryPoolType, size: usize) -> Result<()> {
-        if self.inner.is_null() {
-            return Err(Error::Runtime("Invalid builder config".to_string()));
-        }
-        let trt_pool = match pool {
-            MemoryPoolType::Workspace => 0,
-            MemoryPoolType::DlaManagedSram => 1,
-            MemoryPoolType::DlaLocalDram => 2,
-            MemoryPoolType::DlaGlobalDram => 3,
-        };
-        unsafe {
-            trtx_sys::builder_config_set_memory_pool_limit(self.inner, trt_pool, size);
-        }
+impl<'builder> BuilderConfig<'builder> {
+    pub fn set_memory_pool_limit(
+        &mut self,
+        pool: nvinfer1::MemoryPoolType,
+        size: usize,
+    ) -> Result<()> {
+        self.inner.as_mut().setMemoryPoolLimit(pool, size);
         Ok(())
     }
 
-    pub(crate) fn as_mut_ptr(&mut self) -> *mut std::ffi::c_void {
-        self.inner
+    pub fn set_profiling_verbosity(
+        &mut self,
+        verbosity: nvinfer1::ProfilingVerbosity,
+    ) -> Result<()> {
+        self.inner.as_mut().setProfilingVerbosity(verbosity);
+        Ok(())
+    }
+
+    pub fn get_profiling_verbosity(&self) -> ProfilingVerbosity {
+        self.inner.as_ref().getProfilingVerbosity()
+    }
+
+    pub(crate) fn as_mut(&'builder mut self) -> Pin<&'builder mut nvinfer1::IBuilderConfig> {
+        self.inner.as_mut()
     }
 }
 
-impl Drop for BuilderConfig {
-    fn drop(&mut self) {
-        if !self.inner.is_null() {
-            unsafe {
-                trtx_sys::delete_config(self.inner);
-            }
-        }
-    }
-}
-
-unsafe impl Send for BuilderConfig {}
+unsafe impl Send for BuilderConfig<'_> {}
 
 /// Builder (real mode)
 pub struct Builder<'a> {
@@ -50,7 +47,7 @@ pub struct Builder<'a> {
     _logger: &'a Logger,
 }
 
-impl<'a> Builder<'a> {
+impl<'builder> Builder<'builder> {
     #[cfg(not(feature = "link_tensorrt_rtx"))]
     #[cfg(not(feature = "dlopen_tensorrt_rtx"))]
     pub fn new(logger: &'a Logger) -> Result<Self> {
@@ -58,7 +55,7 @@ impl<'a> Builder<'a> {
     }
 
     #[cfg(any(feature = "link_tensorrt_rtx", feature = "dlopen_tensorrt_rtx"))]
-    pub fn new(logger: &'a Logger) -> Result<Self> {
+    pub fn new(logger: &'builder Logger) -> Result<Self> {
         let logger_ptr = logger.as_logger_ptr();
         let builder_ptr = {
             #[cfg(feature = "link_tensorrt_rtx")]
@@ -107,44 +104,39 @@ impl<'a> Builder<'a> {
         Ok(NetworkDefinition::from_ptr(network_ptr as *mut _))
     }
 
-    pub fn create_config(&self) -> Result<BuilderConfig> {
+    pub fn create_config(&self) -> Result<BuilderConfig<'builder>> {
         if self.inner.is_null() {
             return Err(Error::Runtime("Invalid builder".to_string()));
         }
-        let config_ptr = unsafe {
-            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::IBuilder>(self.inner)
-                .createBuilderConfig()
-        };
-        if config_ptr.is_null() {
-            return Err(Error::Runtime(
-                "Failed to create builder config".to_string(),
-            ));
+        unsafe {
+            let config_ptr =
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::IBuilder>(self.inner)
+                    .createBuilderConfig()
+                    .as_mut()
+                    .ok_or_else(|| Error::Runtime("Failed to create builder config".to_string()))?;
+            Ok(BuilderConfig {
+                inner: std::pin::Pin::new_unchecked(config_ptr),
+            })
         }
-        Ok(BuilderConfig {
-            inner: config_ptr as *mut _,
-        })
     }
 
-    pub fn build_serialized_network(
+    pub fn build_serialized_network<'config>(
         &self,
         network: &mut NetworkDefinition,
-        config: &mut BuilderConfig,
+        config: &'config mut BuilderConfig<'config>,
     ) -> Result<Vec<u8>> {
         if self.inner.is_null() {
             return Err(Error::Runtime("Invalid builder".to_string()));
         }
         let network_ptr = network.as_mut_ptr();
-        let config_ptr = config.as_mut_ptr();
 
         let serialized_engine = unsafe {
             let builder = &mut *(self.inner as *mut trtx_sys::nvinfer1::IBuilder);
             let network = &mut *(network_ptr as *mut trtx_sys::nvinfer1::INetworkDefinition);
-            let config = &mut *(config_ptr as *mut trtx_sys::nvinfer1::IBuilderConfig);
             let mut builder_pin = std::pin::Pin::new_unchecked(builder);
-            builder_pin.as_mut().buildSerializedNetwork(
-                std::pin::Pin::new_unchecked(network),
-                std::pin::Pin::new_unchecked(config),
-            )
+            builder_pin
+                .as_mut()
+                .buildSerializedNetwork(std::pin::Pin::new_unchecked(network), config.as_mut())
         };
 
         if serialized_engine.is_null() {

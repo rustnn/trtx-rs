@@ -1,9 +1,10 @@
 //! Mock builder implementations
 
-use crate::builder::MemoryPoolType;
 use crate::error::Result;
 use crate::logger::Logger;
 use crate::network::NetworkDefinition;
+use trtx_sys::nvinfer1::MemoryPoolType;
+use trtx_sys::nvinfer1::ProfilingVerbosity;
 
 /// Builder configuration (mock mode)
 pub struct BuilderConfig {
@@ -17,6 +18,12 @@ impl BuilderConfig {
 
     pub(crate) fn as_ptr(&self) -> *mut trtx_sys::TrtxBuilderConfig {
         self.inner
+    }
+
+    pub fn set_profiling_verbosity(&mut self, _verbosity: ProfilingVerbosity) {}
+
+    pub fn get_profiling_verbosity(&self) -> ProfilingVerbosity {
+        ProfilingVerbosity::kDETAILED
     }
 }
 
