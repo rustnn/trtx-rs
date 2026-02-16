@@ -12,7 +12,7 @@ keywords = ["tensorrt", "inference", "nvidia", "ffi"]
 categories = ["external-ffi-bindings"]
 
 [build-dependencies]
-autocxx-build = "0.27"
+autocxx-build = "0.30"
 cc = "1.0"
 
 [features]
@@ -27,5 +27,5 @@ link_tensorrt_onnxparser = ["onnxparser"]
 v_1_3 = []
 
 [dependencies]
-autocxx = "0.27"
+autocxx = "0.30"
 cxx = "1.0"
