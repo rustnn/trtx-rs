@@ -188,6 +188,9 @@ impl<'a> Runtime<'a> {
                 use std::ffi::c_void;
 
                 use crate::TRTLIB;
+                if !TRTLIB.read()?.is_some() {
+                    crate::dynamically_load_tensorrt(None::<String>)?;
+                }
 
                 let lock = TRTLIB.read()?;
                 let create_infer_builder: Symbol<fn(*mut c_void, u32) -> *mut c_void> = lock
