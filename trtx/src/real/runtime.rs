@@ -55,6 +55,20 @@ impl CudaEngine {
         Ok(shape)
     }
 
+    /// Returns the data type of the tensor (e.g. kFLOAT, kHALF).
+    /// Required for correct buffer sizing and f32/f16 conversion when I/O uses half precision.
+    pub fn get_tensor_dtype(&self, name: &str) -> Result<trtx_sys::nvinfer1::DataType> {
+        if self.inner.is_null() {
+            return Err(Error::Runtime("Invalid engine".to_string()));
+        }
+        let name_cstr = std::ffi::CString::new(name)?;
+        let dtype = unsafe {
+            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ICudaEngine>(self.inner)
+                .getTensorDataType(name_cstr.as_ptr())
+        };
+        Ok(dtype)
+    }
+
     pub fn create_execution_context(&self) -> Result<ExecutionContext<'_>> {
         if self.inner.is_null() {
             return Err(Error::Runtime("Invalid engine".to_string()));

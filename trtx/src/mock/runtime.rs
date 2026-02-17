@@ -28,6 +28,11 @@ impl CudaEngine {
         Ok(crate::mock::default_engine_tensor_shape())
     }
 
+    /// Mock always returns kFLOAT (buffer sizing uses 4 bytes per element).
+    pub fn get_tensor_dtype(&self, _name: &str) -> Result<trtx_sys::nvinfer1::DataType> {
+        Ok(trtx_sys::nvinfer1::DataType::kFLOAT)
+    }
+
     pub fn create_execution_context(&self) -> Result<ExecutionContext<'_>> {
         let context_ptr = create_execution_context(self.inner)?;
         Ok(ExecutionContext::from_mock_ptr(context_ptr))
