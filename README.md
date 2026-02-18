@@ -44,8 +44,9 @@ Use `TENSORRT_RTX_DIR` to point to the TensorRT SDK root directory (the path tha
 1. **NVIDIA TensorRT-RTX**: Download and install from [NVIDIA Developer](https://developer.nvidia.com/tensorrt)
      - The TensorRT libraries should be in a location where they can be dynamically loaded.
        (e.g. by setting PATH on Windows or LD_LIBRARY_PATH on Linux)
-     - This crate currently requires TensorRT RTX version 1.3 (see Cargo feature `v_1_3`).
-       Other versions, might become available in future.
+     - This crate currently requires TensorRT RTX version 1.3 or 1.4 (see Cargo feature `v_1_3`, `v_1_4`).
+       Use `default-features = false` plus version feature to select version.
+       You will also have to either enable `dlopen_tensorrt_rtx` or `link_tensorrt_rtx`.
 
 2. **NVIDIA GPU**: Compatible with TensorRT-RTX requirements
 
@@ -77,16 +78,17 @@ Mock mode provides stub implementations that allow you to:
 
 The `trtx` crate has the following Cargo features:
 
-- `default`: "real", "dlopen_tensorrt_onnxparser", "dlopen_tensorrt_rtx", "onnxparser", "v_1_3"
-- `mock`: use this library in mock mode. TensorRT libraries and a Nvidia are no longer necessary for execution
-- `real`: opposite of `mock` mode. TensorRT and Nvidia GPU are required for execution
+- `default`: "dlopen_tensorrt_onnxparser", "dlopen_tensorrt_rtx", "onnxparser", "v_1_4"
+- `mock`: use this library in mock mode. TensorRT libraries and a Nvidia GPU are no longer necessary for execution
+- `mock_runtime`: only mock runtime features of TensorRT. TensorRT libraries are required, but GPU execution is mocked (no GPU or CUDA required).
 - `dlopen_tensorrt_rtx`: enables dynamic loading of the TensorRT library via `trtx::dynamically_load_tensorrt`
 - `dlopen_tensorrt_onnxparser`: enables dynamic loading of the TensorRT ONNX parser library via `trtx::dynamically_load_tensorrt_onnxparser`
 - `links_tensorrt_rtx`: links the TensorRT library, `trtx::dynamically_load_tensorrt` is now optional
 - `links_tensorrt_onnxparser`: links the TensorRT ONNX parser library, `trtx::dynamically_load_tensorrt_onnxparser` is now optional
 - `onnxparser`: Enables the ONNX parser functionality of this crate. Optional if not using ONNX as the input format for TensorRT,
   but using the builder library instead
-- `v_1_3`: Needs to be always enabled. Future TensorRT versions might be selectable by higher version numbers in future
+- `v_1_3` + `default-features = false` + (`dlopen_tensorrt_rtx` or `link_tensorrt_rtx`): Uses TensorRT RTX versions 1.3. At least one version feature has to be enabled
+- `v_1_4` + `default-features = false` + (`dlopen_tensorrt_rtx` or `link_tensorrt_rtx`): Uses TensorRT RTX versions 1.4. At least one version feature has to be enabled
 
 ## Installation
 

@@ -72,7 +72,7 @@ trtx-rs/
 ### 1. FFI Layer (trtx-sys)
 
 **Approach:**
-- Use bindgen to generate raw bindings
+- Use autocxx to generate raw bindings
 - Minimal manual intervention
 - Direct mapping to C++ API
 - No safety guarantees

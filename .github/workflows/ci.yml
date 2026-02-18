@@ -52,6 +52,24 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-target-${{ matrix.rust }}-
 
+      - name: Install TensorRT RTX libs via pip
+        if: ${{ matrix.os != 'macos-latest' }}
+        shell: bash
+        run: |
+          # 1.3 is not on pip, only starting with 1.4
+          pip install tensorrt_rtx~=1.4
+          RTX_LIB_DIR=$(python -c 'from os.path import dirname;print(dirname(__import__("tensorrt_rtx_libs").__file__))')
+          echo "RTX_LIB_DIR=$RTX_LIB_DIR"
+          echo "RTX_LIB_DIR=$RTX_LIB_DIR" >> $GITHUB_ENV
+
+      # Version suffix is missing in the Linux Python installation
+      - name: Massage TensorRT RTX libs name on Linux
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        shell: bash
+        run: |
+          ln -s $RTX_LIB_DIR/libtensorrt_rtx.so.1{,.4.0}
+          ln -s $RTX_LIB_DIR/libtensorrt_onnxparser_rtx.so.1{,.4.0}
+
       - name: Check formatting
         run: cargo fmt --all -- --check
 
@@ -68,17 +86,29 @@ jobs:
         run: cargo doc --features mock --no-deps
 
       - name: Run clippy (real mode)
-        run: cargo clippy --features real --all-targets -- -D warnings
+        run: cargo clippy --all-targets -- -D warnings
 
       - name: Build (real mode)
-        run: cargo build --features real --verbose
+        run: cargo build --verbose
 
-      # cudart won't pass in non-CUDA env
-      #- name: Run tests (real mode)
-        #run: cargo test --features real --verbose
+      - name: Run tests (real mode with mock_runtime, Linux)
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: |
+          export LD_LIBRARY_PATH="$RTX_LIB_DIR"
+          cargo test -F mock_runtime --verbose
+
+      - name: Run tests (real mode with mock_runtime, Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          $env:PATH+=";$env:RTX_LIB_DIR"
+          echo "PATH=$PATH"
+          cargo test -F mock_runtime --verbose
+
+      - name: Run tests (mock mode old TensorRT versions)
+        run: cargo test --features mock -F v_1_3 -F dlopen_tensorrt_rtx -F dlopen_tensorrt_onnxparser --no-default-features --verbose
 
       - name: Build documentation (real mode)
-        run: cargo doc --features real --no-deps
+        run: cargo doc --no-deps
 
   examples:
     name: Examples
@@ -102,24 +132,25 @@ jobs:
       - name: Run example
         run: cargo run --features mock --example basic_workflow
 
-  coverage:
-    name: Code Coverage
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  # TODO: fix symbols with autocxx
+  #coverage:
+    #name: Code Coverage
+    #runs-on: ubuntu-latest
+    #steps:
+      #- name: Checkout code
+        #uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      #- name: Install Rust
+        #uses: dtolnay/rust-toolchain@stable
 
-      - name: Install cargo-tarpaulin
-        run: cargo install cargo-tarpaulin
+      #- name: Install cargo-tarpaulin
+        #run: cargo install cargo-tarpaulin
 
-      - name: Generate coverage
-        run: cargo tarpaulin --features mock --out xml --output-dir coverage
+      #- name: Generate coverage
+        #run: cargo tarpaulin --features mock --out xml --output-dir coverage
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage/cobertura.xml
-          fail_ci_if_error: false
+      #- name: Upload coverage to Codecov
+        #uses: codecov/codecov-action@v4
+        #with:
+          #files: ./coverage/cobertura.xml
+          #fail_ci_if_error: false
