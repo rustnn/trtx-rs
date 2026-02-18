@@ -33,10 +33,7 @@ trtx-rs/
 
 ### Required (building) 
 
-1. **NVIDIA TensorRT-RTX 1.3**: Download and install from [NVIDIA Developer](https://developer.nvidia.com/tensorrt)
-2. **CUDA Runtime**: Version compatible with your TensorRT-RTX installation
-3. **Clang**: Required for autocxx. On Windows: `winget install LLVM.LLVM`
-4. **NVIDIA GPU**: Compatible with TensorRT-RTX requirements
+1. **Clang**: Required for autocxx. On Windows: `winget install LLVM.LLVM`
 
 TensorRT is by default dynamically loaded. So, the TensorRT SDK is only required for building
 with Cargo features `link_tensorrt_rtx`/ `link_tensorrt_onnxparser` which would link the TensorRT libraries.

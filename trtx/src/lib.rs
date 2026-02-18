@@ -43,6 +43,10 @@
 //! use trtx::builder::{BuilderConfig, MemoryPoolType, network_flags};
 //!
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! // Dynamically load TensorRT with optional path
+//! // when using the crate's dlopen_tensorrt_rtx feature (the default, optional and a no-op when link_tensorrt_rtx is also enabled)
+//! trtx::dynamically_load_tensorrt(None::<String>).unwrap();
+//!
 //! // Create logger
 //! let logger = Logger::stderr()?;
 //!
@@ -79,14 +83,23 @@
 //! some operations (like setting tensor addresses and enqueueing inference)
 //! require careful management of CUDA memory and are marked as `unsafe`.
 //!
-//! # Prerequisites
+//! ### Required (building)
 //!
-//! - NVIDIA TensorRT-RTX library installed
-//! - CUDA Runtime
-//! - Compatible NVIDIA GPU
+//! 1. **Clang**: Required for autocxx. On Windows: `winget install LLVM.LLVM`
 //!
-//! Set the `TENSORRT_RTX_DIR` environment variable to the installation path
-//! if TensorRT-RTX is not in a standard location.
+//! TensorRT is by default dynamically loaded. So, the TensorRT SDK is only required for building
+//! with Cargo features `link_tensorrt_rtx`/ `link_tensorrt_onnxparser` which would link the TensorRT libraries.
+//! Use `TENSORRT_RTX_DIR` to point to the TensorRT SDK root directory (the path that contains the `lib` folder with the shared libraries).
+//!
+//! ### Required (GPU execution)
+//!
+//! 1. **NVIDIA TensorRT-RTX**: Download and install from [NVIDIA Developer](https://developer.nvidia.com/tensorrt)
+//!      - The TensorRT libraries should be in a location where they can be dynamically loaded.
+//!        (e.g. by setting PATH on Windows or LD_LIBRARY_PATH on Linux)
+//!      - This crate currently requires TensorRT RTX version 1.3 (see Cargo feature `v_1_3`).
+//!        Other versions, might become available in future.
+//!
+//! 2. **NVIDIA GPU**: Compatible with TensorRT-RTX requirements
 
 // Allow unnecessary casts - they're needed for real mode (u32) but not mock mode (i32)
 #![cfg_attr(feature = "mock", allow(clippy::unnecessary_cast))]
