@@ -85,6 +85,7 @@ better_enum!(ScaleMode);
 better_enum!(ScatterMode);
 better_enum!(UnaryOperation);
 better_enum!(TopKOperation);
+better_enum!(LayerInformationFormat);
 
 // Real mode uses autocxx
 #[cfg(not(feature = "mock"))]
@@ -140,7 +141,9 @@ pub mod real_bindings {
         generate!("nvinfer1::IRuntime")
         generate!("nvinfer1::ICudaEngine")
         generate!("nvinfer1::IExecutionContext")
+        generate!("nvinfer1::IEngineInspector")
         generate!("nvinfer1::IHostMemory")
+        generate!("nvinfer1::LayerInformationFormat")
 
         // Try generating Dims64 directly (base class, not the typedef alias)
         generate_pod!("nvinfer1::Dims64")
@@ -351,6 +354,7 @@ pub mod real_bindings {
         pub fn delete_config(config: *mut std::ffi::c_void);
         pub fn delete_runtime(runtime: *mut std::ffi::c_void);
         pub fn delete_engine(engine: *mut std::ffi::c_void);
+        pub fn delete_engine_inspector(inspector: *mut std::ffi::c_void);
         pub fn delete_context(context: *mut std::ffi::c_void);
         pub fn delete_parser(parser: *mut std::ffi::c_void);
     }

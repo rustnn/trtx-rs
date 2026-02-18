@@ -29,13 +29,37 @@ impl CudaEngine {
     }
 
     /// Mock always returns kFLOAT (buffer sizing uses 4 bytes per element).
-    pub fn get_tensor_dtype(&self, _name: &str) -> Result<trtx_sys::nvinfer1::DataType> {
-        Ok(trtx_sys::nvinfer1::DataType::kFLOAT)
+    pub fn get_tensor_dtype(&self, _name: &str) -> Result<trtx_sys::DataType> {
+        Ok(trtx_sys::DataType::kFLOAT)
+    }
+
+    pub fn create_engine_inspector(&self) -> Result<EngineInspector> {
+        Ok(EngineInspector {})
     }
 
     pub fn create_execution_context(&self) -> Result<ExecutionContext<'_>> {
         let context_ptr = create_execution_context(self.inner)?;
         Ok(ExecutionContext::from_mock_ptr(context_ptr))
+    }
+}
+
+/// Engine inspector (mock mode). Returns empty strings for layer/engine information.
+pub struct EngineInspector {}
+
+impl EngineInspector {
+    pub fn get_layer_information(
+        &self,
+        _layer_index: i32,
+        _format: trtx_sys::LayerInformationFormat,
+    ) -> Result<String> {
+        Ok(String::new())
+    }
+
+    pub fn get_engine_information(
+        &self,
+        _format: trtx_sys::LayerInformationFormat,
+    ) -> Result<String> {
+        Ok(String::new())
     }
 }
 

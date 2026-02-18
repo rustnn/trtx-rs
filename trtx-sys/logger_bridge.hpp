@@ -60,6 +60,7 @@ void delete_network(void* network);
 void delete_config(void* config);
 void delete_runtime(void* runtime);
 void delete_engine(void* engine);
+void delete_engine_inspector(void* inspector);
 void delete_context(void* context);
 void delete_parser(void* parser);
 

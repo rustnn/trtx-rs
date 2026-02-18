@@ -1,34 +1,35 @@
 //! Real TensorRT runtime implementation
 
+use std::ffi::CStr;
+use std::pin::Pin;
+use std::ptr;
+use std::sync::Mutex;
+
+use trtx_sys::nvinfer1::{
+    DataType, ICudaEngine, IEngineInspector, IExecutionContext, IRuntime, LayerInformationFormat,
+    TensorIOMode,
+};
+
 use crate::error::{Error, Result};
 use crate::logger::Logger;
-use std::ffi::CStr;
 
-/// CUDA engine (real mode)
-pub struct CudaEngine {
-    inner: *mut std::ffi::c_void,
+pub struct CudaEngine<'runtime> {
+    inner: Mutex<Pin<&'runtime mut ICudaEngine>>,
 }
 
-impl CudaEngine {
-    pub fn get_nb_io_tensors(&self) -> Result<i32> {
-        if self.inner.is_null() {
-            return Err(Error::Runtime("Invalid engine".to_string()));
+impl<'engine> CudaEngine<'engine> {
+    pub(crate) fn from_ptr(_runtime: &'engine Runtime, ptr: &'engine mut ICudaEngine) -> Self {
+        Self {
+            inner: unsafe { Pin::new_unchecked(ptr).into() },
         }
-        let count = unsafe {
-            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ICudaEngine>(self.inner)
-                .getNbIOTensors()
-        };
-        Ok(count)
+    }
+
+    pub fn get_nb_io_tensors(&self) -> Result<i32> {
+        Ok(self.inner.lock()?.as_ref().getNbIOTensors())
     }
 
     pub fn get_tensor_name(&self, index: i32) -> Result<String> {
-        if self.inner.is_null() {
-            return Err(Error::Runtime("Invalid engine".to_string()));
-        }
-        let name_ptr = unsafe {
-            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ICudaEngine>(self.inner)
-                .getIOTensorName(index)
-        };
+        let name_ptr = self.inner.lock()?.as_ref().getIOTensorName(index);
         if name_ptr.is_null() {
             return Err(Error::InvalidArgument("Invalid tensor index".to_string()));
         }
@@ -36,49 +37,238 @@ impl CudaEngine {
     }
 
     pub fn get_tensor_shape(&self, name: &str) -> Result<Vec<i64>> {
-        if self.inner.is_null() {
-            return Err(Error::Runtime("Invalid engine".to_string()));
-        }
         let name_cstr = std::ffi::CString::new(name)?;
         let dims = unsafe {
-            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ICudaEngine>(self.inner)
+            self.inner
+                .lock()?
+                .as_ref()
                 .getTensorShape(name_cstr.as_ptr())
         };
         let nb_dims = dims.nbDims as usize;
         if nb_dims > 8 {
             return Err(Error::Runtime("Tensor has too many dimensions".to_string()));
         }
-        let mut shape = Vec::with_capacity(nb_dims);
-        for i in 0..nb_dims {
-            shape.push(dims.d[i]);
+        Ok((0..nb_dims).map(|i| dims.d[i]).collect())
+    }
+
+    /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorDataType`].
+    pub fn get_tensor_data_type(&self, name: &str) -> Result<DataType> {
+        let name_cstr = std::ffi::CString::new(name)?;
+        Ok(unsafe {
+            self.inner
+                .lock()?
+                .as_ref()
+                .getTensorDataType(name_cstr.as_ptr())
+        })
+    }
+
+    /// See [`trtx_sys::nvinfer1::ICudaEngine::getNbLayers`].
+    pub fn get_nb_layers(&self) -> Result<i32> {
+        Ok(self.inner.lock()?.as_ref().getNbLayers())
+    }
+
+    /// See [`trtx_sys::nvinfer1::ICudaEngine::getNbOptimizationProfiles`].
+    pub fn get_nb_optimization_profiles(&self) -> Result<i32> {
+        Ok(self.inner.lock()?.as_ref().getNbOptimizationProfiles())
+    }
+
+    /// See [`trtx_sys::nvinfer1::ICudaEngine::getNbAuxStreams`].
+    pub fn get_nb_aux_streams(&self) -> Result<i32> {
+        Ok(self.inner.lock()?.as_ref().getNbAuxStreams())
+    }
+
+    /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorIOMode`].
+    pub fn get_tensor_io_mode(&self, name: &str) -> Result<TensorIOMode> {
+        let name_cstr = std::ffi::CString::new(name)?;
+        Ok(unsafe {
+            self.inner
+                .lock()?
+                .as_ref()
+                .getTensorIOMode(name_cstr.as_ptr())
+        })
+    }
+
+    /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorLocation`].
+    pub fn get_tensor_location(&self, name: &str) -> Result<trtx_sys::nvinfer1::TensorLocation> {
+        let name_cstr = std::ffi::CString::new(name)?;
+        Ok(unsafe {
+            self.inner
+                .lock()?
+                .as_ref()
+                .getTensorLocation(name_cstr.as_ptr())
+        })
+    }
+
+    /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorFormat`].
+    pub fn get_tensor_format(&self, name: &str) -> Result<trtx_sys::nvinfer1::TensorFormat> {
+        let name_cstr = std::ffi::CString::new(name)?;
+        Ok(unsafe {
+            self.inner
+                .lock()?
+                .as_ref()
+                .getTensorFormat(name_cstr.as_ptr())
+        })
+    }
+
+    /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorFormat`] (profile variant).
+    pub fn get_tensor_format_for_profile(
+        &self,
+        name: &str,
+        profile_index: i32,
+    ) -> Result<trtx_sys::nvinfer1::TensorFormat> {
+        let name_cstr = std::ffi::CString::new(name)?;
+        Ok(unsafe {
+            self.inner
+                .lock()?
+                .as_ref()
+                .getTensorFormat1(name_cstr.as_ptr(), profile_index)
+        })
+    }
+
+    /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorFormatDesc`].
+    pub fn get_tensor_format_desc(&self, name: &str) -> Result<String> {
+        let name_cstr = std::ffi::CString::new(name)?;
+        let ptr = unsafe {
+            self.inner
+                .lock()?
+                .as_ref()
+                .getTensorFormatDesc(name_cstr.as_ptr())
+        };
+        if ptr.is_null() {
+            return Ok(String::new());
         }
-        Ok(shape)
+        Ok(unsafe { CStr::from_ptr(ptr) }.to_str()?.to_string())
+    }
+
+    /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorFormatDesc`] (profile variant).
+    pub fn get_tensor_format_desc_for_profile(
+        &self,
+        name: &str,
+        profile_index: i32,
+    ) -> Result<String> {
+        let name_cstr = std::ffi::CString::new(name)?;
+        let ptr = unsafe {
+            self.inner
+                .lock()?
+                .as_ref()
+                .getTensorFormatDesc1(name_cstr.as_ptr(), profile_index)
+        };
+        if ptr.is_null() {
+            return Ok(String::new());
+        }
+        Ok(unsafe { CStr::from_ptr(ptr) }.to_str()?.to_string())
+    }
+
+    /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorVectorizedDim`].
+    pub fn get_tensor_vectorized_dim(&self, name: &str) -> Result<i32> {
+        let name_cstr = std::ffi::CString::new(name)?;
+        Ok(unsafe {
+            self.inner
+                .lock()?
+                .as_ref()
+                .getTensorVectorizedDim(name_cstr.as_ptr())
+        })
+    }
+
+    /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorVectorizedDim`] (profile variant).
+    pub fn get_tensor_vectorized_dim_for_profile(
+        &self,
+        name: &str,
+        profile_index: i32,
+    ) -> Result<i32> {
+        let name_cstr = std::ffi::CString::new(name)?;
+        Ok(unsafe {
+            self.inner
+                .lock()?
+                .as_ref()
+                .get_ref()
+                .getTensorVectorizedDim1(name_cstr.as_ptr(), profile_index)
+        })
+    }
+
+    /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorBytesPerComponent`].
+    pub fn get_tensor_bytes_per_component(&self, name: &str) -> Result<i32> {
+        let name_cstr = std::ffi::CString::new(name)?;
+        Ok(unsafe {
+            self.inner
+                .lock()?
+                .as_ref()
+                .getTensorBytesPerComponent(name_cstr.as_ptr())
+        })
+    }
+
+    /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorBytesPerComponent`] (profile variant).
+    pub fn get_tensor_bytes_per_component_for_profile(
+        &self,
+        name: &str,
+        profile_index: i32,
+    ) -> Result<i32> {
+        let name_cstr = std::ffi::CString::new(name)?;
+        Ok(unsafe {
+            self.inner
+                .lock()?
+                .as_ref()
+                .getTensorBytesPerComponent1(name_cstr.as_ptr(), profile_index)
+        })
+    }
+
+    /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorComponentsPerElement`].
+    pub fn get_tensor_components_per_element(&self, name: &str) -> Result<i32> {
+        let name_cstr = std::ffi::CString::new(name)?;
+        Ok(unsafe {
+            self.inner
+                .lock()?
+                .as_ref()
+                .getTensorComponentsPerElement(name_cstr.as_ptr())
+        })
+    }
+
+    /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorComponentsPerElement`] (profile variant).
+    pub fn get_tensor_components_per_element_for_profile(
+        &self,
+        name: &str,
+        profile_index: i32,
+    ) -> Result<i32> {
+        let name_cstr = std::ffi::CString::new(name)?;
+        Ok(unsafe {
+            self.inner
+                .lock()?
+                .as_ref()
+                .getTensorComponentsPerElement1(name_cstr.as_ptr(), profile_index)
+        })
+    }
+
+    /// See [`trtx_sys::nvinfer1::ICudaEngine::createEngineInspector`].
+    /// Returns an inspector that can print layer and engine information (e.g. JSON or one-line format).
+    pub fn create_engine_inspector(&self) -> Result<EngineInspector<'_>> {
+        let inspector = self.inner.lock()?.as_ref().createEngineInspector();
+        let inspector = unsafe {
+            inspector
+                .as_mut()
+                .ok_or_else(|| Error::Runtime("Failed to create engine inspector".to_string()))?
+        };
+        Ok(EngineInspector {
+            inner: unsafe { Pin::new_unchecked(inspector) },
+        })
     }
 
     /// Returns the data type of the tensor (e.g. kFLOAT, kHALF).
     /// Required for correct buffer sizing and f32/f16 conversion when I/O uses half precision.
-    pub fn get_tensor_dtype(&self, name: &str) -> Result<trtx_sys::nvinfer1::DataType> {
-        if self.inner.is_null() {
-            return Err(Error::Runtime("Invalid engine".to_string()));
-        }
+    pub fn get_tensor_dtype(&self, name: &str) -> Result<trtx_sys::DataType> {
         let name_cstr = std::ffi::CString::new(name)?;
-        let dtype = unsafe {
-            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ICudaEngine>(self.inner)
+        Ok(unsafe {
+            self.inner
+                .lock()?
+                .as_ref()
                 .getTensorDataType(name_cstr.as_ptr())
-        };
-        Ok(dtype)
+                .into()
+        })
     }
 
     pub fn create_execution_context(&self) -> Result<ExecutionContext<'_>> {
-        if self.inner.is_null() {
-            return Err(Error::Runtime("Invalid engine".to_string()));
-        }
-        let context_ptr = unsafe {
-            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ICudaEngine>(self.inner)
-                .createExecutionContext(
-                    trtx_sys::nvinfer1::ExecutionContextAllocationStrategy::kSTATIC,
-                )
-        };
+        let context_ptr = self.inner.lock()?.as_mut().createExecutionContext(
+            trtx_sys::nvinfer1::ExecutionContextAllocationStrategy::kSTATIC,
+        );
         if context_ptr.is_null() {
             return Err(Error::Runtime(
                 "Failed to create execution context".to_string(),
@@ -89,30 +279,68 @@ impl CudaEngine {
             _engine: std::marker::PhantomData,
         })
     }
-
-    #[allow(dead_code)]
-    pub(crate) fn as_ptr(&self) -> *const std::ffi::c_void {
-        self.inner
-    }
 }
 
-impl Drop for CudaEngine {
+impl Drop for CudaEngine<'_> {
     fn drop(&mut self) {
-        if !self.inner.is_null() {
-            unsafe {
-                trtx_sys::delete_engine(self.inner);
-            }
-        }
+        unsafe {
+            ptr::drop_in_place(Pin::get_unchecked_mut(
+                self.inner.get_mut().unwrap().as_mut(),
+            ));
+        };
     }
 }
 
-unsafe impl Send for CudaEngine {}
-unsafe impl Sync for CudaEngine {}
+/// Engine inspector for layer/engine information (real mode).
+/// See [`trtx_sys::nvinfer1::IEngineInspector`].
+pub struct EngineInspector<'engine> {
+    inner: Pin<&'engine mut IEngineInspector>,
+}
+
+impl EngineInspector<'_> {
+    /// Returns layer information for the given layer index in the requested format.
+    /// See [`trtx_sys::nvinfer1::IEngineInspector::getLayerInformation`].
+    pub fn get_layer_information(
+        &mut self,
+        layer_index: i32,
+        format: LayerInformationFormat,
+    ) -> Result<String> {
+        let ptr = self.inner.getLayerInformation(layer_index, format);
+        Ok(if ptr.is_null() {
+            return Err(Error::Runtime(
+                "Could not get layer information".to_string(),
+            ));
+        } else {
+            unsafe { CStr::from_ptr(ptr) }.to_str()?.to_string()
+        })
+    }
+
+    /// Returns engine information in the requested format.
+    /// See [`trtx_sys::nvinfer1::IEngineInspector::getEngineInformation`].
+    pub fn get_engine_information(&self, format: LayerInformationFormat) -> Result<String> {
+        let ptr = self.inner.getEngineInformation(format);
+        Ok(if ptr.is_null() {
+            return Err(Error::Runtime(
+                "Could not get layer information".to_string(),
+            ));
+        } else {
+            unsafe { CStr::from_ptr(ptr) }.to_str()?.to_string()
+        })
+    }
+}
+
+impl Drop for EngineInspector<'_> {
+    fn drop(&mut self) {
+        unsafe {
+            ptr::drop_in_place(Pin::get_unchecked_mut(self.inner.as_mut()) as *mut IEngineInspector);
+        };
+    }
+}
 
 /// Execution context (real mode)
 pub struct ExecutionContext<'a> {
     inner: *mut std::ffi::c_void,
-    _engine: std::marker::PhantomData<&'a CudaEngine>,
+    _engine: std::marker::PhantomData<&'a CudaEngine<'a>>,
 }
 
 impl<'a> ExecutionContext<'a> {
@@ -130,10 +358,7 @@ impl<'a> ExecutionContext<'a> {
             return Err(Error::Runtime("Invalid execution context".to_string()));
         }
         let name_cstr = std::ffi::CString::new(name)?;
-        let success =
-            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::IExecutionContext>(
-                self.inner,
-            )
+        let success = crate::autocxx_helpers::cast_and_pin::<IExecutionContext>(self.inner)
             .setTensorAddress(name_cstr.as_ptr(), data as *mut _);
         if !success {
             return Err(Error::Runtime("Failed to set tensor address".to_string()));
@@ -150,10 +375,7 @@ impl<'a> ExecutionContext<'a> {
         if self.inner.is_null() {
             return Err(Error::Runtime("Invalid execution context".to_string()));
         }
-        let success =
-            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::IExecutionContext>(
-                self.inner,
-            )
+        let success = crate::autocxx_helpers::cast_and_pin::<IExecutionContext>(self.inner)
             .enqueueV3(cuda_stream as *mut _);
         if !success {
             return Err(Error::Runtime("Failed to enqueue inference".to_string()));
@@ -193,7 +415,7 @@ impl<'a> Runtime<'a> {
         let runtime_ptr = {
             #[cfg(feature = "link_tensorrt_rtx")]
             unsafe {
-                trtx_sys::create_infer_builder(logger_ptr)
+                trtx_sys::create_infer_runtime(logger_ptr)
             }
             #[cfg(not(feature = "link_tensorrt_rtx"))]
             #[cfg(feature = "dlopen_tensorrt_rtx")]
@@ -207,11 +429,11 @@ impl<'a> Runtime<'a> {
                 }
 
                 let lock = TRTLIB.read()?;
-                let create_infer_builder: Symbol<fn(*mut c_void, u32) -> *mut c_void> = lock
+                let create_infer_runtime: Symbol<fn(*mut c_void, u32) -> *mut c_void> = lock
                     .as_ref()
                     .ok_or(Error::TrtRtxLibraryNotLoaded)?
                     .get(b"createInferRuntime_INTERNAL")?;
-                create_infer_builder(logger_ptr, trtx_sys::get_tensorrt_version())
+                create_infer_runtime(logger_ptr, trtx_sys::get_tensorrt_version())
             }
         };
         if runtime_ptr.is_null() {
@@ -223,23 +445,27 @@ impl<'a> Runtime<'a> {
         })
     }
 
-    pub fn deserialize_cuda_engine(&self, data: &[u8]) -> Result<CudaEngine> {
+    pub fn deserialize_cuda_engine(&self, data: &[u8]) -> Result<CudaEngine<'_>> {
         if self.inner.is_null() {
             return Err(Error::Runtime("Invalid runtime".to_string()));
         }
-        let engine_ptr = unsafe {
-            trtx_sys::runtime_deserialize_cuda_engine(
-                self.inner,
-                data.as_ptr() as *const _,
+        unsafe {
+            let pin = Pin::new_unchecked(
+                (self.inner as *mut IRuntime)
+                    .as_mut()
+                    .expect("we checked for null"),
+            );
+            let engine = pin.deserializeCudaEngine(
+                data.as_ref().as_ptr() as *const autocxx::c_void,
                 data.len(),
-            )
-        };
-        if engine_ptr.is_null() {
-            return Err(Error::Runtime("Failed to deserialize engine".to_string()));
+            );
+            Ok(CudaEngine::from_ptr(
+                self,
+                engine
+                    .as_mut()
+                    .ok_or_else(|| Error::Runtime("Failed to deserialize engine".to_string()))?,
+            ))
         }
-        Ok(CudaEngine {
-            inner: engine_ptr as *mut _,
-        })
     }
 }
 

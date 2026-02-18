@@ -55,7 +55,7 @@ impl<'builder> Builder<'builder> {
         })
     }
 
-    pub fn create_network(&self, flags: u32) -> Result<NetworkDefinition> {
+    pub fn create_network(&self, flags: u32) -> Result<NetworkDefinition<'_>> {
         if self.inner.is_null() {
             return Err(Error::Runtime("Invalid builder".to_string()));
         }
@@ -63,10 +63,9 @@ impl<'builder> Builder<'builder> {
             crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::IBuilder>(self.inner)
                 .createNetworkV2(flags)
         };
-        if network_ptr.is_null() {
-            return Err(Error::Runtime("Failed to create network".to_string()));
-        }
-        Ok(NetworkDefinition::from_ptr(network_ptr as *mut _))
+        let network = unsafe { network_ptr.as_mut() }
+            .ok_or_else(|| Error::Runtime("Failed to create network".to_string()))?;
+        Ok(NetworkDefinition::from_ptr(network))
     }
 
     pub fn create_config(&self) -> Result<BuilderConfig<'builder>> {
@@ -87,24 +86,19 @@ impl<'builder> Builder<'builder> {
 
     pub fn build_serialized_network<'network, 'config, 'config_borrow>(
         &self,
-        network: &'network mut NetworkDefinition,
+        network: &'network NetworkDefinition,
         config: &'config_borrow mut BuilderConfig<'config>,
     ) -> Result<HostMemory<'_>> {
         if self.inner.is_null() {
             return Err(Error::Runtime("Invalid builder".to_string()));
         }
-        let network_ptr = network.as_mut_ptr();
 
         let serialized_engine = unsafe {
             let builder = &mut *(self.inner as *mut trtx_sys::nvinfer1::IBuilder);
-            let network = &mut *(network_ptr as *mut trtx_sys::nvinfer1::INetworkDefinition);
             let mut builder_pin = std::pin::Pin::new_unchecked(builder);
             builder_pin
                 .as_mut()
-                .buildSerializedNetwork(
-                    std::pin::Pin::new_unchecked(network),
-                    config.inner.as_mut(),
-                )
+                .buildSerializedNetwork(network.inner.lock()?.as_mut(), config.inner.as_mut())
                 .as_mut()
         }
         .ok_or_else(|| Error::Runtime("Failed to build serialized network".to_string()))?;

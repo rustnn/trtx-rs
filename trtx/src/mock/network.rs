@@ -32,15 +32,6 @@ pub(crate) fn default_engine_tensor_shape() -> Vec<i64> {
     vec![1_i64, 1000]
 }
 
-/// Destroy network (mock mode)
-pub(crate) fn destroy_network(network_ptr: *mut trtx_sys::TrtxNetworkDefinition) {
-    if !network_ptr.is_null() {
-        unsafe {
-            trtx_sys::trtx_network_destroy(network_ptr);
-        }
-    }
-}
-
 //==============================================================================
 // Impl blocks for network types (mock stubs)
 //==============================================================================
@@ -50,12 +41,10 @@ macro_rules! impl_layer_mock {
     ($name:ident) => {
         impl Layer for $name {
             fn get_output(&self, _index: i32) -> Result<Tensor> {
-                Ok(Tensor {
-                    inner: std::ptr::null_mut(),
-                })
+                Ok(Tensor {})
             }
-            fn as_ptr(&self) -> *mut std::ffi::c_void {
-                self.inner
+            fn set_layer_name(&mut self, _name: &str) -> Result<()> {
+                Ok(())
             }
         }
     };
@@ -86,46 +75,6 @@ impl_layer_mock!(UnaryLayer);
 impl_layer_mock!(IdentityLayer);
 impl_layer_mock!(PaddingLayer);
 impl_layer_mock!(CastLayer);
-
-/// Macro to implement set_layer_name for mock (no-op).
-macro_rules! impl_layer_set_name_mock {
-    ($($name:ident),* $(,)?) => {
-        $(
-        impl $name {
-            pub fn set_layer_name(&mut self, _name: &str) -> Result<()> {
-                Ok(())
-            }
-        }
-        )*
-    };
-}
-impl_layer_set_name_mock!(
-    ShuffleLayer,
-    ActivationLayer,
-    ElementWiseLayer,
-    ResizeLayer,
-    TopKLayer,
-    GatherLayer,
-    ScatterLayer,
-    SelectLayer,
-    MatrixMultiplyLayer,
-    SoftMaxLayer,
-    ReduceLayer,
-    CumulativeLayer,
-    PoolingLayer,
-    ConvolutionLayer,
-    DeconvolutionLayer,
-    QuantizeLayer,
-    DequantizeLayer,
-    ConstantLayer,
-    ConcatenationLayer,
-    ScaleLayer,
-    SliceLayer,
-    UnaryLayer,
-    IdentityLayer,
-    PaddingLayer,
-    CastLayer,
-);
 
 // Layer-specific impls - all no-ops for mock
 impl ShuffleLayer {
@@ -222,11 +171,11 @@ impl Tensor {
 }
 
 impl NetworkDefinition {
-    pub(crate) fn from_ptr(ptr: *mut std::ffi::c_void) -> Self {
-        NetworkDefinition { inner: ptr }
+    pub(crate) fn from_ptr(_ptr: *mut std::ffi::c_void) -> Self {
+        NetworkDefinition {}
     }
     pub(crate) fn as_mut_ptr(&mut self) -> *mut std::ffi::c_void {
-        self.inner
+        std::ptr::null_mut()
     }
 
     pub fn add_input(
@@ -235,13 +184,9 @@ impl NetworkDefinition {
         _data_type: trtx_sys::DataType,
         _dims: &[i32],
     ) -> Result<Tensor> {
-        Ok(Tensor {
-            inner: std::ptr::null_mut(),
-        })
+        Ok(Tensor {})
     }
-    pub fn mark_output(&mut self, _tensor: &Tensor) -> Result<()> {
-        Ok(())
-    }
+    pub fn mark_output(&mut self, _tensor: &Tensor) {}
     pub fn get_nb_inputs(&self) -> i32 {
         0
     }
@@ -249,14 +194,10 @@ impl NetworkDefinition {
         0
     }
     pub fn get_input(&self, _index: i32) -> Result<Tensor> {
-        Ok(Tensor {
-            inner: std::ptr::null_mut(),
-        })
+        Ok(Tensor {})
     }
     pub fn get_output(&self, _index: i32) -> Result<Tensor> {
-        Ok(Tensor {
-            inner: std::ptr::null_mut(),
-        })
+        Ok(Tensor {})
     }
 
     pub fn get_nb_layers(&self) -> i32 {
@@ -470,11 +411,7 @@ impl NetworkDefinition {
 }
 
 impl Drop for NetworkDefinition {
-    fn drop(&mut self) {
-        if !self.inner.is_null() {
-            destroy_network(self.inner as *mut trtx_sys::TrtxNetworkDefinition);
-        }
-    }
+    fn drop(&mut self) {}
 }
 
 unsafe impl Send for NetworkDefinition {}

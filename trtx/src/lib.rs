@@ -139,7 +139,7 @@ pub use logger::{LogHandler, Logger, Severity, StderrLogger};
 pub use network::{ConvWeights, NetworkDefinition, Tensor};
 #[cfg(feature = "onnxparser")]
 pub use onnx_parser::OnnxParser;
-pub use runtime::{CudaEngine, ExecutionContext, Runtime};
+pub use runtime::{CudaEngine, EngineInspector, ExecutionContext, Runtime};
 
 #[cfg(feature = "dlopen_tensorrt_rtx")]
 #[cfg(not(any(feature = "link_tensorrt_rtx", feature = "mock")))]
@@ -209,7 +209,7 @@ pub fn dynamically_load_tensorrt_onnxparser(_filename: Option<impl AsFilename>) 
 // Re-export TensorRT operation enums
 pub use trtx_sys::{
     ActivationType, CumulativeOperation, DataType, ElementWiseOperation, GatherMode,
-    InterpolationMode, MatrixOperation, PoolingType, ReduceOperation,
+    InterpolationMode, LayerInformationFormat, MatrixOperation, PoolingType, ReduceOperation,
     ResizeCoordinateTransformation, ResizeRoundMode, ResizeSelector, ScaleMode, ScatterMode,
     TopKOperation, UnaryOperation,
 };

@@ -414,6 +414,12 @@ void delete_engine(void* engine) {
     }
 }
 
+void delete_engine_inspector(void* inspector) {
+    if (inspector) {
+        delete static_cast<nvinfer1::IEngineInspector*>(inspector);
+    }
+}
+
 void delete_context(void* context) {
     if (context) {
         delete static_cast<nvinfer1::IExecutionContext*>(context);

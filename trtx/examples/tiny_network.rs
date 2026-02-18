@@ -174,7 +174,7 @@ fn build_tiny_network(logger: &Logger) -> Result<Vec<u8>> {
     let builder = Builder::new(logger)?;
 
     println!("   Creating network with explicit batch...");
-    let mut network = builder.create_network(0)?;
+    let network = builder.create_network(0)?;
 
     println!("   Adding input tensor [1, 3, 4, 4]...");
     let input = network.add_input("input", DataType::kFLOAT, &[1, 3, 4, 4])?;
@@ -191,7 +191,7 @@ fn build_tiny_network(logger: &Logger) -> Result<Vec<u8>> {
     println!("   Output tensor name: {:?}", output_named.name()?);
 
     println!("   Marking output tensor...");
-    network.mark_output(&output_named)?;
+    network.mark_output(&output_named);
 
     println!("   Network has {} inputs", network.get_nb_inputs());
     println!("   Network has {} outputs", network.get_nb_outputs());
@@ -203,7 +203,7 @@ fn build_tiny_network(logger: &Logger) -> Result<Vec<u8>> {
     config.set_memory_pool_limit(MemoryPoolType::kWORKSPACE, 1 << 30);
 
     println!("   Building serialized network...");
-    let engine_data = builder.build_serialized_network(&mut network, &mut config)?;
+    let engine_data = builder.build_serialized_network(&network, &mut config)?;
     let engine_size = engine_data.len();
     #[cfg(not(feature = "mock"))]
     assert_eq!(engine_data.data_type(), DataType::kINT8);

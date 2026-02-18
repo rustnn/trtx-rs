@@ -16,6 +16,7 @@ thiserror = "2.0"
 cxx = "1.0"
 libc = "0.2"
 libloading = { version = "0.9", optional = true }
+autocxx = { version = "0.30", optional = true }
 
 # cudarc for safe CUDA operations (required when real mode is enabled)
 # Using cuda-12050 as fallback; CUDA 13.x should be compatible
@@ -25,7 +26,7 @@ cudarc = { version = "0.11", features = ["driver", "cuda-12050"], optional = tru
 # real TensorRT-RTX with cudarc by and dynamic loading by default
 default = ["real", "dlopen_tensorrt_onnxparser", "dlopen_tensorrt_rtx", "onnxparser", "v_1_3"]
 mock   = ["trtx-sys/mock"] # mock implementation (no CUDA required)
-real   = ["dep:cudarc", "trtx-sys/v_1_3"]    # real TensorRT-RTX
+real   = ["dep:cudarc", "trtx-sys/v_1_3", "dep:autocxx"]    # real TensorRT-RTX
 link_tensorrt_rtx = ["trtx-sys/link_tensorrt_rtx"]
 dlopen_tensorrt_rtx = ["libloading"]
 link_tensorrt_onnxparser = ["trtx-sys/link_tensorrt_onnxparser", "onnxparser"]
