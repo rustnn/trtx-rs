@@ -1,9 +1,12 @@
 // Simple test to verify BuilderConfig methods are accessible
 #[cfg(test)]
 mod tests {
-    use trtx::builder::Builder;
+    use trtx::builder::{
+        Builder, BuilderFlag, ComputeCapability, DeviceType, EngineCapability,
+        HardwareCompatibilityLevel, MemoryPoolType, PreviewFeature, ProfilingVerbosity,
+        RuntimePlatform, TilingOptimizationLevel,
+    };
     use trtx::logger::Logger;
-    use trtx_sys::nvinfer1::*;
 
     #[test]
     fn test_builder_config_methods() {
@@ -21,6 +24,8 @@ mod tests {
 
         // Test engine capability
         config.set_engine_capability(EngineCapability::kSTANDARD);
+        #[cfg(not(feature = "mock"))]
+        assert_eq!(config.get_engine_capability(), EngineCapability::kSTANDARD);
 
         // Test flags
         config.set_flags(0);
@@ -40,13 +45,13 @@ mod tests {
         // Test device type
         config.set_default_device_type(DeviceType::kGPU);
         #[cfg(not(feature = "mock"))]
-        assert!(config.get_default_device_type() == DeviceType::kGPU);
+        assert_eq!(config.get_default_device_type(), DeviceType::kGPU);
 
         // Test optimization profiles
         assert_eq!(config.get_nb_optimization_profiles(), 0);
 
-        // Test tactic sources
-        let sources = 1u32 << (TacticSource::kEDGE_MASK_CONVOLUTIONS as u32);
+        // Test tactic sources (kEDGE_MASK_CONVOLUTIONS = 3)
+        let sources = 1u32 << 3;
         assert!(config.set_tactic_sources(sources));
         #[cfg(not(feature = "mock"))]
         assert_eq!(config.get_tactic_sources(), sources);
@@ -67,6 +72,11 @@ mod tests {
 
         // Test hardware compatibility level
         config.set_hardware_compatibility_level(HardwareCompatibilityLevel::kNONE);
+        #[cfg(not(feature = "mock"))]
+        assert_eq!(
+            config.get_hardware_compatibility_level(),
+            HardwareCompatibilityLevel::kNONE
+        );
 
         // Test max aux streams
         config.set_max_aux_streams(2);
@@ -76,7 +86,10 @@ mod tests {
         // Test runtime platform
         config.set_runtime_platform(RuntimePlatform::kSAME_AS_BUILD);
         #[cfg(not(feature = "mock"))]
-        assert!(config.get_runtime_platform() == RuntimePlatform::kSAME_AS_BUILD);
+        assert_eq!(
+            config.get_runtime_platform(),
+            RuntimePlatform::kSAME_AS_BUILD
+        );
 
         // Test max nb tactics
         config.set_max_nb_tactics(10);
@@ -86,7 +99,10 @@ mod tests {
         // Test tiling optimization level
         assert!(config.set_tiling_optimization_level(TilingOptimizationLevel::kFAST));
         #[cfg(not(feature = "mock"))]
-        assert!(config.get_tiling_optimization_level() == TilingOptimizationLevel::kFAST);
+        assert_eq!(
+            config.get_tiling_optimization_level(),
+            TilingOptimizationLevel::kFAST
+        );
 
         // Test L2 limit for tiling
         assert!(config.set_l2_limit_for_tiling(1024));
@@ -98,9 +114,19 @@ mod tests {
         #[cfg(not(feature = "mock"))]
         assert_eq!(config.get_nb_compute_capabilities(), 1);
         assert!(config.set_compute_capability(ComputeCapability::kCURRENT, 0));
+        #[cfg(not(feature = "mock"))]
+        assert_eq!(
+            config.get_compute_capability(0),
+            ComputeCapability::kCURRENT
+        );
 
-        // Test profiling verbosity (already existed)
+        // Test profiling verbosity
         config.set_profiling_verbosity(ProfilingVerbosity::kDETAILED);
+        #[cfg(not(feature = "mock"))]
+        assert_eq!(
+            config.get_profiling_verbosity(),
+            ProfilingVerbosity::kDETAILED
+        );
 
         // Test reset
         config.reset();

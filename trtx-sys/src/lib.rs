@@ -33,6 +33,44 @@
 #[cfg(feature = "mock")]
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
+#[allow(warnings)]
+mod enums {
+    include!(concat!(env!("OUT_DIR"), "/enums.rs"));
+}
+
+macro_rules! better_enum {
+    ($to:ident) => {
+        pub use crate::enums::$to;
+        #[cfg(not(feature = "mock"))]
+        impl Into<crate::real_bindings::nvinfer1::$to> for $to {
+            fn into(self) -> crate::real_bindings::nvinfer1::$to {
+                unsafe { transmute(self) }
+            }
+        }
+        #[cfg(not(feature = "mock"))]
+        impl From<crate::real_bindings::nvinfer1::$to> for $to {
+            fn from(value: crate::real_bindings::nvinfer1::$to) -> Self {
+                unsafe { transmute(value) }
+            }
+        }
+    };
+}
+
+#[cfg(not(feature = "mock"))]
+use std::mem::transmute;
+better_enum!(LayerType);
+better_enum!(ActivationType);
+better_enum!(ProfilingVerbosity);
+better_enum!(MemoryPoolType);
+better_enum!(DeviceType);
+better_enum!(EngineCapability);
+better_enum!(BuilderFlag);
+better_enum!(PreviewFeature);
+better_enum!(HardwareCompatibilityLevel);
+better_enum!(RuntimePlatform);
+better_enum!(TilingOptimizationLevel);
+better_enum!(ComputeCapability);
+
 // Real mode uses autocxx
 #[cfg(not(feature = "mock"))]
 pub mod real_bindings {

@@ -8,7 +8,10 @@ pub mod network_flags {
     pub const EXPLICIT_BATCH: u32 = 1 << 0;
 }
 
-pub use trtx_sys::nvinfer1::MemoryPoolType;
+pub use trtx_sys::{
+    BuilderFlag, ComputeCapability, DeviceType, EngineCapability, HardwareCompatibilityLevel,
+    MemoryPoolType, PreviewFeature, ProfilingVerbosity, RuntimePlatform, TilingOptimizationLevel,
+};
 
 #[cfg(feature = "mock")]
 pub use crate::mock::builder::{Builder, BuilderConfig};

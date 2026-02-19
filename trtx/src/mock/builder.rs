@@ -3,8 +3,10 @@
 use crate::error::Result;
 use crate::logger::Logger;
 use crate::network::NetworkDefinition;
-use trtx_sys::nvinfer1::MemoryPoolType;
-use trtx_sys::nvinfer1::ProfilingVerbosity;
+use trtx_sys::{
+    BuilderFlag, ComputeCapability, DeviceType, EngineCapability, HardwareCompatibilityLevel,
+    MemoryPoolType, PreviewFeature, ProfilingVerbosity, RuntimePlatform, TilingOptimizationLevel,
+};
 
 /// Builder configuration (mock mode)
 pub struct BuilderConfig {
@@ -32,23 +34,23 @@ impl BuilderConfig {
         1
     }
 
-    pub fn set_engine_capability(&mut self, _capability: trtx_sys::nvinfer1::EngineCapability) {}
+    pub fn set_engine_capability(&mut self, _capability: EngineCapability) {}
 
-    pub fn get_engine_capability(&self) -> trtx_sys::nvinfer1::EngineCapability {
-        trtx_sys::nvinfer1::EngineCapability::kSTANDARD
+    pub fn get_engine_capability(&self) -> EngineCapability {
+        EngineCapability::kSTANDARD
     }
 
-    pub fn set_flags(&mut self, _flags: trtx_sys::nvinfer1::BuilderFlags) {}
+    pub fn set_flags(&mut self, _flags: u32) {}
 
-    pub fn get_flags(&self) -> trtx_sys::nvinfer1::BuilderFlags {
+    pub fn get_flags(&self) -> u32 {
         0
     }
 
-    pub fn set_flag(&mut self, _flag: trtx_sys::nvinfer1::BuilderFlag) {}
+    pub fn set_flag(&mut self, _flag: BuilderFlag) {}
 
-    pub fn clear_flag(&mut self, _flag: trtx_sys::nvinfer1::BuilderFlag) {}
+    pub fn clear_flag(&mut self, _flag: BuilderFlag) {}
 
-    pub fn get_flag(&self, _flag: trtx_sys::nvinfer1::BuilderFlag) -> bool {
+    pub fn get_flag(&self, _flag: BuilderFlag) -> bool {
         false
     }
 
@@ -58,10 +60,10 @@ impl BuilderConfig {
         -1
     }
 
-    pub fn set_default_device_type(&mut self, _device_type: trtx_sys::nvinfer1::DeviceType) {}
+    pub fn set_default_device_type(&mut self, _device_type: DeviceType) {}
 
-    pub fn get_default_device_type(&self) -> trtx_sys::nvinfer1::DeviceType {
-        trtx_sys::nvinfer1::DeviceType::kGPU
+    pub fn get_default_device_type(&self) -> DeviceType {
+        DeviceType::kGPU
     }
 
     pub fn reset(&mut self) {}
@@ -70,26 +72,21 @@ impl BuilderConfig {
         0
     }
 
-    pub fn set_tactic_sources(&mut self, _sources: trtx_sys::nvinfer1::TacticSources) -> bool {
+    pub fn set_tactic_sources(&mut self, _sources: u32) -> bool {
         true
     }
 
-    pub fn get_tactic_sources(&self) -> trtx_sys::nvinfer1::TacticSources {
+    pub fn get_tactic_sources(&self) -> u32 {
         0
     }
 
-    pub fn get_memory_pool_limit(&self, _pool: trtx_sys::nvinfer1::MemoryPoolType) -> usize {
+    pub fn get_memory_pool_limit(&self, _pool: MemoryPoolType) -> usize {
         0
     }
 
-    pub fn set_preview_feature(
-        &mut self,
-        _feature: trtx_sys::nvinfer1::PreviewFeature,
-        _enable: bool,
-    ) {
-    }
+    pub fn set_preview_feature(&mut self, _feature: PreviewFeature, _enable: bool) {}
 
-    pub fn get_preview_feature(&self, _feature: trtx_sys::nvinfer1::PreviewFeature) -> bool {
+    pub fn get_preview_feature(&self, _feature: PreviewFeature) -> bool {
         false
     }
 
@@ -99,16 +96,10 @@ impl BuilderConfig {
         3
     }
 
-    pub fn set_hardware_compatibility_level(
-        &mut self,
-        _level: trtx_sys::nvinfer1::HardwareCompatibilityLevel,
-    ) {
-    }
+    pub fn set_hardware_compatibility_level(&mut self, _level: HardwareCompatibilityLevel) {}
 
-    pub fn get_hardware_compatibility_level(
-        &self,
-    ) -> trtx_sys::nvinfer1::HardwareCompatibilityLevel {
-        trtx_sys::nvinfer1::HardwareCompatibilityLevel::kNONE
+    pub fn get_hardware_compatibility_level(&self) -> HardwareCompatibilityLevel {
+        HardwareCompatibilityLevel::kNONE
     }
 
     pub fn set_max_aux_streams(&mut self, _nb_streams: i32) {}
@@ -117,10 +108,10 @@ impl BuilderConfig {
         0
     }
 
-    pub fn set_runtime_platform(&mut self, _platform: trtx_sys::nvinfer1::RuntimePlatform) {}
+    pub fn set_runtime_platform(&mut self, _platform: RuntimePlatform) {}
 
-    pub fn get_runtime_platform(&self) -> trtx_sys::nvinfer1::RuntimePlatform {
-        trtx_sys::nvinfer1::RuntimePlatform::kSAME_AS_BUILD
+    pub fn get_runtime_platform(&self) -> RuntimePlatform {
+        RuntimePlatform::kSAME_AS_BUILD
     }
 
     pub fn set_max_nb_tactics(&mut self, _max_nb_tactics: i32) {}
@@ -129,15 +120,12 @@ impl BuilderConfig {
         -1
     }
 
-    pub fn set_tiling_optimization_level(
-        &mut self,
-        _level: trtx_sys::nvinfer1::TilingOptimizationLevel,
-    ) -> bool {
+    pub fn set_tiling_optimization_level(&mut self, _level: TilingOptimizationLevel) -> bool {
         true
     }
 
-    pub fn get_tiling_optimization_level(&self) -> trtx_sys::nvinfer1::TilingOptimizationLevel {
-        trtx_sys::nvinfer1::TilingOptimizationLevel::kNONE
+    pub fn get_tiling_optimization_level(&self) -> TilingOptimizationLevel {
+        TilingOptimizationLevel::kNONE
     }
 
     pub fn set_l2_limit_for_tiling(&mut self, _size: i64) -> bool {
@@ -158,14 +146,14 @@ impl BuilderConfig {
 
     pub fn set_compute_capability(
         &mut self,
-        _compute_capability: trtx_sys::nvinfer1::ComputeCapability,
+        _compute_capability: ComputeCapability,
         _index: i32,
     ) -> bool {
         true
     }
 
-    pub fn get_compute_capability(&self, _index: i32) -> trtx_sys::nvinfer1::ComputeCapability {
-        trtx_sys::nvinfer1::ComputeCapability::kNONE
+    pub fn get_compute_capability(&self, _index: i32) -> ComputeCapability {
+        ComputeCapability::kNONE
     }
 }
 
