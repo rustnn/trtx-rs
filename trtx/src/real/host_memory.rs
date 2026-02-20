@@ -5,6 +5,7 @@ use std::ptr;
 
 use super::builder::Builder;
 use trtx_sys::nvinfer1::IHostMemory;
+use trtx_sys::DataType;
 
 pub struct HostMemory<'builder> {
     pub(crate) inner: Pin<&'builder mut IHostMemory>,
@@ -21,6 +22,10 @@ impl<'builder> HostMemory<'builder> {
                 inner: Pin::new_unchecked(ptr),
             }
         }
+    }
+
+    pub fn data_type(&self) -> DataType {
+        self.inner.as_ref().type_().into()
     }
 }
 

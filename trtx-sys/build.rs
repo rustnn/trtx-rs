@@ -84,6 +84,8 @@ fn generate_enum_bindings(crate_root: &str, out_path: &Path) {
         ".*Level",
         ".*Capability",
         ".*Flag",
+        ".*Selector",
+        ".*Transformation",
     ] {
         builder = builder.allowlist_type(pattern);
     }

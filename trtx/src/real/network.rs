@@ -1,7 +1,7 @@
 //! Real TensorRT network implementation
 //! No #[cfg] - this module is only compiled when mock feature is disabled
 
-use trtx_sys::nvinfer1::ScaleMode;
+use trtx_sys::{DataType, MatrixOperation, ScaleMode, TopKOperation};
 
 use crate::error::{Error, Result};
 use crate::network::*;
@@ -171,7 +171,7 @@ impl ResizeLayer {
 }
 
 impl GatherLayer {
-    pub fn set_gather_mode(&mut self, mode: trtx_sys::nvinfer1::GatherMode) -> Result<()> {
+    pub fn set_gather_mode(&mut self, mode: trtx_sys::GatherMode) -> Result<()> {
         if self.inner.is_null() {
             return Err(Error::Runtime("Invalid gather layer".to_string()));
         }
@@ -179,14 +179,14 @@ impl GatherLayer {
             let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<
                 trtx_sys::nvinfer1::IGatherLayer,
             >(self.inner);
-            layer_pin.as_mut().setMode(mode);
+            layer_pin.as_mut().setMode(mode.into());
         }
         Ok(())
     }
 }
 
 impl ScatterLayer {
-    pub fn set_scatter_mode(&mut self, mode: trtx_sys::nvinfer1::ScatterMode) -> Result<()> {
+    pub fn set_scatter_mode(&mut self, mode: trtx_sys::ScatterMode) -> Result<()> {
         if self.inner.is_null() {
             return Err(Error::Runtime("Invalid scatter layer".to_string()));
         }
@@ -194,7 +194,7 @@ impl ScatterLayer {
             let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<
                 trtx_sys::nvinfer1::IScatterLayer,
             >(self.inner);
-            layer_pin.as_mut().setMode(mode);
+            layer_pin.as_mut().setMode(mode.into());
         }
         Ok(())
     }
@@ -476,7 +476,7 @@ impl NetworkDefinition {
     pub fn add_input(
         &mut self,
         name: &str,
-        data_type: trtx_sys::nvinfer1::DataType,
+        data_type: trtx_sys::DataType,
         dims: &[i32],
     ) -> Result<Tensor> {
         let name_cstr = std::ffi::CString::new(name)?;
@@ -488,7 +488,7 @@ impl NetworkDefinition {
         let tensor_ptr = unsafe {
             network_pin
                 .as_mut()
-                .addInput(name_cstr.as_ptr(), data_type, &dims_struct)
+                .addInput(name_cstr.as_ptr(), data_type.into(), &dims_struct)
         };
         if tensor_ptr.is_null() {
             return Err(Error::Runtime(format!("Failed to add input: {}", name)));
@@ -619,16 +619,17 @@ impl NetworkDefinition {
     pub fn add_activation(
         &mut self,
         input: &Tensor,
-        activation_type: trtx_sys::nvinfer1::ActivationType,
+        activation_type: trtx_sys::ActivationType,
     ) -> Result<ActivationLayer> {
         let layer_ptr = unsafe {
             let input_ref = &mut *(input.inner as *mut trtx_sys::nvinfer1::ITensor);
             let mut network_pin = crate::autocxx_helpers::cast_and_pin::<
                 trtx_sys::nvinfer1::INetworkDefinition,
             >(self.inner);
-            let layer_ptr = network_pin
-                .as_mut()
-                .addActivation(std::pin::Pin::new_unchecked(input_ref), activation_type);
+            let layer_ptr = network_pin.as_mut().addActivation(
+                std::pin::Pin::new_unchecked(input_ref),
+                activation_type.into(),
+            );
             if layer_ptr.is_null() {
                 return Err(Error::Runtime("Failed to add activation layer".to_string()));
             }
@@ -640,7 +641,7 @@ impl NetworkDefinition {
     pub fn add_unary(
         &mut self,
         input: &Tensor,
-        op: trtx_sys::nvinfer1::UnaryOperation,
+        op: trtx_sys::UnaryOperation,
     ) -> Result<UnaryLayer> {
         let layer_ptr = unsafe {
             let input_ref = &mut *(input.inner as *mut trtx_sys::nvinfer1::ITensor);
@@ -649,7 +650,7 @@ impl NetworkDefinition {
             >(self.inner);
             let layer_ptr = network_pin
                 .as_mut()
-                .addUnary(std::pin::Pin::new_unchecked(input_ref), op);
+                .addUnary(std::pin::Pin::new_unchecked(input_ref), op.into());
             if layer_ptr.is_null() {
                 return Err(Error::Runtime("Failed to add unary layer".to_string()));
             }
@@ -700,7 +701,7 @@ impl NetworkDefinition {
         &mut self,
         input1: &Tensor,
         input2: &Tensor,
-        op: trtx_sys::nvinfer1::ElementWiseOperation,
+        op: trtx_sys::ElementWiseOperation,
     ) -> Result<ElementWiseLayer> {
         let layer_ptr = unsafe {
             let input1_ref = &mut *(input1.inner as *mut trtx_sys::nvinfer1::ITensor);
@@ -711,7 +712,7 @@ impl NetworkDefinition {
             let layer_ptr = network_pin.as_mut().addElementWise(
                 std::pin::Pin::new_unchecked(input1_ref),
                 std::pin::Pin::new_unchecked(input2_ref),
-                op,
+                op.into(),
             );
             if layer_ptr.is_null() {
                 return Err(Error::Runtime(
@@ -726,7 +727,7 @@ impl NetworkDefinition {
     pub fn add_pooling(
         &mut self,
         input: &Tensor,
-        pooling_type: trtx_sys::nvinfer1::PoolingType,
+        pooling_type: trtx_sys::PoolingType,
         window_size: &[i32; 2],
     ) -> Result<PoolingLayer> {
         let window_dims = trtx_sys::Dims::new_2d(window_size[0] as i64, window_size[1] as i64);
@@ -735,10 +736,11 @@ impl NetworkDefinition {
         let mut network_pin = unsafe { std::pin::Pin::new_unchecked(network_ref) };
         let input_ref = unsafe { &mut *(input.inner as *mut trtx_sys::nvinfer1::ITensor) };
         let mut input_pin = unsafe { std::pin::Pin::new_unchecked(input_ref) };
-        let layer_ptr =
-            network_pin
-                .as_mut()
-                .addPoolingNd(input_pin.as_mut(), pooling_type, &window_dims);
+        let layer_ptr = network_pin.as_mut().addPoolingNd(
+            input_pin.as_mut(),
+            pooling_type.into(),
+            &window_dims,
+        );
         if layer_ptr.is_null() {
             return Err(Error::Runtime("Failed to add pooling layer".to_string()));
         }
@@ -765,9 +767,9 @@ impl NetworkDefinition {
     pub fn add_matrix_multiply(
         &mut self,
         input0: &Tensor,
-        op0: i32,
+        op0: MatrixOperation,
         input1: &Tensor,
-        op1: i32,
+        op1: MatrixOperation,
     ) -> Result<MatrixMultiplyLayer> {
         let layer_ptr = unsafe {
             let input0_ref = &mut *(input0.inner as *mut trtx_sys::nvinfer1::ITensor);
@@ -777,9 +779,9 @@ impl NetworkDefinition {
             >(self.inner);
             let layer_ptr = network_pin.as_mut().addMatrixMultiply(
                 std::pin::Pin::new_unchecked(input0_ref),
-                std::mem::transmute::<i32, trtx_sys::nvinfer1::MatrixOperation>(op0),
+                op0.into(),
                 std::pin::Pin::new_unchecked(input1_ref),
-                std::mem::transmute::<i32, trtx_sys::nvinfer1::MatrixOperation>(op1),
+                op1.into(),
             );
             if layer_ptr.is_null() {
                 return Err(Error::Runtime(
@@ -798,11 +800,10 @@ impl NetworkDefinition {
         kernel_size: &[i32; 2],
         weights: &ConvWeights<'_>,
     ) -> Result<ConvolutionLayer> {
-        use trtx_sys::nvinfer1::DataType;
-        let kernel_dtype = &weights.kernel_dtype;
+        let kernel_dtype = weights.kernel_dtype;
         let kernel_weights = weights.kernel_weights;
         let bias_weights = weights.bias_weights;
-        let bias_dtype = weights.bias_dtype.as_ref();
+        let bias_dtype = weights.bias_dtype;
         let kernel_bpe = match kernel_dtype {
             DataType::kFLOAT => 4,
             DataType::kHALF => 2,
@@ -810,22 +811,20 @@ impl NetworkDefinition {
             DataType::kINT32 => 4,
             _ => {
                 return Err(Error::Runtime(format!(
-                    "Unsupported kernel weight type for convolution: {}",
-                    crate::datatype_name(kernel_dtype)
+                    "Unsupported kernel weight type for convolution: {kernel_dtype:?}",
                 )))
             }
         };
         let weight_count = (kernel_weights.len() / kernel_bpe) as i64;
-        let bias_dtype_val = bias_dtype.unwrap_or(kernel_dtype).clone();
-        let bias_bpe = match &bias_dtype_val {
+        let bias_dtype_val = bias_dtype.unwrap_or(kernel_dtype);
+        let bias_bpe = match bias_dtype_val {
             DataType::kFLOAT => 4,
             DataType::kHALF => 2,
             DataType::kINT8 => 1,
             DataType::kINT32 => 4,
             _ => {
                 return Err(Error::Runtime(format!(
-                    "Unsupported bias weight type for convolution: {}",
-                    crate::datatype_name(&bias_dtype_val)
+                    "Unsupported bias weight type for convolution: {bias_dtype_val:?}",
                 )))
             }
         };
@@ -846,12 +845,12 @@ impl NetworkDefinition {
         };
         let kernel_dims = trtx_sys::Dims::new_2d(kernel_size[0] as i64, kernel_size[1] as i64);
         let kernel_w = trtx_sys::nvinfer1::Weights::new_with_type(
-            kernel_dtype.clone(),
+            kernel_dtype.into(),
             kernel_ptr,
             weight_count,
         );
         let bias_w =
-            trtx_sys::nvinfer1::Weights::new_with_type(bias_dtype_val, bias_ptr, bias_count);
+            trtx_sys::nvinfer1::Weights::new_with_type(bias_dtype_val.into(), bias_ptr, bias_count);
         let layer_ptr = unsafe {
             let network_ptr = self.inner as *mut trtx_sys::nvinfer1::INetworkDefinition;
             let mut network_pin = std::pin::Pin::new_unchecked(&mut *network_ptr);
@@ -883,11 +882,10 @@ impl NetworkDefinition {
         kernel_size: &[i32; 2],
         weights: &ConvWeights<'_>,
     ) -> Result<DeconvolutionLayer> {
-        use trtx_sys::nvinfer1::DataType;
-        let kernel_dtype = &weights.kernel_dtype;
+        let kernel_dtype = weights.kernel_dtype;
         let kernel_weights = weights.kernel_weights;
         let bias_weights = weights.bias_weights;
-        let bias_dtype = weights.bias_dtype.as_ref();
+        let bias_dtype = weights.bias_dtype;
         let kernel_bpe = match kernel_dtype {
             DataType::kFLOAT => 4,
             DataType::kHALF => 2,
@@ -895,22 +893,20 @@ impl NetworkDefinition {
             DataType::kINT32 => 4,
             _ => {
                 return Err(Error::Runtime(format!(
-                    "Unsupported kernel weight type for deconvolution: {}",
-                    crate::datatype_name(kernel_dtype)
+                    "Unsupported kernel weight type for deconvolution: {kernel_dtype:?}",
                 )))
             }
         };
         let weight_count = (kernel_weights.len() / kernel_bpe) as i64;
-        let bias_dtype_val = bias_dtype.unwrap_or(kernel_dtype).clone();
-        let bias_bpe = match &bias_dtype_val {
+        let bias_dtype_val = bias_dtype.unwrap_or(kernel_dtype);
+        let bias_bpe = match bias_dtype_val {
             DataType::kFLOAT => 4,
             DataType::kHALF => 2,
             DataType::kINT8 => 1,
             DataType::kINT32 => 4,
             _ => {
                 return Err(Error::Runtime(format!(
-                    "Unsupported bias weight type for deconvolution: {}",
-                    crate::datatype_name(&bias_dtype_val)
+                    "Unsupported bias weight type for deconvolution: {bias_dtype:?}",
                 )))
             }
         };
@@ -931,12 +927,12 @@ impl NetworkDefinition {
         };
         let kernel_dims = trtx_sys::Dims::new_2d(kernel_size[0] as i64, kernel_size[1] as i64);
         let kernel_w = trtx_sys::nvinfer1::Weights::new_with_type(
-            kernel_dtype.clone(),
+            kernel_dtype.into(),
             kernel_ptr,
             weight_count,
         );
         let bias_w =
-            trtx_sys::nvinfer1::Weights::new_with_type(bias_dtype_val, bias_ptr, bias_count);
+            trtx_sys::nvinfer1::Weights::new_with_type(bias_dtype_val.into(), bias_ptr, bias_count);
         let layer_ptr = unsafe {
             let network_ptr = self.inner as *mut trtx_sys::nvinfer1::INetworkDefinition;
             let mut network_pin = std::pin::Pin::new_unchecked(&mut *network_ptr);
@@ -979,9 +975,9 @@ impl NetworkDefinition {
         &mut self,
         dims: &[i32],
         weights: &[u8],
-        data_type: trtx_sys::nvinfer1::DataType,
+        data_type: trtx_sys::DataType,
     ) -> Result<ConstantLayer> {
-        use trtx_sys::nvinfer1::DataType;
+        use trtx_sys::DataType;
         let element_count: i64 = dims.iter().map(|&d| d as i64).product();
         let bytes_per_element = match data_type {
             DataType::kFLOAT => 4,
@@ -992,8 +988,7 @@ impl NetworkDefinition {
             DataType::kBOOL => 1,
             _ => {
                 return Err(Error::Runtime(format!(
-                    "Unsupported data type: {}",
-                    crate::datatype_name(&data_type)
+                    "Unsupported data type: {data_type:?}",
                 )))
             }
         };
@@ -1008,7 +1003,7 @@ impl NetworkDefinition {
         let dims_i64: Vec<i64> = dims.iter().map(|&d| d as i64).collect();
         let dims_struct = trtx_sys::Dims::from_slice(&dims_i64);
         let weights_struct = trtx_sys::nvinfer1::Weights::new_with_type(
-            data_type,
+            data_type.into(),
             weights.as_ptr() as *const std::ffi::c_void,
             element_count,
         );
@@ -1089,7 +1084,7 @@ impl NetworkDefinition {
             let input_ref = std::pin::Pin::new_unchecked(&mut *input_ptr);
             network_pin
                 .as_mut()
-                .addScale(input_ref, mode, shift_w, scale_w, power_w)
+                .addScale(input_ref, mode.into(), shift_w, scale_w, power_w)
                 as *mut std::ffi::c_void
         };
         if layer_ptr.is_null() {
@@ -1128,13 +1123,12 @@ impl NetworkDefinition {
         &mut self,
         input: &Tensor,
         axis: i32,
-        op: trtx_sys::nvinfer1::CumulativeOperation,
+        op: trtx_sys::CumulativeOperation,
         exclusive: bool,
         reverse: bool,
     ) -> Result<CumulativeLayer> {
         let axis_bytes = axis.to_le_bytes();
-        let axis_constant =
-            self.add_constant(&[], &axis_bytes, trtx_sys::nvinfer1::DataType::kINT32)?;
+        let axis_constant = self.add_constant(&[], &axis_bytes, trtx_sys::DataType::kINT32)?;
         let axis_tensor = axis_constant.get_output(0)?;
         self.add_cumulative_with_axis_tensor(input, &axis_tensor, op, exclusive, reverse)
     }
@@ -1143,7 +1137,7 @@ impl NetworkDefinition {
         &mut self,
         input: &Tensor,
         axis_tensor: &Tensor,
-        op: trtx_sys::nvinfer1::CumulativeOperation,
+        op: trtx_sys::CumulativeOperation,
         exclusive: bool,
         reverse: bool,
     ) -> Result<CumulativeLayer> {
@@ -1156,7 +1150,7 @@ impl NetworkDefinition {
             let layer_ptr = network_pin.as_mut().addCumulative(
                 std::pin::Pin::new_unchecked(input_ref),
                 std::pin::Pin::new_unchecked(axis_ref),
-                op,
+                op.into(),
                 exclusive,
                 reverse,
             );
@@ -1220,7 +1214,13 @@ impl NetworkDefinition {
         Ok(ResizeLayer::from_ptr(layer_ptr))
     }
 
-    pub fn add_topk(&mut self, input: &Tensor, op: i32, k: i32, axes: u32) -> Result<TopKLayer> {
+    pub fn add_topk(
+        &mut self,
+        input: &Tensor,
+        op: TopKOperation,
+        k: i32,
+        axes: u32,
+    ) -> Result<TopKLayer> {
         let layer_ptr = unsafe {
             let input_ref = &mut *(input.inner as *mut trtx_sys::nvinfer1::ITensor);
             let mut network_pin = crate::autocxx_helpers::cast_and_pin::<
@@ -1228,7 +1228,7 @@ impl NetworkDefinition {
             >(self.inner);
             let layer_ptr = network_pin.as_mut().addTopK(
                 std::pin::Pin::new_unchecked(input_ref),
-                std::mem::transmute::<i32, trtx_sys::nvinfer1::TopKOperation>(op),
+                op.into(),
                 k,
                 axes,
             );

@@ -5,6 +5,8 @@
 
 use crate::error::Result;
 use crate::network::*;
+use trtx_sys::MatrixOperation;
+use trtx_sys::TopKOperation;
 
 //==============================================================================
 // Helper functions (used by other mock modules via crate::mock::)
@@ -143,12 +145,12 @@ impl ResizeLayer {
     }
 }
 impl GatherLayer {
-    pub fn set_gather_mode(&mut self, _mode: trtx_sys::nvinfer1::GatherMode) -> Result<()> {
+    pub fn set_gather_mode(&mut self, _mode: trtx_sys::GatherMode) -> Result<()> {
         Ok(())
     }
 }
 impl ScatterLayer {
-    pub fn set_scatter_mode(&mut self, _mode: trtx_sys::nvinfer1::ScatterMode) -> Result<()> {
+    pub fn set_scatter_mode(&mut self, _mode: trtx_sys::ScatterMode) -> Result<()> {
         Ok(())
     }
     pub fn set_axis(&mut self, _axis: i32) -> Result<()> {
@@ -230,7 +232,7 @@ impl NetworkDefinition {
     pub fn add_input(
         &mut self,
         _name: &str,
-        _data_type: trtx_sys::nvinfer1::DataType,
+        _data_type: trtx_sys::DataType,
         _dims: &[i32],
     ) -> Result<Tensor> {
         Ok(Tensor {
@@ -270,39 +272,35 @@ impl NetworkDefinition {
     pub fn add_activation(
         &mut self,
         _input: &Tensor,
-        _activation_type: trtx_sys::nvinfer1::ActivationType,
+        _activation_type: trtx_sys::ActivationType,
     ) -> Result<ActivationLayer> {
         Ok(ActivationLayer::from_ptr(std::ptr::null_mut()))
     }
     pub fn add_unary(
         &mut self,
         _input: &Tensor,
-        _op: trtx_sys::nvinfer1::UnaryOperation,
+        _op: trtx_sys::UnaryOperation,
     ) -> Result<UnaryLayer> {
         Ok(UnaryLayer::from_ptr(std::ptr::null_mut()))
     }
     pub fn add_identity(&mut self, _input: &Tensor) -> Result<IdentityLayer> {
         Ok(IdentityLayer::from_ptr(std::ptr::null_mut()))
     }
-    pub fn add_cast(
-        &mut self,
-        _input: &Tensor,
-        _to_type: trtx_sys::nvinfer1::DataType,
-    ) -> Result<CastLayer> {
+    pub fn add_cast(&mut self, _input: &Tensor, _to_type: trtx_sys::DataType) -> Result<CastLayer> {
         Ok(CastLayer::from_ptr(std::ptr::null_mut()))
     }
     pub fn add_elementwise(
         &mut self,
         _input1: &Tensor,
         _input2: &Tensor,
-        _op: trtx_sys::nvinfer1::ElementWiseOperation,
+        _op: trtx_sys::ElementWiseOperation,
     ) -> Result<ElementWiseLayer> {
         Ok(ElementWiseLayer::from_ptr(std::ptr::null_mut()))
     }
     pub fn add_pooling(
         &mut self,
         _input: &Tensor,
-        _pooling_type: trtx_sys::nvinfer1::PoolingType,
+        _pooling_type: trtx_sys::PoolingType,
         _window_size: &[i32; 2],
     ) -> Result<PoolingLayer> {
         Ok(PoolingLayer::from_ptr(std::ptr::null_mut()))
@@ -313,9 +311,9 @@ impl NetworkDefinition {
     pub fn add_matrix_multiply(
         &mut self,
         _input0: &Tensor,
-        _op0: i32,
+        _op0: MatrixOperation,
         _input1: &Tensor,
-        _op1: i32,
+        _op1: MatrixOperation,
     ) -> Result<MatrixMultiplyLayer> {
         Ok(MatrixMultiplyLayer::from_ptr(std::ptr::null_mut()))
     }
@@ -344,7 +342,7 @@ impl NetworkDefinition {
         &mut self,
         _dims: &[i32],
         _weights: &[u8],
-        _data_type: trtx_sys::nvinfer1::DataType,
+        _data_type: trtx_sys::DataType,
     ) -> Result<ConstantLayer> {
         Ok(ConstantLayer::from_ptr(std::ptr::null_mut()))
     }
@@ -364,7 +362,7 @@ impl NetworkDefinition {
     pub fn add_reduce(
         &mut self,
         _input: &Tensor,
-        _op: trtx_sys::nvinfer1::ReduceOperation,
+        _op: trtx_sys::ReduceOperation,
         _axes: u32,
         _keep_dims: bool,
     ) -> Result<ReduceLayer> {
@@ -374,7 +372,7 @@ impl NetworkDefinition {
         &mut self,
         _input: &Tensor,
         _axis: i32,
-        _op: trtx_sys::nvinfer1::CumulativeOperation,
+        _op: trtx_sys::CumulativeOperation,
         _exclusive: bool,
         _reverse: bool,
     ) -> Result<CumulativeLayer> {
@@ -384,7 +382,7 @@ impl NetworkDefinition {
         &mut self,
         _input: &Tensor,
         _axis_tensor: &Tensor,
-        _op: trtx_sys::nvinfer1::CumulativeOperation,
+        _op: trtx_sys::CumulativeOperation,
         _exclusive: bool,
         _reverse: bool,
     ) -> Result<CumulativeLayer> {
@@ -405,7 +403,7 @@ impl NetworkDefinition {
     pub fn add_topk(
         &mut self,
         _input: &Tensor,
-        _op: i32,
+        _op: TopKOperation,
         _k: i32,
         _axes: u32,
     ) -> Result<TopKLayer> {
@@ -424,7 +422,7 @@ impl NetworkDefinition {
         _data: &Tensor,
         _indices: &Tensor,
         _updates: &Tensor,
-        _mode: trtx_sys::nvinfer1::ScatterMode,
+        _mode: trtx_sys::ScatterMode,
     ) -> Result<ScatterLayer> {
         Ok(ScatterLayer::from_ptr(std::ptr::null_mut()))
     }
@@ -432,7 +430,7 @@ impl NetworkDefinition {
         &mut self,
         _input: &Tensor,
         _scale: &Tensor,
-        _output_type: trtx_sys::nvinfer1::DataType,
+        _output_type: trtx_sys::DataType,
     ) -> Result<QuantizeLayer> {
         Ok(QuantizeLayer::from_ptr(std::ptr::null_mut()))
     }
@@ -440,7 +438,7 @@ impl NetworkDefinition {
         &mut self,
         _input: &Tensor,
         _scale: &Tensor,
-        _output_type: trtx_sys::nvinfer1::DataType,
+        _output_type: trtx_sys::DataType,
     ) -> Result<DequantizeLayer> {
         Ok(DequantizeLayer::from_ptr(std::ptr::null_mut()))
     }

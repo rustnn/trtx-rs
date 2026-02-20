@@ -207,11 +207,11 @@ pub fn dynamically_load_tensorrt_onnxparser(_filename: Option<impl AsFilename>) 
 }
 
 // Re-export TensorRT operation enums
-pub use trtx_sys::nvinfer1::{
+pub use trtx_sys::{
     ActivationType, CumulativeOperation, DataType, ElementWiseOperation, GatherMode,
     InterpolationMode, MatrixOperation, PoolingType, ReduceOperation,
     ResizeCoordinateTransformation, ResizeRoundMode, ResizeSelector, ScaleMode, ScatterMode,
-    UnaryOperation,
+    TopKOperation, UnaryOperation,
 };
 
 // Re-export ResizeMode typedef (InterpolationMode alias)

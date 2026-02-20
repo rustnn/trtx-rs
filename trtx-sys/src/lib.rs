@@ -60,6 +60,7 @@ macro_rules! better_enum {
 use std::mem::transmute;
 better_enum!(LayerType);
 better_enum!(ActivationType);
+better_enum!(DataType);
 better_enum!(ProfilingVerbosity);
 better_enum!(MemoryPoolType);
 better_enum!(DeviceType);
@@ -70,6 +71,20 @@ better_enum!(HardwareCompatibilityLevel);
 better_enum!(RuntimePlatform);
 better_enum!(TilingOptimizationLevel);
 better_enum!(ComputeCapability);
+better_enum!(CumulativeOperation);
+better_enum!(ElementWiseOperation);
+better_enum!(GatherMode);
+better_enum!(InterpolationMode);
+better_enum!(MatrixOperation);
+better_enum!(PoolingType);
+better_enum!(ReduceOperation);
+better_enum!(ResizeCoordinateTransformation);
+better_enum!(ResizeSelector);
+better_enum!(ResizeRoundMode);
+better_enum!(ScaleMode);
+better_enum!(ScatterMode);
+better_enum!(UnaryOperation);
+better_enum!(TopKOperation);
 
 // Real mode uses autocxx
 #[cfg(not(feature = "mock"))]
