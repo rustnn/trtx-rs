@@ -77,7 +77,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let runtime = Runtime::new(&logger)?;
             println!("   ✓ Runtime created");
 
-            let engine = runtime.deserialize_cuda_engine(&engine_data)?;
+            let engine = runtime.deserialize_cuda_engine(engine_data.as_ref())?;
             println!("   ✓ Engine deserialized");
 
             // Query engine information

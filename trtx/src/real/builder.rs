@@ -1,10 +1,8 @@
 //! Real TensorRT builder implementation
-
-use std::ptr;
-
 use crate::error::{Error, Result};
 use crate::logger::Logger;
 use crate::network::NetworkDefinition;
+use crate::real::host_memory::HostMemory;
 
 pub use super::builder_config::BuilderConfig;
 
@@ -88,10 +86,10 @@ impl<'builder> Builder<'builder> {
     }
 
     pub fn build_serialized_network<'network, 'config, 'config_borrow>(
-        &'builder self,
+        &self,
         network: &'network mut NetworkDefinition,
         config: &'config_borrow mut BuilderConfig<'config>,
-    ) -> Result<Vec<u8>> {
+    ) -> Result<HostMemory<'_>> {
         if self.inner.is_null() {
             return Err(Error::Runtime("Invalid builder".to_string()));
         }
@@ -101,28 +99,17 @@ impl<'builder> Builder<'builder> {
             let builder = &mut *(self.inner as *mut trtx_sys::nvinfer1::IBuilder);
             let network = &mut *(network_ptr as *mut trtx_sys::nvinfer1::INetworkDefinition);
             let mut builder_pin = std::pin::Pin::new_unchecked(builder);
-            builder_pin.as_mut().buildSerializedNetwork(
-                std::pin::Pin::new_unchecked(network),
-                config.inner.as_mut(),
-            )
-        };
-
-        if serialized_engine.is_null() {
-            return Err(Error::Runtime(
-                "Failed to build serialized network".to_string(),
-            ));
+            builder_pin
+                .as_mut()
+                .buildSerializedNetwork(
+                    std::pin::Pin::new_unchecked(network),
+                    config.inner.as_mut(),
+                )
+                .as_mut()
         }
+        .ok_or_else(|| Error::Runtime("Failed to build serialized network".to_string()))?;
 
-        let data = unsafe {
-            let host_memory = serialized_engine.as_mut().unwrap();
-            let size = host_memory.size();
-            let data_ptr = host_memory.data();
-            let slice = std::slice::from_raw_parts(data_ptr as *const u8, size);
-            ptr::drop_in_place(host_memory);
-            slice.to_vec()
-        };
-
-        Ok(data)
+        Ok(unsafe { HostMemory::from_raw_ref(self, serialized_engine) })
     }
 }
 

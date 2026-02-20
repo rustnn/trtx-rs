@@ -4,6 +4,7 @@
 pub mod builder;
 pub mod builder_config;
 pub mod cuda;
+pub mod host_memory;
 pub mod logger;
 pub mod network;
 pub mod onnx_parser;
