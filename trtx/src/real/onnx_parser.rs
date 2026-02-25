@@ -38,6 +38,10 @@ impl OnnxParser {
 
                 use crate::TRT_ONNXPARSER_LIB;
 
+                if !TRT_ONNXPARSER_LIB.read()?.is_some() {
+                    crate::dynamically_load_tensorrt_onnxparser(None::<String>)?;
+                }
+
                 let lock = TRT_ONNXPARSER_LIB
                     .read()
                     .map_err(|_| Error::LockPoisining)?;
