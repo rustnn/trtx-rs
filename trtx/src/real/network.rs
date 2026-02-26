@@ -845,8 +845,11 @@ impl NetworkDefinition {
             std::ptr::null()
         };
         let kernel_dims = trtx_sys::Dims::new_2d(kernel_size[0] as i64, kernel_size[1] as i64);
-        let kernel_w =
-            trtx_sys::nvinfer1::Weights::new_with_type(kernel_dtype.clone(), kernel_ptr, weight_count);
+        let kernel_w = trtx_sys::nvinfer1::Weights::new_with_type(
+            kernel_dtype.clone(),
+            kernel_ptr,
+            weight_count,
+        );
         let bias_w =
             trtx_sys::nvinfer1::Weights::new_with_type(bias_dtype_val, bias_ptr, bias_count);
         let layer_ptr = unsafe {
@@ -927,8 +930,11 @@ impl NetworkDefinition {
             std::ptr::null()
         };
         let kernel_dims = trtx_sys::Dims::new_2d(kernel_size[0] as i64, kernel_size[1] as i64);
-        let kernel_w =
-            trtx_sys::nvinfer1::Weights::new_with_type(kernel_dtype.clone(), kernel_ptr, weight_count);
+        let kernel_w = trtx_sys::nvinfer1::Weights::new_with_type(
+            kernel_dtype.clone(),
+            kernel_ptr,
+            weight_count,
+        );
         let bias_w =
             trtx_sys::nvinfer1::Weights::new_with_type(bias_dtype_val, bias_ptr, bias_count);
         let layer_ptr = unsafe {
