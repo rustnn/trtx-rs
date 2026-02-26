@@ -61,6 +61,53 @@ impl_layer_real!(IdentityLayer, trtx_sys::nvinfer1::IIdentityLayer);
 impl_layer_real!(PaddingLayer, trtx_sys::nvinfer1::IPaddingLayer);
 impl_layer_real!(CastLayer, trtx_sys::nvinfer1::ICastLayer);
 
+/// Macro to implement set_layer_name for all layer types (sets ILayer::setName in TensorRT).
+macro_rules! impl_layer_set_name {
+    ($($name:ident),* $(,)?) => {
+        $(
+        impl $name {
+            /// Set the TensorRT layer name (used in error messages and introspection).
+            pub fn set_layer_name(&mut self, name: &str) -> Result<()> {
+                let name_cstr = std::ffi::CString::new(name)?;
+                unsafe {
+                    crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ILayer>(self.inner)
+                        .as_mut()
+                        .setName(name_cstr.as_ptr());
+                }
+                Ok(())
+            }
+        }
+        )*
+    };
+}
+impl_layer_set_name!(
+    ShuffleLayer,
+    ActivationLayer,
+    ElementWiseLayer,
+    ResizeLayer,
+    TopKLayer,
+    GatherLayer,
+    ScatterLayer,
+    SelectLayer,
+    MatrixMultiplyLayer,
+    SoftMaxLayer,
+    ReduceLayer,
+    CumulativeLayer,
+    PoolingLayer,
+    ConvolutionLayer,
+    DeconvolutionLayer,
+    QuantizeLayer,
+    DequantizeLayer,
+    ConstantLayer,
+    ConcatenationLayer,
+    ScaleLayer,
+    SliceLayer,
+    UnaryLayer,
+    IdentityLayer,
+    PaddingLayer,
+    CastLayer,
+);
+
 impl ShuffleLayer {
     pub fn set_reshape_dimensions(&mut self, dims: &[i32]) -> Result<()> {
         if self.inner.is_null() {
@@ -73,6 +120,22 @@ impl ShuffleLayer {
             let dims_i64: Vec<i64> = dims.iter().map(|&d| d as i64).collect();
             let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
             layer_pin.as_mut().setReshapeDimensions(&dims_obj);
+        }
+        Ok(())
+    }
+    pub fn set_first_transpose(&mut self, order: &[i32]) -> Result<()> {
+        if self.inner.is_null() {
+            return Err(Error::Runtime("Invalid shuffle layer".to_string()));
+        }
+        unsafe {
+            let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<
+                trtx_sys::nvinfer1::IShuffleLayer,
+            >(self.inner);
+            let mut order_arr = [0i32; 8];
+            let n = order.len().min(8);
+            order_arr[..n].copy_from_slice(&order[..n]);
+            let perm = trtx_sys::nvinfer1::Permutation { order: order_arr };
+            layer_pin.as_mut().setFirstTranspose(perm);
         }
         Ok(())
     }
@@ -204,6 +267,130 @@ impl ConvolutionLayer {
         }
         Ok(())
     }
+
+    /// Set an input tensor by index. Input 0 is the activation; 1 is the kernel tensor; 2 is the bias tensor.
+    /// When using input 1 or 2, the layer must have been created with empty weights for that slot.
+    pub fn set_input(&mut self, index: i32, tensor: &Tensor) -> Result<()> {
+        if self.inner.is_null() || tensor.inner.is_null() {
+            return Err(Error::Runtime(
+                "Invalid convolution layer or tensor".to_string(),
+            ));
+        }
+        unsafe {
+            let mut layer_pin =
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ILayer>(self.inner);
+            let mut tensor_pin =
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ITensor>(tensor.inner);
+            layer_pin.as_mut().setInput(index, tensor_pin.as_mut());
+        }
+        Ok(())
+    }
+}
+
+impl DeconvolutionLayer {
+    pub fn set_stride(&mut self, stride: &[i32; 2]) -> Result<()> {
+        if self.inner.is_null() {
+            return Err(Error::Runtime("Invalid deconvolution layer".to_string()));
+        }
+        unsafe {
+            let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<
+                trtx_sys::nvinfer1::IDeconvolutionLayer,
+            >(self.inner);
+            let dims_i64: Vec<i64> = stride.iter().map(|&s| s as i64).collect();
+            let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
+            layer_pin.as_mut().setStrideNd(&dims_obj);
+        }
+        Ok(())
+    }
+    pub fn set_padding(&mut self, padding: &[i32; 2]) -> Result<()> {
+        if self.inner.is_null() {
+            return Err(Error::Runtime("Invalid deconvolution layer".to_string()));
+        }
+        unsafe {
+            let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<
+                trtx_sys::nvinfer1::IDeconvolutionLayer,
+            >(self.inner);
+            let dims_i64: Vec<i64> = padding.iter().map(|&p| p as i64).collect();
+            let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
+            layer_pin.as_mut().setPaddingNd(&dims_obj);
+        }
+        Ok(())
+    }
+    /// Set pre-padding (trim this many elements at the start of each spatial dimension of the output).
+    /// Pass [pre_h, pre_w] for 2D deconv; TensorRT applies to the spatial dimensions only.
+    pub fn set_pre_padding(&mut self, padding: &[i32; 2]) -> Result<()> {
+        if self.inner.is_null() {
+            return Err(Error::Runtime("Invalid deconvolution layer".to_string()));
+        }
+        unsafe {
+            let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<
+                trtx_sys::nvinfer1::IDeconvolutionLayer,
+            >(self.inner);
+            let dims_i64: Vec<i64> = padding.iter().map(|&p| p as i64).collect();
+            let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
+            layer_pin.as_mut().setPrePadding(&dims_obj);
+        }
+        Ok(())
+    }
+    /// Set post-padding (trim this many elements at the end of each spatial dimension of the output).
+    /// Pass [post_h, post_w] for 2D deconv; TensorRT applies to the spatial dimensions only.
+    pub fn set_post_padding(&mut self, padding: &[i32; 2]) -> Result<()> {
+        if self.inner.is_null() {
+            return Err(Error::Runtime("Invalid deconvolution layer".to_string()));
+        }
+        unsafe {
+            let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<
+                trtx_sys::nvinfer1::IDeconvolutionLayer,
+            >(self.inner);
+            let dims_i64: Vec<i64> = padding.iter().map(|&p| p as i64).collect();
+            let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
+            layer_pin.as_mut().setPostPadding(&dims_obj);
+        }
+        Ok(())
+    }
+    pub fn set_dilation(&mut self, dilation: &[i32; 2]) -> Result<()> {
+        if self.inner.is_null() {
+            return Err(Error::Runtime("Invalid deconvolution layer".to_string()));
+        }
+        unsafe {
+            let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<
+                trtx_sys::nvinfer1::IDeconvolutionLayer,
+            >(self.inner);
+            let dims_i64: Vec<i64> = dilation.iter().map(|&d| d as i64).collect();
+            let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
+            layer_pin.as_mut().setDilationNd(&dims_obj);
+        }
+        Ok(())
+    }
+    pub fn set_num_groups(&mut self, num_groups: i32) -> Result<()> {
+        if self.inner.is_null() {
+            return Err(Error::Runtime("Invalid deconvolution layer".to_string()));
+        }
+        unsafe {
+            let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<
+                trtx_sys::nvinfer1::IDeconvolutionLayer,
+            >(self.inner);
+            layer_pin.as_mut().setNbGroups(num_groups as i64);
+        }
+        Ok(())
+    }
+    /// Set an input tensor by index. Input 0 is the activation; 1 is the kernel tensor; 2 is the bias tensor.
+    /// When using input 1 or 2, the layer must have been created with empty weights for that slot.
+    pub fn set_input(&mut self, index: i32, tensor: &Tensor) -> Result<()> {
+        if self.inner.is_null() || tensor.inner.is_null() {
+            return Err(Error::Runtime(
+                "Invalid deconvolution layer or tensor".to_string(),
+            ));
+        }
+        unsafe {
+            let mut layer_pin =
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ILayer>(self.inner);
+            let mut tensor_pin =
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ITensor>(tensor.inner);
+            layer_pin.as_mut().setInput(index, tensor_pin.as_mut());
+        }
+        Ok(())
+    }
 }
 
 impl ConcatenationLayer {
@@ -263,6 +450,17 @@ impl Tensor {
     pub fn get_type(&self) -> Result<i32> {
         let data_type = unsafe { trtx_sys::tensor_get_type(self.inner) };
         Ok(data_type)
+    }
+
+    /// Set allowed tensor formats (bitmask of TensorFormat). E.g. 1u32 << TensorFormat::kHWC for channels-last.
+    /// TensorRT may insert reformat layers when connecting tensors with different formats.
+    pub fn set_allowed_formats(&mut self, formats: u32) -> Result<()> {
+        unsafe {
+            let tensor_ref = &mut *(self.inner as *mut trtx_sys::nvinfer1::ITensor);
+            let mut tensor_pin = std::pin::Pin::new_unchecked(tensor_ref);
+            tensor_pin.as_mut().setAllowedFormats(formats);
+        }
+        Ok(())
     }
 }
 
@@ -363,6 +561,59 @@ impl NetworkDefinition {
         Ok(Tensor {
             inner: tensor_ptr as *mut _,
         })
+    }
+
+    /// Number of layers in the network (for introspection/dumping).
+    pub fn get_nb_layers(&self) -> i32 {
+        unsafe {
+            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(
+                self.inner,
+            )
+            .getNbLayers()
+        }
+    }
+
+    /// Layer name at index (for introspection/dumping). Returns "(Unnamed)" if null.
+    pub fn get_layer_name(&self, layer_index: i32) -> Result<String> {
+        let layer_ptr = unsafe {
+            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(
+                self.inner,
+            )
+            .getLayer(layer_index)
+        };
+        if layer_ptr.is_null() {
+            return Err(Error::Runtime(format!("No layer at index {}", layer_index)));
+        }
+        let name_ptr = unsafe {
+            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ILayer>(layer_ptr as *mut _)
+                .getName()
+        };
+        Ok(if name_ptr.is_null() {
+            "(Unnamed)".to_string()
+        } else {
+            unsafe { std::ffi::CStr::from_ptr(name_ptr) }
+                .to_str()
+                .map_err(|e| Error::Runtime(e.to_string()))?
+                .to_string()
+        })
+    }
+
+    /// Layer type enum value at index (for introspection/dumping). See TensorRT LayerType.
+    pub fn get_layer_type(&self, layer_index: i32) -> Result<i32> {
+        let layer_ptr = unsafe {
+            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::INetworkDefinition>(
+                self.inner,
+            )
+            .getLayer(layer_index)
+        };
+        if layer_ptr.is_null() {
+            return Err(Error::Runtime(format!("No layer at index {}", layer_index)));
+        }
+        let layer_type = unsafe {
+            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ILayer>(layer_ptr as *mut _)
+                .getType()
+        };
+        Ok(layer_type as i32)
     }
 
     pub fn add_activation(
@@ -545,24 +796,62 @@ impl NetworkDefinition {
         input: &Tensor,
         nb_output_maps: i32,
         kernel_size: &[i32; 2],
-        kernel_weights: &[u8],
-        bias_weights: Option<&[u8]>,
+        weights: &ConvWeights<'_>,
     ) -> Result<ConvolutionLayer> {
-        let weight_count = (kernel_weights.len() / 4) as i64;
-        let bias_count = if bias_weights.is_some() {
-            nb_output_maps as i64
-        } else {
-            0
+        use trtx_sys::nvinfer1::DataType;
+        let kernel_dtype = &weights.kernel_dtype;
+        let kernel_weights = weights.kernel_weights;
+        let bias_weights = weights.bias_weights;
+        let bias_dtype = weights.bias_dtype.as_ref();
+        let kernel_bpe = match kernel_dtype {
+            DataType::kFLOAT => 4,
+            DataType::kHALF => 2,
+            DataType::kINT8 => 1,
+            DataType::kINT32 => 4,
+            _ => {
+                return Err(Error::Runtime(format!(
+                    "Unsupported kernel weight type for convolution: {}",
+                    crate::datatype_name(kernel_dtype)
+                )))
+            }
         };
-        let bias_ptr = bias_weights
-            .map(|b| b.as_ptr() as *const std::ffi::c_void)
-            .unwrap_or(std::ptr::null());
+        let weight_count = (kernel_weights.len() / kernel_bpe) as i64;
+        let bias_dtype_val = bias_dtype.unwrap_or(kernel_dtype).clone();
+        let bias_bpe = match &bias_dtype_val {
+            DataType::kFLOAT => 4,
+            DataType::kHALF => 2,
+            DataType::kINT8 => 1,
+            DataType::kINT32 => 4,
+            _ => {
+                return Err(Error::Runtime(format!(
+                    "Unsupported bias weight type for convolution: {}",
+                    crate::datatype_name(&bias_dtype_val)
+                )))
+            }
+        };
+        let bias_count = bias_weights
+            .map(|b| (b.len() / bias_bpe) as i64)
+            .unwrap_or(0);
+        let kernel_ptr = if weight_count > 0 {
+            kernel_weights.as_ptr() as *const std::ffi::c_void
+        } else {
+            std::ptr::null()
+        };
+        let bias_ptr = if bias_count > 0 {
+            bias_weights
+                .map(|b| b.as_ptr() as *const std::ffi::c_void)
+                .unwrap_or(std::ptr::null())
+        } else {
+            std::ptr::null()
+        };
         let kernel_dims = trtx_sys::Dims::new_2d(kernel_size[0] as i64, kernel_size[1] as i64);
-        let kernel_w = trtx_sys::nvinfer1::Weights::new_float(
-            kernel_weights.as_ptr() as *const std::ffi::c_void,
+        let kernel_w = trtx_sys::nvinfer1::Weights::new_with_type(
+            kernel_dtype.clone(),
+            kernel_ptr,
             weight_count,
         );
-        let bias_w = trtx_sys::nvinfer1::Weights::new_float(bias_ptr, bias_count);
+        let bias_w =
+            trtx_sys::nvinfer1::Weights::new_with_type(bias_dtype_val, bias_ptr, bias_count);
         let layer_ptr = unsafe {
             let network_ptr = self.inner as *mut trtx_sys::nvinfer1::INetworkDefinition;
             let mut network_pin = std::pin::Pin::new_unchecked(&mut *network_ptr);
@@ -584,41 +873,70 @@ impl NetworkDefinition {
         Ok(ConvolutionLayer::from_ptr(layer_ptr))
     }
 
+    /// Add a 2D deconvolution layer. Same input semantics as convolution: input 0 = activation,
+    /// input 1 = kernel tensor (use set_input(1, tensor) when kernel_weights is empty),
+    /// input 2 = bias tensor (use set_input(2, tensor) when bias_weights is None/empty).
     pub fn add_deconvolution(
         &mut self,
         input: &Tensor,
         nb_output_maps: i32,
         kernel_size: &[i32; 2],
-        kernel_weights: &[u8],
-        bias_weights: Option<&[u8]>,
+        weights: &ConvWeights<'_>,
     ) -> Result<DeconvolutionLayer> {
-        let input_dims = input.dimensions()?;
-        let input_channels = if input_dims.len() >= 4 {
-            input_dims[1] as i64
-        } else if input_dims.len() >= 3 {
-            input_dims[0] as i64
-        } else {
-            return Err(Error::InvalidArgument(format!(
-                "Invalid input dimensions for deconvolution: {:?}",
-                input_dims
-            )));
+        use trtx_sys::nvinfer1::DataType;
+        let kernel_dtype = &weights.kernel_dtype;
+        let kernel_weights = weights.kernel_weights;
+        let bias_weights = weights.bias_weights;
+        let bias_dtype = weights.bias_dtype.as_ref();
+        let kernel_bpe = match kernel_dtype {
+            DataType::kFLOAT => 4,
+            DataType::kHALF => 2,
+            DataType::kINT8 => 1,
+            DataType::kINT32 => 4,
+            _ => {
+                return Err(Error::Runtime(format!(
+                    "Unsupported kernel weight type for deconvolution: {}",
+                    crate::datatype_name(kernel_dtype)
+                )))
+            }
         };
-        let weight_count =
-            nb_output_maps as i64 * input_channels * kernel_size[0] as i64 * kernel_size[1] as i64;
-        let bias_count = if bias_weights.is_some() {
-            nb_output_maps as i64
-        } else {
-            0
+        let weight_count = (kernel_weights.len() / kernel_bpe) as i64;
+        let bias_dtype_val = bias_dtype.unwrap_or(kernel_dtype).clone();
+        let bias_bpe = match &bias_dtype_val {
+            DataType::kFLOAT => 4,
+            DataType::kHALF => 2,
+            DataType::kINT8 => 1,
+            DataType::kINT32 => 4,
+            _ => {
+                return Err(Error::Runtime(format!(
+                    "Unsupported bias weight type for deconvolution: {}",
+                    crate::datatype_name(&bias_dtype_val)
+                )))
+            }
         };
-        let bias_ptr = bias_weights
-            .map(|b| b.as_ptr() as *const std::ffi::c_void)
-            .unwrap_or(std::ptr::null());
+        let bias_count = bias_weights
+            .map(|b| (b.len() / bias_bpe) as i64)
+            .unwrap_or(0);
+        let kernel_ptr = if weight_count > 0 {
+            kernel_weights.as_ptr() as *const std::ffi::c_void
+        } else {
+            std::ptr::null()
+        };
+        let bias_ptr = if bias_count > 0 {
+            bias_weights
+                .map(|b| b.as_ptr() as *const std::ffi::c_void)
+                .unwrap_or(std::ptr::null())
+        } else {
+            std::ptr::null()
+        };
         let kernel_dims = trtx_sys::Dims::new_2d(kernel_size[0] as i64, kernel_size[1] as i64);
-        let kernel_w = trtx_sys::nvinfer1::Weights::new_float(
-            kernel_weights.as_ptr() as *const std::ffi::c_void,
+        let kernel_w = trtx_sys::nvinfer1::Weights::new_with_type(
+            kernel_dtype.clone(),
+            kernel_ptr,
             weight_count,
         );
-        let bias_w = trtx_sys::nvinfer1::Weights::new_float(bias_ptr, bias_count);
+        let bias_w =
+            trtx_sys::nvinfer1::Weights::new_with_type(bias_dtype_val, bias_ptr, bias_count);
         let layer_ptr = unsafe {
             let network_ptr = self.inner as *mut trtx_sys::nvinfer1::INetworkDefinition;
             let mut network_pin = std::pin::Pin::new_unchecked(&mut *network_ptr);

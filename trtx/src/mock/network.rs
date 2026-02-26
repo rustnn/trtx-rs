@@ -85,9 +85,52 @@ impl_layer_mock!(IdentityLayer);
 impl_layer_mock!(PaddingLayer);
 impl_layer_mock!(CastLayer);
 
+/// Macro to implement set_layer_name for mock (no-op).
+macro_rules! impl_layer_set_name_mock {
+    ($($name:ident),* $(,)?) => {
+        $(
+        impl $name {
+            pub fn set_layer_name(&mut self, _name: &str) -> Result<()> {
+                Ok(())
+            }
+        }
+        )*
+    };
+}
+impl_layer_set_name_mock!(
+    ShuffleLayer,
+    ActivationLayer,
+    ElementWiseLayer,
+    ResizeLayer,
+    TopKLayer,
+    GatherLayer,
+    ScatterLayer,
+    SelectLayer,
+    MatrixMultiplyLayer,
+    SoftMaxLayer,
+    ReduceLayer,
+    CumulativeLayer,
+    PoolingLayer,
+    ConvolutionLayer,
+    DeconvolutionLayer,
+    QuantizeLayer,
+    DequantizeLayer,
+    ConstantLayer,
+    ConcatenationLayer,
+    ScaleLayer,
+    SliceLayer,
+    UnaryLayer,
+    IdentityLayer,
+    PaddingLayer,
+    CastLayer,
+);
+
 // Layer-specific impls - all no-ops for mock
 impl ShuffleLayer {
     pub fn set_reshape_dimensions(&mut self, _dims: &[i32]) -> Result<()> {
+        Ok(())
+    }
+    pub fn set_first_transpose(&mut self, _order: &[i32]) -> Result<()> {
         Ok(())
     }
 }
@@ -125,6 +168,32 @@ impl ConvolutionLayer {
     pub fn set_num_groups(&mut self, _num_groups: i32) -> Result<()> {
         Ok(())
     }
+    pub fn set_input(&mut self, _index: i32, _tensor: &Tensor) -> Result<()> {
+        Ok(())
+    }
+}
+impl DeconvolutionLayer {
+    pub fn set_stride(&mut self, _stride: &[i32; 2]) -> Result<()> {
+        Ok(())
+    }
+    pub fn set_padding(&mut self, _padding: &[i32; 2]) -> Result<()> {
+        Ok(())
+    }
+    pub fn set_pre_padding(&mut self, _padding: &[i32; 2]) -> Result<()> {
+        Ok(())
+    }
+    pub fn set_post_padding(&mut self, _padding: &[i32; 2]) -> Result<()> {
+        Ok(())
+    }
+    pub fn set_dilation(&mut self, _dilation: &[i32; 2]) -> Result<()> {
+        Ok(())
+    }
+    pub fn set_num_groups(&mut self, _num_groups: i32) -> Result<()> {
+        Ok(())
+    }
+    pub fn set_input(&mut self, _index: i32, _tensor: &Tensor) -> Result<()> {
+        Ok(())
+    }
 }
 impl ConcatenationLayer {
     pub fn set_axis(&mut self, _axis: i32) -> Result<()> {
@@ -144,6 +213,9 @@ impl Tensor {
     }
     pub fn get_type(&self) -> Result<i32> {
         Ok(default_tensor_type())
+    }
+    pub fn set_allowed_formats(&mut self, _formats: u32) -> Result<()> {
+        Ok(())
     }
 }
 
@@ -183,6 +255,16 @@ impl NetworkDefinition {
         Ok(Tensor {
             inner: std::ptr::null_mut(),
         })
+    }
+
+    pub fn get_nb_layers(&self) -> i32 {
+        0
+    }
+    pub fn get_layer_name(&self, _layer_index: i32) -> Result<String> {
+        Ok("(mock)".to_string())
+    }
+    pub fn get_layer_type(&self, _layer_index: i32) -> Result<i32> {
+        Ok(0)
     }
 
     pub fn add_activation(
@@ -242,8 +324,7 @@ impl NetworkDefinition {
         _input: &Tensor,
         _nb_output_maps: i32,
         _kernel_size: &[i32; 2],
-        _kernel_weights: &[u8],
-        _bias_weights: Option<&[u8]>,
+        _weights: &ConvWeights<'_>,
     ) -> Result<ConvolutionLayer> {
         Ok(ConvolutionLayer::from_ptr(std::ptr::null_mut()))
     }
@@ -252,8 +333,7 @@ impl NetworkDefinition {
         _input: &Tensor,
         _nb_output_maps: i32,
         _kernel_size: &[i32; 2],
-        _kernel_weights: &[u8],
-        _bias_weights: Option<&[u8]>,
+        _weights: &ConvWeights<'_>,
     ) -> Result<DeconvolutionLayer> {
         Ok(DeconvolutionLayer::from_ptr(std::ptr::null_mut()))
     }

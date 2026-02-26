@@ -115,6 +115,8 @@ pub mod real_bindings {
         // generate!("nvinfer1::RNNInputMode")
         // generate!("nvinfer1::RNNGateType")
         generate_pod!("nvinfer1::Weights")
+        generate_pod!("nvinfer1::Permutation")
+        generate!("nvinfer1::TensorFormat")
 
         // NOTE: createInferBuilder/Runtime moved to logger_bridge.cpp (autocxx struggles with these)
 

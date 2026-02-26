@@ -445,6 +445,24 @@ pub mod nvinfer1 {
 
     #[repr(i32)]
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+    pub enum TensorFormat {
+        kLINEAR = 0,
+        kCHW2 = 1,
+        kHWC8 = 2,
+        kCHW4 = 3,
+        kCHW16 = 4,
+        kCHW32 = 5,
+        kDHWC8 = 6,
+        kCDHW32 = 7,
+        kHWC = 8,
+        kDLA_LINEAR = 9,
+        kDLA_HWC4 = 10,
+        kHWC16 = 11,
+        kDHWC = 12,
+    }
+
+    #[repr(i32)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
     pub enum ActivationType {
         kRELU = 0,
         kSIGMOID = 1,
