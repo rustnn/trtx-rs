@@ -324,10 +324,7 @@ impl NetworkDefinition {
         _input: &Tensor,
         _nb_output_maps: i32,
         _kernel_size: &[i32; 2],
-        _kernel_weights: &[u8],
-        _kernel_dtype: trtx_sys::nvinfer1::DataType,
-        _bias_weights: Option<&[u8]>,
-        _bias_dtype: Option<trtx_sys::nvinfer1::DataType>,
+        _weights: &ConvWeights<'_>,
     ) -> Result<ConvolutionLayer> {
         Ok(ConvolutionLayer::from_ptr(std::ptr::null_mut()))
     }
@@ -336,10 +333,7 @@ impl NetworkDefinition {
         _input: &Tensor,
         _nb_output_maps: i32,
         _kernel_size: &[i32; 2],
-        _kernel_weights: &[u8],
-        _kernel_dtype: trtx_sys::nvinfer1::DataType,
-        _bias_weights: Option<&[u8]>,
-        _bias_dtype: Option<trtx_sys::nvinfer1::DataType>,
+        _weights: &ConvWeights<'_>,
     ) -> Result<DeconvolutionLayer> {
         Ok(DeconvolutionLayer::from_ptr(std::ptr::null_mut()))
     }

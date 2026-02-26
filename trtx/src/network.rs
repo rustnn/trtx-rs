@@ -4,6 +4,15 @@
 
 use crate::error::Result;
 
+/// Kernel and optional bias weights for convolution and deconvolution layers.
+#[derive(Clone)]
+pub struct ConvWeights<'a> {
+    pub kernel_weights: &'a [u8],
+    pub kernel_dtype: crate::DataType,
+    pub bias_weights: Option<&'a [u8]>,
+    pub bias_dtype: Option<crate::DataType>,
+}
+
 /// Tensor handle (opaque pointer)
 #[allow(dead_code)] // inner is used by real::network and mock::network implspub struct Tensor {
 pub struct Tensor {

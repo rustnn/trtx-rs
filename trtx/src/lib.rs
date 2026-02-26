@@ -136,7 +136,7 @@ pub use executor::{TensorInput, TensorOutput};
 #[cfg(feature = "dlopen_tensorrt_rtx")]
 use libloading::AsFilename;
 pub use logger::{LogHandler, Logger, Severity, StderrLogger};
-pub use network::{NetworkDefinition, Tensor};
+pub use network::{ConvWeights, NetworkDefinition, Tensor};
 #[cfg(feature = "onnxparser")]
 pub use onnx_parser::OnnxParser;
 pub use runtime::{CudaEngine, ExecutionContext, Runtime};

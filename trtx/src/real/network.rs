@@ -796,13 +796,14 @@ impl NetworkDefinition {
         input: &Tensor,
         nb_output_maps: i32,
         kernel_size: &[i32; 2],
-        kernel_weights: &[u8],
-        kernel_dtype: trtx_sys::nvinfer1::DataType,
-        bias_weights: Option<&[u8]>,
-        bias_dtype: Option<trtx_sys::nvinfer1::DataType>,
+        weights: &ConvWeights<'_>,
     ) -> Result<ConvolutionLayer> {
         use trtx_sys::nvinfer1::DataType;
-        let kernel_bpe = match &kernel_dtype {
+        let kernel_dtype = &weights.kernel_dtype;
+        let kernel_weights = weights.kernel_weights;
+        let bias_weights = weights.bias_weights;
+        let bias_dtype = weights.bias_dtype.as_ref();
+        let kernel_bpe = match kernel_dtype {
             DataType::kFLOAT => 4,
             DataType::kHALF => 2,
             DataType::kINT8 => 1,
@@ -810,12 +811,12 @@ impl NetworkDefinition {
             _ => {
                 return Err(Error::Runtime(format!(
                     "Unsupported kernel weight type for convolution: {}",
-                    crate::datatype_name(&kernel_dtype)
+                    crate::datatype_name(kernel_dtype)
                 )))
             }
         };
         let weight_count = (kernel_weights.len() / kernel_bpe) as i64;
-        let bias_dtype_val = bias_dtype.unwrap_or_else(|| kernel_dtype.clone());
+        let bias_dtype_val = bias_dtype.unwrap_or(kernel_dtype).clone();
         let bias_bpe = match &bias_dtype_val {
             DataType::kFLOAT => 4,
             DataType::kHALF => 2,
@@ -845,7 +846,7 @@ impl NetworkDefinition {
         };
         let kernel_dims = trtx_sys::Dims::new_2d(kernel_size[0] as i64, kernel_size[1] as i64);
         let kernel_w =
-            trtx_sys::nvinfer1::Weights::new_with_type(kernel_dtype, kernel_ptr, weight_count);
+            trtx_sys::nvinfer1::Weights::new_with_type(kernel_dtype.clone(), kernel_ptr, weight_count);
         let bias_w =
             trtx_sys::nvinfer1::Weights::new_with_type(bias_dtype_val, bias_ptr, bias_count);
         let layer_ptr = unsafe {
@@ -877,13 +878,14 @@ impl NetworkDefinition {
         input: &Tensor,
         nb_output_maps: i32,
         kernel_size: &[i32; 2],
-        kernel_weights: &[u8],
-        kernel_dtype: trtx_sys::nvinfer1::DataType,
-        bias_weights: Option<&[u8]>,
-        bias_dtype: Option<trtx_sys::nvinfer1::DataType>,
+        weights: &ConvWeights<'_>,
     ) -> Result<DeconvolutionLayer> {
         use trtx_sys::nvinfer1::DataType;
-        let kernel_bpe = match &kernel_dtype {
+        let kernel_dtype = &weights.kernel_dtype;
+        let kernel_weights = weights.kernel_weights;
+        let bias_weights = weights.bias_weights;
+        let bias_dtype = weights.bias_dtype.as_ref();
+        let kernel_bpe = match kernel_dtype {
             DataType::kFLOAT => 4,
             DataType::kHALF => 2,
             DataType::kINT8 => 1,
@@ -891,12 +893,12 @@ impl NetworkDefinition {
             _ => {
                 return Err(Error::Runtime(format!(
                     "Unsupported kernel weight type for deconvolution: {}",
-                    crate::datatype_name(&kernel_dtype)
+                    crate::datatype_name(kernel_dtype)
                 )))
             }
         };
         let weight_count = (kernel_weights.len() / kernel_bpe) as i64;
-        let bias_dtype_val = bias_dtype.unwrap_or_else(|| kernel_dtype.clone());
+        let bias_dtype_val = bias_dtype.unwrap_or(kernel_dtype).clone();
         let bias_bpe = match &bias_dtype_val {
             DataType::kFLOAT => 4,
             DataType::kHALF => 2,
@@ -926,7 +928,7 @@ impl NetworkDefinition {
         };
         let kernel_dims = trtx_sys::Dims::new_2d(kernel_size[0] as i64, kernel_size[1] as i64);
         let kernel_w =
-            trtx_sys::nvinfer1::Weights::new_with_type(kernel_dtype, kernel_ptr, weight_count);
+            trtx_sys::nvinfer1::Weights::new_with_type(kernel_dtype.clone(), kernel_ptr, weight_count);
         let bias_w =
             trtx_sys::nvinfer1::Weights::new_with_type(bias_dtype_val, bias_ptr, bias_count);
         let layer_ptr = unsafe {
