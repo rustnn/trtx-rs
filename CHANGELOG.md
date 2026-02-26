@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-02-26
+
+### Added
+
+- Added missing layer and tensor capabilities needed by RustNN: layer naming/introspection (`set_layer_name`, `get_layer_name`, `get_layer_type`, `get_nb_layers`), tensor format control (`set_allowed_formats`), engine tensor dtype lookup, convolution/deconvolution input setters, and expanded deconvolution controls (stride/padding/dilation/groups). Mock mode now mirrors the new APIs.
+- Extended FFI bindings with TensorRT `TensorFormat` and related enums so the safe API can expose format/weight type choices.
+
+### Changed
+
+- TensorRT libraries now auto-load on first use (builder, ONNX parser, runtime) and guard against double-loading when using `dlopen` mode.
+- Build script normalizes bundled TensorRT headers (size_t fixes, doxygen cleanup) to improve autocxx generation and rustdoc quality; future header drops are transformed automatically.
+- Dependency versions bumped to current releases; crate-level docs refreshed to align with README.
+
 ## [0.3.0] - 2025-02-11
 
 ### Added
@@ -35,3 +48,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Improved Portability**: Expanded the mock mode to include stubbed TensorRT types, allowing the library to be compiled non-NVIDIA platforms (e.g., macOS).
 
 [0.3.0]: https://github.com/rustnn/trtx-rs/releases/tag/v0.3.0
+[0.3.1]: https://github.com/rustnn/trtx-rs/releases/tag/v0.3.1
