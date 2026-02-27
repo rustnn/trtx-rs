@@ -33,6 +33,44 @@
 #[cfg(feature = "mock")]
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
+#[allow(warnings)]
+mod enums {
+    include!(concat!(env!("OUT_DIR"), "/enums.rs"));
+}
+
+macro_rules! better_enum {
+    ($to:ident) => {
+        pub use crate::enums::$to;
+        #[cfg(not(feature = "mock"))]
+        impl Into<crate::real_bindings::nvinfer1::$to> for $to {
+            fn into(self) -> crate::real_bindings::nvinfer1::$to {
+                unsafe { transmute(self) }
+            }
+        }
+        #[cfg(not(feature = "mock"))]
+        impl From<crate::real_bindings::nvinfer1::$to> for $to {
+            fn from(value: crate::real_bindings::nvinfer1::$to) -> Self {
+                unsafe { transmute(value) }
+            }
+        }
+    };
+}
+
+#[cfg(not(feature = "mock"))]
+use std::mem::transmute;
+better_enum!(LayerType);
+better_enum!(ActivationType);
+better_enum!(ProfilingVerbosity);
+better_enum!(MemoryPoolType);
+better_enum!(DeviceType);
+better_enum!(EngineCapability);
+better_enum!(BuilderFlag);
+better_enum!(PreviewFeature);
+better_enum!(HardwareCompatibilityLevel);
+better_enum!(RuntimePlatform);
+better_enum!(TilingOptimizationLevel);
+better_enum!(ComputeCapability);
+
 // Real mode uses autocxx
 #[cfg(not(feature = "mock"))]
 pub mod real_bindings {
@@ -92,23 +130,35 @@ pub mod real_bindings {
         // Try generating Dims64 directly (base class, not the typedef alias)
         generate_pod!("nvinfer1::Dims64")
 
-        generate!("nvinfer1::DataType")
-        generate!("nvinfer1::TensorIOMode")
-        generate!("nvinfer1::MemoryPoolType")
-        generate!("nvinfer1::NetworkDefinitionCreationFlag")
-        generate!("nvinfer1::ActivationType")
-        generate!("nvinfer1::PoolingType")
-        generate!("nvinfer1::ElementWiseOperation")
-        generate!("nvinfer1::MatrixOperation")
-        generate!("nvinfer1::UnaryOperation")
-        generate!("nvinfer1::ReduceOperation")
-        generate!("nvinfer1::CumulativeOperation")
-        generate!("nvinfer1::GatherMode")
-        generate!("nvinfer1::ScatterMode")
-        generate!("nvinfer1::InterpolationMode")
-        generate!("nvinfer1::ResizeCoordinateTransformation")
-        generate!("nvinfer1::ResizeSelector")
-        generate!("nvinfer1::ResizeRoundMode")
+        generate_pod!("nvinfer1::DataType")
+        generate_pod!("nvinfer1::TensorIOMode")
+        generate_pod!("nvinfer1::MemoryPoolType")
+        generate_pod!("nvinfer1::NetworkDefinitionCreationFlag")
+        generate_pod!("nvinfer1::ActivationType")
+        generate_pod!("nvinfer1::PoolingType")
+        generate_pod!("nvinfer1::ElementWiseOperation")
+        generate_pod!("nvinfer1::MatrixOperation")
+        generate_pod!("nvinfer1::UnaryOperation")
+        generate_pod!("nvinfer1::ReduceOperation")
+        generate_pod!("nvinfer1::CumulativeOperation")
+        generate_pod!("nvinfer1::GatherMode")
+        generate_pod!("nvinfer1::ScatterMode")
+        generate_pod!("nvinfer1::InterpolationMode")
+        generate_pod!("nvinfer1::ResizeCoordinateTransformation")
+        generate_pod!("nvinfer1::ResizeSelector")
+        generate_pod!("nvinfer1::ResizeRoundMode")
+        generate_pod!("nvinfer1::ProfilingVerbosity")
+        generate_pod!("nvinfer1::EngineCapability")
+        generate_pod!("nvinfer1::BuilderFlag")
+        generate_pod!("nvinfer1::BuilderFlags")
+        generate_pod!("nvinfer1::DeviceType")
+        generate_pod!("nvinfer1::TacticSource")
+        generate_pod!("nvinfer1::TacticSources")
+        generate_pod!("nvinfer1::PreviewFeature")
+        generate_pod!("nvinfer1::HardwareCompatibilityLevel")
+        generate_pod!("nvinfer1::RuntimePlatform")
+        generate_pod!("nvinfer1::TilingOptimizationLevel")
+        generate_pod!("nvinfer1::ComputeCapability")
         // NOTE: RNN enums commented out because IRNNv2Layer (deprecated) cannot be generated
         // generate!("nvinfer1::RNNOperation")
         // generate!("nvinfer1::RNNDirection")

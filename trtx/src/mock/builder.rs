@@ -1,9 +1,12 @@
 //! Mock builder implementations
 
-use crate::builder::MemoryPoolType;
 use crate::error::Result;
 use crate::logger::Logger;
 use crate::network::NetworkDefinition;
+use trtx_sys::{
+    BuilderFlag, ComputeCapability, DeviceType, EngineCapability, HardwareCompatibilityLevel,
+    MemoryPoolType, PreviewFeature, ProfilingVerbosity, RuntimePlatform, TilingOptimizationLevel,
+};
 
 /// Builder configuration (mock mode)
 pub struct BuilderConfig {
@@ -11,12 +14,146 @@ pub struct BuilderConfig {
 }
 
 impl BuilderConfig {
-    pub fn set_memory_pool_limit(&mut self, pool: MemoryPoolType, size: usize) -> Result<()> {
+    pub fn set_memory_pool_limit(&mut self, pool: MemoryPoolType, size: usize) {
         set_memory_pool_limit(self.inner, pool as i32, size)
     }
 
     pub(crate) fn as_ptr(&self) -> *mut trtx_sys::TrtxBuilderConfig {
         self.inner
+    }
+
+    pub fn set_profiling_verbosity(&mut self, _verbosity: ProfilingVerbosity) {}
+
+    pub fn get_profiling_verbosity(&self) -> ProfilingVerbosity {
+        ProfilingVerbosity::kDETAILED
+    }
+
+    pub fn set_avg_timing_iterations(&mut self, _avg_timing: i32) {}
+
+    pub fn get_avg_timing_iterations(&self) -> i32 {
+        1
+    }
+
+    pub fn set_engine_capability(&mut self, _capability: EngineCapability) {}
+
+    pub fn get_engine_capability(&self) -> EngineCapability {
+        EngineCapability::kSTANDARD
+    }
+
+    pub fn set_flags(&mut self, _flags: u32) {}
+
+    pub fn get_flags(&self) -> u32 {
+        0
+    }
+
+    pub fn set_flag(&mut self, _flag: BuilderFlag) {}
+
+    pub fn clear_flag(&mut self, _flag: BuilderFlag) {}
+
+    pub fn get_flag(&self, _flag: BuilderFlag) -> bool {
+        false
+    }
+
+    pub fn set_dla_core(&mut self, _dla_core: i32) {}
+
+    pub fn get_dla_core(&self) -> i32 {
+        -1
+    }
+
+    pub fn set_default_device_type(&mut self, _device_type: DeviceType) {}
+
+    pub fn get_default_device_type(&self) -> DeviceType {
+        DeviceType::kGPU
+    }
+
+    pub fn reset(&mut self) {}
+
+    pub fn get_nb_optimization_profiles(&self) -> i32 {
+        0
+    }
+
+    pub fn set_tactic_sources(&mut self, _sources: u32) -> bool {
+        true
+    }
+
+    pub fn get_tactic_sources(&self) -> u32 {
+        0
+    }
+
+    pub fn get_memory_pool_limit(&self, _pool: MemoryPoolType) -> usize {
+        0
+    }
+
+    pub fn set_preview_feature(&mut self, _feature: PreviewFeature, _enable: bool) {}
+
+    pub fn get_preview_feature(&self, _feature: PreviewFeature) -> bool {
+        false
+    }
+
+    pub fn set_builder_optimization_level(&mut self, _level: i32) {}
+
+    pub fn get_builder_optimization_level(&mut self) -> i32 {
+        3
+    }
+
+    pub fn set_hardware_compatibility_level(&mut self, _level: HardwareCompatibilityLevel) {}
+
+    pub fn get_hardware_compatibility_level(&self) -> HardwareCompatibilityLevel {
+        HardwareCompatibilityLevel::kNONE
+    }
+
+    pub fn set_max_aux_streams(&mut self, _nb_streams: i32) {}
+
+    pub fn get_max_aux_streams(&self) -> i32 {
+        0
+    }
+
+    pub fn set_runtime_platform(&mut self, _platform: RuntimePlatform) {}
+
+    pub fn get_runtime_platform(&self) -> RuntimePlatform {
+        RuntimePlatform::kSAME_AS_BUILD
+    }
+
+    pub fn set_max_nb_tactics(&mut self, _max_nb_tactics: i32) {}
+
+    pub fn get_max_nb_tactics(&self) -> i32 {
+        -1
+    }
+
+    pub fn set_tiling_optimization_level(&mut self, _level: TilingOptimizationLevel) -> bool {
+        true
+    }
+
+    pub fn get_tiling_optimization_level(&self) -> TilingOptimizationLevel {
+        TilingOptimizationLevel::kNONE
+    }
+
+    pub fn set_l2_limit_for_tiling(&mut self, _size: i64) -> bool {
+        true
+    }
+
+    pub fn get_l2_limit_for_tiling(&self) -> i64 {
+        0
+    }
+
+    pub fn set_nb_compute_capabilities(&mut self, _max_nb_compute_capabilities: i32) -> bool {
+        true
+    }
+
+    pub fn get_nb_compute_capabilities(&self) -> i32 {
+        0
+    }
+
+    pub fn set_compute_capability(
+        &mut self,
+        _compute_capability: ComputeCapability,
+        _index: i32,
+    ) -> bool {
+        true
+    }
+
+    pub fn get_compute_capability(&self, _index: i32) -> ComputeCapability {
+        ComputeCapability::kNONE
     }
 }
 
@@ -96,14 +233,10 @@ pub(crate) fn trtx_builder_create(
     Ok(builder_ptr)
 }
 
-fn set_memory_pool_limit(
-    config_ptr: *mut trtx_sys::TrtxBuilderConfig,
-    pool: i32,
-    size: usize,
-) -> Result<()> {
+fn set_memory_pool_limit(config_ptr: *mut trtx_sys::TrtxBuilderConfig, pool: i32, size: usize) {
     let mut error_msg = [0i8; 1024];
 
-    let result = unsafe {
+    unsafe {
         trtx_sys::trtx_builder_config_set_memory_pool_limit(
             config_ptr,
             pool,
@@ -112,12 +245,6 @@ fn set_memory_pool_limit(
             error_msg.len(),
         )
     };
-
-    if result != trtx_sys::TRTX_SUCCESS as i32 {
-        return Err(super::from_ffi(result, &error_msg));
-    }
-
-    Ok(())
 }
 
 fn destroy_config(config_ptr: *mut trtx_sys::TrtxBuilderConfig) {

@@ -44,7 +44,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("   ✓ Config created");
 
     // Set workspace memory limit (1GB)
-    config.set_memory_pool_limit(MemoryPoolType::Workspace, 1 << 30)?;
+    config.set_memory_pool_limit(MemoryPoolType::kWORKSPACE, 1 << 30);
     println!("   ✓ Workspace limit set to 1GB");
 
     // Note: In a real application, you would add layers to the network here

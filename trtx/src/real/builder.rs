@@ -1,48 +1,248 @@
 //! Real TensorRT builder implementation
 
-use crate::builder::MemoryPoolType;
+use std::pin::Pin;
+use std::ptr;
+
 use crate::error::{Error, Result};
 use crate::logger::Logger;
 use crate::network::NetworkDefinition;
+use trtx_sys::nvinfer1::IBuilderConfig;
+use trtx_sys::{
+    BuilderFlag, ComputeCapability, DeviceType, EngineCapability, HardwareCompatibilityLevel,
+    MemoryPoolType, PreviewFeature, ProfilingVerbosity, RuntimePlatform, TilingOptimizationLevel,
+};
 
 /// Builder configuration (real mode)
-pub struct BuilderConfig {
-    inner: *mut std::ffi::c_void,
+pub struct BuilderConfig<'builder> {
+    inner: Pin<&'builder mut IBuilderConfig>,
 }
 
-impl BuilderConfig {
-    pub fn set_memory_pool_limit(&mut self, pool: MemoryPoolType, size: usize) -> Result<()> {
-        if self.inner.is_null() {
-            return Err(Error::Runtime("Invalid builder config".to_string()));
-        }
-        let trt_pool = match pool {
-            MemoryPoolType::Workspace => 0,
-            MemoryPoolType::DlaManagedSram => 1,
-            MemoryPoolType::DlaLocalDram => 2,
-            MemoryPoolType::DlaGlobalDram => 3,
-        };
-        unsafe {
-            trtx_sys::builder_config_set_memory_pool_limit(self.inner, trt_pool, size);
-        }
-        Ok(())
+impl<'builder> BuilderConfig<'builder> {
+    /// See [IBuilderConfig::setMemoryPoolLimit]
+    pub fn set_memory_pool_limit(&mut self, pool: MemoryPoolType, size: usize) {
+        self.inner.as_mut().setMemoryPoolLimit(pool.into(), size);
     }
 
-    pub(crate) fn as_mut_ptr(&mut self) -> *mut std::ffi::c_void {
+    /// See [IBuilderConfig::setProfilingVerbosity]
+    pub fn set_profiling_verbosity(&mut self, verbosity: ProfilingVerbosity) {
+        self.inner.as_mut().setProfilingVerbosity(verbosity.into());
+    }
+
+    /// See [IBuilderConfig::getProfilingVerbosity]
+    pub fn get_profiling_verbosity(&self) -> ProfilingVerbosity {
+        self.inner.as_ref().getProfilingVerbosity().into()
+    }
+
+    /// See [IBuilderConfig::setAvgTimingIterations]
+    pub fn set_avg_timing_iterations(&mut self, avg_timing: i32) {
+        self.inner.as_mut().setAvgTimingIterations(avg_timing);
+    }
+
+    /// See [IBuilderConfig::getAvgTimingIterations]
+    pub fn get_avg_timing_iterations(&self) -> i32 {
+        self.inner.as_ref().getAvgTimingIterations()
+    }
+
+    /// See [IBuilderConfig::setEngineCapability]
+    pub fn set_engine_capability(&mut self, capability: EngineCapability) {
+        self.inner.as_mut().setEngineCapability(capability.into());
+    }
+
+    /// See [IBuilderConfig::getEngineCapability]
+    pub fn get_engine_capability(&self) -> EngineCapability {
+        self.inner.as_ref().getEngineCapability().into()
+    }
+
+    /// See [IBuilderConfig::setFlags]
+    pub fn set_flags(&mut self, flags: u32) {
+        self.inner.as_mut().setFlags(flags);
+    }
+
+    /// See [IBuilderConfig::getFlags]
+    pub fn get_flags(&self) -> u32 {
+        self.inner.as_ref().getFlags()
+    }
+
+    /// See [IBuilderConfig::setFlag]
+    pub fn set_flag(&mut self, flag: BuilderFlag) {
+        self.inner.as_mut().setFlag(flag.into());
+    }
+
+    /// See [IBuilderConfig::clearFlag]
+    pub fn clear_flag(&mut self, flag: BuilderFlag) {
+        self.inner.as_mut().clearFlag(flag.into());
+    }
+
+    /// See [IBuilderConfig::getFlag]
+    pub fn get_flag(&self, flag: BuilderFlag) -> bool {
+        self.inner.as_ref().getFlag(flag.into())
+    }
+
+    /// See [IBuilderConfig::setDLACore]
+    pub fn set_dla_core(&mut self, dla_core: i32) {
+        self.inner.as_mut().setDLACore(dla_core);
+    }
+
+    /// See [IBuilderConfig::getDLACore]
+    pub fn get_dla_core(&self) -> i32 {
+        self.inner.as_ref().getDLACore()
+    }
+
+    /// See [IBuilderConfig::setDefaultDeviceType]
+    pub fn set_default_device_type(&mut self, device_type: DeviceType) {
+        self.inner.as_mut().setDefaultDeviceType(device_type.into());
+    }
+
+    /// See [IBuilderConfig::getDefaultDeviceType]
+    pub fn get_default_device_type(&self) -> DeviceType {
+        self.inner.as_ref().getDefaultDeviceType().into()
+    }
+
+    /// See [IBuilderConfig::reset]
+    pub fn reset(&mut self) {
+        self.inner.as_mut().reset();
+    }
+
+    /// See [IBuilderConfig::getNbOptimizationProfiles]
+    pub fn get_nb_optimization_profiles(&self) -> i32 {
+        self.inner.as_ref().getNbOptimizationProfiles()
+    }
+
+    /// See [IBuilderConfig::setTacticSources]
+    pub fn set_tactic_sources(&mut self, sources: u32) -> bool {
+        self.inner.as_mut().setTacticSources(sources)
+    }
+
+    /// See [IBuilderConfig::getTacticSources]
+    pub fn get_tactic_sources(&self) -> u32 {
+        self.inner.as_ref().getTacticSources()
+    }
+
+    /// See [IBuilderConfig::getMemoryPoolLimit]
+    pub fn get_memory_pool_limit(&self, pool: MemoryPoolType) -> usize {
+        self.inner.as_ref().getMemoryPoolLimit(pool.into())
+    }
+
+    /// See [IBuilderConfig::setPreviewFeature]
+    pub fn set_preview_feature(&mut self, feature: PreviewFeature, enable: bool) {
         self.inner
+            .as_mut()
+            .setPreviewFeature(feature.into(), enable);
+    }
+
+    /// See [IBuilderConfig::getPreviewFeature]
+    pub fn get_preview_feature(&self, feature: PreviewFeature) -> bool {
+        self.inner.as_ref().getPreviewFeature(feature.into())
+    }
+
+    /// See [IBuilderConfig::setBuilderOptimizationLevel]
+    pub fn set_builder_optimization_level(&mut self, level: i32) {
+        self.inner.as_mut().setBuilderOptimizationLevel(level);
+    }
+
+    /// See [IBuilderConfig::getBuilderOptimizationLevel]
+    pub fn get_builder_optimization_level(&mut self) -> i32 {
+        self.inner.as_mut().getBuilderOptimizationLevel()
+    }
+
+    /// See [IBuilderConfig::setHardwareCompatibilityLevel]
+    pub fn set_hardware_compatibility_level(&mut self, level: HardwareCompatibilityLevel) {
+        self.inner
+            .as_mut()
+            .setHardwareCompatibilityLevel(level.into());
+    }
+
+    /// See [IBuilderConfig::getHardwareCompatibilityLevel]
+    pub fn get_hardware_compatibility_level(&self) -> HardwareCompatibilityLevel {
+        self.inner.as_ref().getHardwareCompatibilityLevel().into()
+    }
+
+    /// See [IBuilderConfig::setMaxAuxStreams]
+    pub fn set_max_aux_streams(&mut self, nb_streams: i32) {
+        self.inner.as_mut().setMaxAuxStreams(nb_streams);
+    }
+
+    /// See [IBuilderConfig::getMaxAuxStreams]
+    pub fn get_max_aux_streams(&self) -> i32 {
+        self.inner.as_ref().getMaxAuxStreams()
+    }
+
+    /// See [IBuilderConfig::setRuntimePlatform]
+    pub fn set_runtime_platform(&mut self, platform: RuntimePlatform) {
+        self.inner.as_mut().setRuntimePlatform(platform.into());
+    }
+
+    /// See [IBuilderConfig::getRuntimePlatform]
+    pub fn get_runtime_platform(&self) -> RuntimePlatform {
+        self.inner.as_ref().getRuntimePlatform().into()
+    }
+
+    /// See [IBuilderConfig::setMaxNbTactics]
+    pub fn set_max_nb_tactics(&mut self, max_nb_tactics: i32) {
+        self.inner.as_mut().setMaxNbTactics(max_nb_tactics);
+    }
+
+    /// See [IBuilderConfig::getMaxNbTactics]
+    pub fn get_max_nb_tactics(&self) -> i32 {
+        self.inner.as_ref().getMaxNbTactics()
+    }
+
+    /// See [IBuilderConfig::setTilingOptimizationLevel]
+    pub fn set_tiling_optimization_level(&mut self, level: TilingOptimizationLevel) -> bool {
+        self.inner.as_mut().setTilingOptimizationLevel(level.into())
+    }
+
+    /// See [IBuilderConfig::getTilingOptimizationLevel]
+    pub fn get_tiling_optimization_level(&self) -> TilingOptimizationLevel {
+        self.inner.as_ref().getTilingOptimizationLevel().into()
+    }
+
+    /// See [IBuilderConfig::setL2LimitForTiling]
+    pub fn set_l2_limit_for_tiling(&mut self, size: i64) -> bool {
+        self.inner.as_mut().setL2LimitForTiling(size)
+    }
+
+    /// See [IBuilderConfig::getL2LimitForTiling]
+    pub fn get_l2_limit_for_tiling(&self) -> i64 {
+        self.inner.as_ref().getL2LimitForTiling()
+    }
+
+    /// See [IBuilderConfig::setNbComputeCapabilities]
+    pub fn set_nb_compute_capabilities(&mut self, max_nb_compute_capabilities: i32) -> bool {
+        self.inner
+            .as_mut()
+            .setNbComputeCapabilities(max_nb_compute_capabilities)
+    }
+
+    /// See [IBuilderConfig::getNbComputeCapabilities]
+    pub fn get_nb_compute_capabilities(&self) -> i32 {
+        self.inner.as_ref().getNbComputeCapabilities()
+    }
+
+    /// See [IBuilderConfig::setComputeCapability]
+    pub fn set_compute_capability(
+        &mut self,
+        compute_capability: ComputeCapability,
+        index: i32,
+    ) -> bool {
+        self.inner
+            .as_mut()
+            .setComputeCapability(compute_capability.into(), index)
+    }
+
+    /// See [IBuilderConfig::getComputeCapability]
+    pub fn get_compute_capability(&self, index: i32) -> ComputeCapability {
+        self.inner.as_ref().getComputeCapability(index).into()
     }
 }
 
-impl Drop for BuilderConfig {
+impl Drop for BuilderConfig<'_> {
     fn drop(&mut self) {
-        if !self.inner.is_null() {
-            unsafe {
-                trtx_sys::delete_config(self.inner);
-            }
+        unsafe {
+            ptr::drop_in_place(self.inner.as_mut().get_unchecked_mut());
         }
     }
 }
-
-unsafe impl Send for BuilderConfig {}
 
 /// Builder (real mode)
 pub struct Builder<'a> {
@@ -50,7 +250,7 @@ pub struct Builder<'a> {
     _logger: &'a Logger,
 }
 
-impl<'a> Builder<'a> {
+impl<'builder> Builder<'builder> {
     #[cfg(not(feature = "link_tensorrt_rtx"))]
     #[cfg(not(feature = "dlopen_tensorrt_rtx"))]
     pub fn new(logger: &'a Logger) -> Result<Self> {
@@ -58,7 +258,7 @@ impl<'a> Builder<'a> {
     }
 
     #[cfg(any(feature = "link_tensorrt_rtx", feature = "dlopen_tensorrt_rtx"))]
-    pub fn new(logger: &'a Logger) -> Result<Self> {
+    pub fn new(logger: &'builder Logger) -> Result<Self> {
         let logger_ptr = logger.as_logger_ptr();
         let builder_ptr = {
             #[cfg(feature = "link_tensorrt_rtx")]
@@ -107,43 +307,39 @@ impl<'a> Builder<'a> {
         Ok(NetworkDefinition::from_ptr(network_ptr as *mut _))
     }
 
-    pub fn create_config(&self) -> Result<BuilderConfig> {
+    pub fn create_config(&self) -> Result<BuilderConfig<'builder>> {
         if self.inner.is_null() {
             return Err(Error::Runtime("Invalid builder".to_string()));
         }
-        let config_ptr = unsafe {
-            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::IBuilder>(self.inner)
-                .createBuilderConfig()
-        };
-        if config_ptr.is_null() {
-            return Err(Error::Runtime(
-                "Failed to create builder config".to_string(),
-            ));
+        unsafe {
+            let config_ptr =
+                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::IBuilder>(self.inner)
+                    .createBuilderConfig()
+                    .as_mut()
+                    .ok_or_else(|| Error::Runtime("Failed to create builder config".to_string()))?;
+            Ok(BuilderConfig {
+                inner: std::pin::Pin::new_unchecked(config_ptr),
+            })
         }
-        Ok(BuilderConfig {
-            inner: config_ptr as *mut _,
-        })
     }
 
-    pub fn build_serialized_network(
-        &self,
-        network: &mut NetworkDefinition,
-        config: &mut BuilderConfig,
+    pub fn build_serialized_network<'network, 'config, 'config_borrow>(
+        &'builder self,
+        network: &'network mut NetworkDefinition,
+        config: &'config_borrow mut BuilderConfig<'config>,
     ) -> Result<Vec<u8>> {
         if self.inner.is_null() {
             return Err(Error::Runtime("Invalid builder".to_string()));
         }
         let network_ptr = network.as_mut_ptr();
-        let config_ptr = config.as_mut_ptr();
 
         let serialized_engine = unsafe {
             let builder = &mut *(self.inner as *mut trtx_sys::nvinfer1::IBuilder);
             let network = &mut *(network_ptr as *mut trtx_sys::nvinfer1::INetworkDefinition);
-            let config = &mut *(config_ptr as *mut trtx_sys::nvinfer1::IBuilderConfig);
             let mut builder_pin = std::pin::Pin::new_unchecked(builder);
             builder_pin.as_mut().buildSerializedNetwork(
                 std::pin::Pin::new_unchecked(network),
-                std::pin::Pin::new_unchecked(config),
+                config.inner.as_mut(),
             )
         };
 
@@ -154,10 +350,11 @@ impl<'a> Builder<'a> {
         }
 
         let data = unsafe {
-            let host_memory = &*serialized_engine;
+            let host_memory = serialized_engine.as_mut().unwrap();
             let size = host_memory.size();
             let data_ptr = host_memory.data();
             let slice = std::slice::from_raw_parts(data_ptr as *const u8, size);
+            ptr::drop_in_place(host_memory);
             slice.to_vec()
         };
 

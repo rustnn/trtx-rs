@@ -9,7 +9,7 @@
 //! Network architecture:
 //! Input [1, 3, 4, 4] -> ReLU -> Output [1, 3, 4, 4]
 
-use trtx::builder::{network_flags, MemoryPoolType};
+use trtx::builder::MemoryPoolType;
 use trtx::cuda::{synchronize, DeviceBuffer};
 use trtx::error::Result;
 use trtx::network::Layer; // Import Layer trait for get_output method
@@ -174,7 +174,7 @@ fn build_tiny_network(logger: &Logger) -> Result<Vec<u8>> {
     let builder = Builder::new(logger)?;
 
     println!("   Creating network with explicit batch...");
-    let mut network = builder.create_network(network_flags::EXPLICIT_BATCH)?;
+    let mut network = builder.create_network(0)?;
 
     println!("   Adding input tensor [1, 3, 4, 4]...");
     let input = network.add_input("input", DataType::kFLOAT, &[1, 3, 4, 4])?;
@@ -200,7 +200,7 @@ fn build_tiny_network(logger: &Logger) -> Result<Vec<u8>> {
     let mut config = builder.create_config()?;
 
     println!("   Setting memory pool limit (1 GB)...");
-    config.set_memory_pool_limit(MemoryPoolType::Workspace, 1 << 30)?;
+    config.set_memory_pool_limit(MemoryPoolType::kWORKSPACE, 1 << 30);
 
     println!("   Building serialized network...");
     let engine_data = builder.build_serialized_network(&mut network, &mut config)?;

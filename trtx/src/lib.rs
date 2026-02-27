@@ -56,7 +56,7 @@
 //! let mut config = builder.create_config()?;
 //!
 //! // Configure memory
-//! config.set_memory_pool_limit(MemoryPoolType::Workspace, 1 << 30)?;
+//! config.set_memory_pool_limit(MemoryPoolType::kWORKSPACE, 1 << 30);
 //!
 //! // Build and serialize
 //! let engine_data = builder.build_serialized_network(&mut network, &mut config)?;
