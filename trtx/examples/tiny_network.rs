@@ -204,7 +204,10 @@ fn build_tiny_network(logger: &Logger) -> Result<Vec<u8>> {
 
     println!("   Building serialized network...");
     let engine_data = builder.build_serialized_network(&mut network, &mut config)?;
+    let engine_size = engine_data.len();
+    #[cfg(not(feature = "mock"))]
+    assert_eq!(engine_data.data_type(), DataType::kINT8);
 
-    println!("   ✓ Network built successfully");
-    Ok(engine_data)
+    println!("   ✓ Network built successfully. Size {engine_size}");
+    Ok(engine_data.to_vec())
 }

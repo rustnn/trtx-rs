@@ -2,7 +2,9 @@
 //! No #[cfg] - this module is only compiled when mock feature is disabled
 
 pub mod builder;
+pub mod builder_config;
 pub mod cuda;
+pub mod host_memory;
 pub mod logger;
 pub mod network;
 pub mod onnx_parser;
