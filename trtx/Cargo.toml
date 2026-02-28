@@ -31,7 +31,6 @@ default = [
 	"onnxparser",
 	"v_1_3",
 ]
-mock = ["trtx-sys/mock"] # mock implementation (no CUDA required)
 real = ["trtx-sys/v_1_3"] # real TensorRT-RTX
 link_tensorrt_rtx = ["trtx-sys/link_tensorrt_rtx"]
 dlopen_tensorrt_rtx = ["libloading"]
