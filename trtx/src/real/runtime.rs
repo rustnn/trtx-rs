@@ -473,10 +473,8 @@ impl Drop for Runtime<'_> {
     fn drop(&mut self) {
         if !self.inner.is_null() {
             unsafe {
-                trtx_sys::delete_runtime(self.inner);
+                std::ptr::drop_in_place(self.inner);
             }
         }
     }
 }
-
-unsafe impl Send for Runtime<'_> {}

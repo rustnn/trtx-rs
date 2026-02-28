@@ -22,7 +22,7 @@ mod tests {
         trtx::dynamically_load_tensorrt(None::<String>).unwrap();
 
         let logger = Logger::stderr().unwrap();
-        let builder = Builder::new(&logger).unwrap();
+        let mut builder = Builder::new(&logger).unwrap();
         let mut network = builder.create_network(0).unwrap();
 
         // not linking let's builder creation fail

@@ -64,7 +64,7 @@ fn build_engine_from_onnx(logger: &Logger, onnx_bytes: &[u8]) -> Result<Vec<u8>>
     // Create builder
 
     use crate::builder::MemoryPoolType;
-    let builder = Builder::new(logger)?;
+    let mut builder = Builder::new(logger)?;
 
     // Create network with explicit batch
     let mut network = builder.create_network(network_flags::EXPLICIT_BATCH)?;

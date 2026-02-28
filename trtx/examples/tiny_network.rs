@@ -171,7 +171,7 @@ fn main() -> Result<()> {
 /// Build a tiny network: Input -> ReLU -> Output
 fn build_tiny_network(logger: &Logger) -> Result<Vec<u8>> {
     println!("   Creating builder...");
-    let builder = Builder::new(logger)?;
+    let mut builder = Builder::new(logger)?;
 
     println!("   Creating network with explicit batch...");
     let network = builder.create_network(0)?;

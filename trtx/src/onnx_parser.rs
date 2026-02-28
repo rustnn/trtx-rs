@@ -17,7 +17,7 @@ mod tests {
     #[ignore] // Requires TensorRT runtime initialization (can hang in test context)
     fn test_onnx_parser_creation() {
         let logger = Logger::stderr().unwrap();
-        let builder = Builder::new(&logger).unwrap();
+        let mut builder = Builder::new(&logger).unwrap();
         let mut network = builder
             .create_network(network_flags::EXPLICIT_BATCH)
             .unwrap();
@@ -34,7 +34,7 @@ mod tests {
         );
         let model_bytes = std::fs::read(model_path).expect("Failed to read test ONNX model");
         let logger = Logger::stderr().unwrap();
-        let builder = Builder::new(&logger).unwrap();
+        let mut builder = Builder::new(&logger).unwrap();
         let mut network = builder
             .create_network(network_flags::EXPLICIT_BATCH)
             .unwrap();

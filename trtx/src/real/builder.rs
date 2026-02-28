@@ -3,12 +3,14 @@ use crate::error::{Error, Result};
 use crate::logger::Logger;
 use crate::network::NetworkDefinition;
 use crate::real::host_memory::HostMemory;
+use autocxx::cxx::memory::UniquePtr;
+use trtx_sys::nvinfer1::IBuilder;
 
 pub use super::builder_config::BuilderConfig;
 
 /// Builder (real mode)
 pub struct Builder<'a> {
-    inner: *mut std::ffi::c_void,
+    inner: UniquePtr<IBuilder>,
     _logger: &'a Logger,
 }
 
@@ -21,6 +23,8 @@ impl<'builder> Builder<'builder> {
 
     #[cfg(any(feature = "link_tensorrt_rtx", feature = "dlopen_tensorrt_rtx"))]
     pub fn new(logger: &'builder Logger) -> Result<Self> {
+        use trtx_sys::nvinfer1::IBuilder;
+
         let logger_ptr = logger.as_logger_ptr();
         let builder_ptr = {
             #[cfg(feature = "link_tensorrt_rtx")]
@@ -45,74 +49,44 @@ impl<'builder> Builder<'builder> {
                     .get(b"createInferBuilder_INTERNAL")?;
                 create_infer_builder(logger_ptr, trtx_sys::get_tensorrt_version())
             }
-        };
+        } as *mut IBuilder;
         if builder_ptr.is_null() {
             return Err(Error::Runtime("Failed to create builder".to_string()));
         }
         Ok(Builder {
-            inner: builder_ptr,
+            inner: unsafe { UniquePtr::from_raw(builder_ptr) },
             _logger: logger,
         })
     }
 
-    pub fn create_network(&self, flags: u32) -> Result<NetworkDefinition<'_>> {
+    pub fn create_network(&'_ mut self, flags: u32) -> Result<NetworkDefinition<'builder>> {
         if self.inner.is_null() {
             return Err(Error::Runtime("Invalid builder".to_string()));
         }
-        let network_ptr = unsafe {
-            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::IBuilder>(self.inner)
-                .createNetworkV2(flags)
-        };
+        let network_ptr = self.inner.pin_mut().createNetworkV2(flags);
         let network = unsafe { network_ptr.as_mut() }
             .ok_or_else(|| Error::Runtime("Failed to create network".to_string()))?;
         Ok(NetworkDefinition::from_ptr(network))
     }
 
-    pub fn create_config(&self) -> Result<BuilderConfig<'builder>> {
-        if self.inner.is_null() {
-            return Err(Error::Runtime("Invalid builder".to_string()));
-        }
-        unsafe {
-            let config_ptr =
-                crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::IBuilder>(self.inner)
-                    .createBuilderConfig()
-                    .as_mut()
-                    .ok_or_else(|| Error::Runtime("Failed to create builder config".to_string()))?;
-            Ok(BuilderConfig {
-                inner: std::pin::Pin::new_unchecked(config_ptr),
-            })
-        }
+    pub fn create_config(&'_ mut self) -> Result<BuilderConfig> {
+        let config_ptr = self.inner.pin_mut().createBuilderConfig();
+        BuilderConfig::new(config_ptr)
     }
 
-    pub fn build_serialized_network<'network, 'config, 'config_borrow>(
-        &self,
+    pub fn build_serialized_network<'network, 'config_borrow>(
+        &mut self,
         network: &'network NetworkDefinition,
-        config: &'config_borrow mut BuilderConfig<'config>,
+        config: &'config_borrow mut BuilderConfig,
     ) -> Result<HostMemory<'_>> {
-        if self.inner.is_null() {
-            return Err(Error::Runtime("Invalid builder".to_string()));
-        }
-
         let serialized_engine = unsafe {
-            let builder = &mut *(self.inner as *mut trtx_sys::nvinfer1::IBuilder);
-            let mut builder_pin = std::pin::Pin::new_unchecked(builder);
-            builder_pin
-                .as_mut()
-                .buildSerializedNetwork(network.inner.lock()?.as_mut(), config.inner.as_mut())
+            self.inner
+                .pin_mut()
+                .buildSerializedNetwork(network.inner.lock()?.as_mut(), config.inner.pin_mut())
                 .as_mut()
         }
         .ok_or_else(|| Error::Runtime("Failed to build serialized network".to_string()))?;
 
-        Ok(unsafe { HostMemory::from_raw_ref(self, serialized_engine) })
-    }
-}
-
-impl Drop for Builder<'_> {
-    fn drop(&mut self) {
-        if !self.inner.is_null() {
-            unsafe {
-                trtx_sys::delete_builder(self.inner);
-            }
-        }
+        Ok(unsafe { HostMemory::from_raw_ref(serialized_engine) })
     }
 }

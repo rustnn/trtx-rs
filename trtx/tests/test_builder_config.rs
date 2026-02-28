@@ -14,7 +14,7 @@ mod tests {
         trtx::dynamically_load_tensorrt(None::<String>).unwrap();
 
         let logger = Logger::stderr().unwrap();
-        let builder = Builder::new(&logger).unwrap();
+        let mut builder = Builder::new(&logger).unwrap();
         let mut config = builder.create_config().unwrap();
 
         // Test timing iterations

@@ -6,9 +6,9 @@ use std::pin::Pin;
 use std::ptr;
 use std::sync::Mutex;
 use trtx_sys::nvinfer1::{IConcatenationLayer, INetworkDefinition, ITensor};
-use trtx_sys::{DataType, MatrixOperation, ScaleMode, TopKOperation};
+use trtx_sys::{DataType, LayerType, MatrixOperation, ScaleMode, TopKOperation};
 
-use crate::error::{Error, LayerTypeKind, Result};
+use crate::error::{Error, Result};
 use crate::network::*;
 use trtx_sys::nvinfer1::ILayer;
 
@@ -404,7 +404,7 @@ impl<'builder> NetworkDefinition<'builder> {
             .as_mut()
             .addActivation(input.inner.lock()?.as_mut(), activation_type.into());
         let layer = unsafe { layer_ptr.as_mut() }
-            .ok_or(Error::LayerCreationFailed(LayerTypeKind::Activation))?;
+            .ok_or(Error::LayerCreationFailed(LayerType::kACTIVATION))?;
         Ok(ActivationLayer::from_ptr(layer))
     }
 
@@ -423,7 +423,7 @@ impl<'builder> NetworkDefinition<'builder> {
         Ok(UnaryLayer::from_ptr(unsafe {
             layer_ptr
                 .as_mut()
-                .ok_or(Error::LayerCreationFailed(LayerTypeKind::Unary))?
+                .ok_or(Error::LayerCreationFailed(LayerType::kUNARY))?
         }))
     }
 
@@ -438,7 +438,7 @@ impl<'builder> NetworkDefinition<'builder> {
         Ok(IdentityLayer::from_ptr(unsafe {
             layer_ptr
                 .as_mut()
-                .ok_or(Error::LayerCreationFailed(LayerTypeKind::Indentity))?
+                .ok_or(Error::LayerCreationFailed(LayerType::kIDENTITY))?
         }))
     }
 
@@ -457,7 +457,7 @@ impl<'builder> NetworkDefinition<'builder> {
         Ok(CastLayer::from_ptr(unsafe {
             layer_ptr
                 .as_mut()
-                .ok_or(Error::LayerCreationFailed(LayerTypeKind::Cast))?
+                .ok_or(Error::LayerCreationFailed(LayerType::kCAST))?
         }))
     }
 
@@ -476,7 +476,7 @@ impl<'builder> NetworkDefinition<'builder> {
         Ok(ElementWiseLayer::from_ptr(unsafe {
             layer_ptr
                 .as_mut()
-                .ok_or(Error::LayerCreationFailed(LayerTypeKind::Elementwise))?
+                .ok_or(Error::LayerCreationFailed(LayerType::kELEMENTWISE))?
         }))
     }
 
@@ -496,7 +496,7 @@ impl<'builder> NetworkDefinition<'builder> {
         Ok(PoolingLayer::from_ptr(unsafe {
             layer_ptr
                 .as_mut()
-                .ok_or(Error::LayerCreationFailed(LayerTypeKind::Pooling))?
+                .ok_or(Error::LayerCreationFailed(LayerType::kPOOLING))?
         }))
     }
 
@@ -511,7 +511,7 @@ impl<'builder> NetworkDefinition<'builder> {
         Ok(ShuffleLayer::from_ptr(unsafe {
             layer_ptr
                 .as_mut()
-                .ok_or(Error::LayerCreationFailed(LayerTypeKind::Shuffle))?
+                .ok_or(Error::LayerCreationFailed(LayerType::kSHUFFLE))?
         }))
     }
 
@@ -532,7 +532,7 @@ impl<'builder> NetworkDefinition<'builder> {
         Ok(MatrixMultiplyLayer::from_ptr(unsafe {
             layer_ptr
                 .as_mut()
-                .ok_or(Error::LayerCreationFailed(LayerTypeKind::MatrixMultiply))?
+                .ok_or(Error::LayerCreationFailed(LayerType::kMATRIX_MULTIPLY))?
         }))
     }
 
@@ -605,7 +605,7 @@ impl<'builder> NetworkDefinition<'builder> {
         let layer_ptr = unsafe {
             layer_ptr
                 .as_mut()
-                .ok_or_else(|| Error::LayerCreationFailed(LayerTypeKind::Convolution))?
+                .ok_or_else(|| Error::LayerCreationFailed(LayerType::kCONVOLUTION))?
         };
         Ok(ConvolutionLayer::from_ptr(layer_ptr))
     }
@@ -683,7 +683,7 @@ impl<'builder> NetworkDefinition<'builder> {
         Ok(DeconvolutionLayer::from_ptr(unsafe {
             layer_ptr
                 .as_mut()
-                .ok_or(Error::LayerCreationFailed(LayerTypeKind::Deconvolution))?
+                .ok_or(Error::LayerCreationFailed(LayerType::kDECONVOLUTION))?
         }))
     }
 
@@ -705,7 +705,7 @@ impl<'builder> NetworkDefinition<'builder> {
             )
         } as *mut IConcatenationLayer;
         let layer = unsafe { layer_ptr.as_mut() }
-            .ok_or(Error::LayerCreationFailed(LayerTypeKind::Concatenation))?;
+            .ok_or(Error::LayerCreationFailed(LayerType::kCONCATENATION))?;
         Ok(ConcatenationLayer::from_ptr(layer))
     }
 
@@ -754,7 +754,7 @@ impl<'builder> NetworkDefinition<'builder> {
         Ok(ConstantLayer::from_ptr(unsafe {
             layer_ptr
                 .as_mut()
-                .ok_or(Error::LayerCreationFailed(LayerTypeKind::Constant))?
+                .ok_or(Error::LayerCreationFailed(LayerType::kCONSTANT))?
         }))
     }
 
@@ -768,7 +768,7 @@ impl<'builder> NetworkDefinition<'builder> {
                 .addSoftMax(input.inner.lock().unwrap().as_mut())
                 .as_mut()
         }
-        .ok_or(Error::LayerCreationFailed(LayerTypeKind::Softmax))?;
+        .ok_or(Error::LayerCreationFailed(LayerType::kSOFTMAX))?;
 
         let rtn = SoftMaxLayer::from_ptr(layer_ptr);
         rtn.inner.lock().unwrap().as_mut().setAxes(axes);
@@ -824,7 +824,7 @@ impl<'builder> NetworkDefinition<'builder> {
         Ok(ScaleLayer::from_ptr(unsafe {
             layer_ptr
                 .as_mut()
-                .ok_or(Error::LayerCreationFailed(LayerTypeKind::Scale))?
+                .ok_or(Error::LayerCreationFailed(LayerType::kSCALE))?
         }))
     }
 
@@ -845,7 +845,7 @@ impl<'builder> NetworkDefinition<'builder> {
         Ok(ReduceLayer::from_ptr(unsafe {
             layer_ptr
                 .as_mut()
-                .ok_or(Error::LayerCreationFailed(LayerTypeKind::Reduce))?
+                .ok_or(Error::LayerCreationFailed(LayerType::kREDUCE))?
         }))
     }
 
@@ -883,7 +883,7 @@ impl<'builder> NetworkDefinition<'builder> {
         Ok(CumulativeLayer::from_ptr(unsafe {
             layer_ptr
                 .as_mut()
-                .ok_or(Error::LayerCreationFailed(LayerTypeKind::Cumulative))?
+                .ok_or(Error::LayerCreationFailed(LayerType::kCUMULATIVE))?
         }))
     }
 
@@ -915,7 +915,7 @@ impl<'builder> NetworkDefinition<'builder> {
         Ok(SliceLayer::from_ptr(unsafe {
             layer_ptr
                 .as_mut()
-                .ok_or(Error::LayerCreationFailed(LayerTypeKind::Slice))?
+                .ok_or(Error::LayerCreationFailed(LayerType::kSLICE))?
         }))
     }
 
@@ -936,7 +936,7 @@ impl<'builder> NetworkDefinition<'builder> {
         Ok(TopKLayer::from_ptr(unsafe {
             layer_ptr
                 .as_mut()
-                .ok_or(Error::LayerCreationFailed(LayerTypeKind::TopK))?
+                .ok_or(Error::LayerCreationFailed(LayerType::kTOPK))?
         }))
     }
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addResize`].
@@ -950,7 +950,7 @@ impl<'builder> NetworkDefinition<'builder> {
         Ok(ResizeLayer::from_ptr(unsafe {
             layer_ptr
                 .as_mut()
-                .ok_or(Error::LayerCreationFailed(LayerTypeKind::Resize))?
+                .ok_or(Error::LayerCreationFailed(LayerType::kRESIZE))?
         }))
     }
 
@@ -969,7 +969,7 @@ impl<'builder> NetworkDefinition<'builder> {
         Ok(GatherLayer::from_ptr(unsafe {
             layer_ptr
                 .as_mut()
-                .ok_or(Error::LayerCreationFailed(LayerTypeKind::Gather))?
+                .ok_or(Error::LayerCreationFailed(LayerType::kGATHER))?
         }))
     }
 
@@ -990,7 +990,7 @@ impl<'builder> NetworkDefinition<'builder> {
         Ok(ScatterLayer::from_ptr(unsafe {
             layer_ptr
                 .as_mut()
-                .ok_or(Error::LayerCreationFailed(LayerTypeKind::Scatter))?
+                .ok_or(Error::LayerCreationFailed(LayerType::kSCATTER))?
         }))
     }
 
@@ -1009,7 +1009,7 @@ impl<'builder> NetworkDefinition<'builder> {
         Ok(QuantizeLayer::from_ptr(unsafe {
             layer_ptr
                 .as_mut()
-                .ok_or(Error::LayerCreationFailed(LayerTypeKind::Quantize))?
+                .ok_or(Error::LayerCreationFailed(LayerType::kQUANTIZE))?
         }))
     }
 
@@ -1028,7 +1028,7 @@ impl<'builder> NetworkDefinition<'builder> {
         Ok(DequantizeLayer::from_ptr(unsafe {
             layer_ptr
                 .as_mut()
-                .ok_or(Error::LayerCreationFailed(LayerTypeKind::Dequantize))?
+                .ok_or(Error::LayerCreationFailed(LayerType::kDEQUANTIZE))?
         }))
     }
 
@@ -1047,7 +1047,7 @@ impl<'builder> NetworkDefinition<'builder> {
         Ok(SelectLayer::from_ptr(unsafe {
             layer_ptr
                 .as_mut()
-                .ok_or(Error::LayerCreationFailed(LayerTypeKind::Select))?
+                .ok_or(Error::LayerCreationFailed(LayerType::kSELECT))?
         }))
     }
 
@@ -1075,7 +1075,7 @@ impl<'builder> NetworkDefinition<'builder> {
         Ok(PaddingLayer::from_ptr(unsafe {
             layer_ptr
                 .as_mut()
-                .ok_or(Error::LayerCreationFailed(LayerTypeKind::Padding))?
+                .ok_or(Error::LayerCreationFailed(LayerType::kPADDING))?
         }))
     }
 
@@ -1088,8 +1088,7 @@ impl<'builder> NetworkDefinition<'builder> {
                 message_cstr.as_ptr(),
             )
         };
-        unsafe { layer_ptr.as_mut() }
-            .ok_or(Error::LayerCreationFailed(LayerTypeKind::Assertion))?;
+        unsafe { layer_ptr.as_mut() }.ok_or(Error::LayerCreationFailed(LayerType::kASSERTION))?;
         Ok(())
     }
 
