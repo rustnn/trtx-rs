@@ -5,8 +5,9 @@ use std::pin::Pin;
 use std::ptr;
 use std::sync::Mutex;
 
+use cxx::UniquePtr;
 use trtx_sys::nvinfer1::{
-    DataType, ICudaEngine, IEngineInspector, IExecutionContext, IRuntime, LayerInformationFormat,
+    self, DataType, ICudaEngine, IEngineInspector, IExecutionContext, LayerInformationFormat,
     TensorIOMode,
 };
 
@@ -18,7 +19,7 @@ pub struct CudaEngine<'runtime> {
 }
 
 impl<'engine> CudaEngine<'engine> {
-    pub(crate) fn from_ptr(_runtime: &'engine Runtime, ptr: &'engine mut ICudaEngine) -> Self {
+    pub(crate) fn from_ptr(ptr: &'engine mut ICudaEngine) -> Self {
         Self {
             inner: unsafe { Pin::new_unchecked(ptr).into() },
         }
@@ -398,19 +399,19 @@ unsafe impl Send for ExecutionContext<'_> {}
 
 /// Runtime (real mode)
 pub struct Runtime<'a> {
-    inner: *mut std::ffi::c_void,
+    inner: UniquePtr<nvinfer1::IRuntime>,
     _logger: &'a Logger,
 }
 
-impl<'a> Runtime<'a> {
+impl<'runtime> Runtime<'runtime> {
     #[cfg(not(feature = "link_tensorrt_rtx"))]
     #[cfg(not(feature = "dlopen_tensorrt_rtx"))]
-    pub fn new(logger: &'a Logger) -> Result<Self> {
+    pub fn new(logger: &'runtime Logger) -> Result<Self> {
         Err(Error::TrtRtxLibraryNotLoaded)
     }
 
     #[cfg(any(feature = "link_tensorrt_rtx", feature = "dlopen_tensorrt_rtx"))]
-    pub fn new(logger: &'a Logger) -> Result<Self> {
+    pub fn new(logger: &'runtime Logger) -> Result<Self> {
         let logger_ptr = logger.as_logger_ptr();
         let runtime_ptr = {
             #[cfg(feature = "link_tensorrt_rtx")]
@@ -435,46 +436,25 @@ impl<'a> Runtime<'a> {
                     .get(b"createInferRuntime_INTERNAL")?;
                 create_infer_runtime(logger_ptr, trtx_sys::get_tensorrt_version())
             }
-        };
+        } as *mut nvinfer1::IRuntime;
         if runtime_ptr.is_null() {
             return Err(Error::Runtime("Failed to create runtime".to_string()));
         }
         Ok(Runtime {
-            inner: runtime_ptr,
+            inner: unsafe { UniquePtr::from_raw(runtime_ptr) },
             _logger: logger,
         })
     }
 
-    pub fn deserialize_cuda_engine(&self, data: &[u8]) -> Result<CudaEngine<'_>> {
-        if self.inner.is_null() {
-            return Err(Error::Runtime("Invalid runtime".to_string()));
-        }
+    pub fn deserialize_cuda_engine(&'_ mut self, data: &[u8]) -> Result<CudaEngine<'runtime>> {
         unsafe {
-            let pin = Pin::new_unchecked(
-                (self.inner as *mut IRuntime)
-                    .as_mut()
-                    .expect("we checked for null"),
-            );
-            let engine = pin.deserializeCudaEngine(
+            let engine = self.inner.pin_mut().deserializeCudaEngine(
                 data.as_ref().as_ptr() as *const autocxx::c_void,
                 data.len(),
             );
-            Ok(CudaEngine::from_ptr(
-                self,
-                engine
-                    .as_mut()
-                    .ok_or_else(|| Error::Runtime("Failed to deserialize engine".to_string()))?,
-            ))
-        }
-    }
-}
-
-impl Drop for Runtime<'_> {
-    fn drop(&mut self) {
-        if !self.inner.is_null() {
-            unsafe {
-                std::ptr::drop_in_place(self.inner);
-            }
+            Ok(CudaEngine::from_ptr(engine.as_mut().ok_or_else(|| {
+                Error::Runtime("Failed to deserialize engine".to_string())
+            })?))
         }
     }
 }
