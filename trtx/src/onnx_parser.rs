@@ -36,7 +36,7 @@ mod tests {
             .create_network(network_flags::EXPLICIT_BATCH)
             .unwrap();
         let mut parser = OnnxParser::new(&mut network, &logger).unwrap();
-        let mut result = parser.parse(&model_bytes);
+        let result = parser.parse(&model_bytes);
         assert!(
             result.is_ok(),
             "Failed to parse ONNX model: {:?}",

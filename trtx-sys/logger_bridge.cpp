@@ -163,6 +163,50 @@ void *create_onnx_parser(void *network, void *logger) {
 }
 #endif
 
+bool parser_parse(void *parser, const void *data, size_t size) {
+  if (!parser || !data)
+    return false;
+  try {
+    auto *iparser = static_cast<nvonnxparser::IParser *>(parser);
+    return iparser->parse(data, size);
+  } catch (...) {
+    return false;
+  }
+}
+
+int32_t parser_get_nb_errors(void *parser) {
+  if (!parser)
+    return 0;
+  try {
+    auto *iparser = static_cast<nvonnxparser::IParser *>(parser);
+    return iparser->getNbErrors();
+  } catch (...) {
+    return 0;
+  }
+}
+
+void *parser_get_error(void *parser, int32_t index) {
+  if (!parser)
+    return nullptr;
+  try {
+    auto *iparser = static_cast<nvonnxparser::IParser *>(parser);
+    return const_cast<nvonnxparser::IParserError *>(iparser->getError(index));
+  } catch (...) {
+    return nullptr;
+  }
+}
+
+const char *parser_error_desc(void *error) {
+  if (!error)
+    return nullptr;
+  try {
+    auto *ierror = static_cast<nvonnxparser::IParserError *>(error);
+    return ierror->desc();
+  } catch (...) {
+    return nullptr;
+  }
+}
+
 uint32_t get_tensorrt_version() { return NV_TENSORRT_VERSION; }
 
 } // extern "C"
