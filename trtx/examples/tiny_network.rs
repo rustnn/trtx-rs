@@ -34,8 +34,8 @@ fn main() -> Result<()> {
 
     // 3. Create runtime and deserialize engine
     println!("\n3. Creating runtime and loading engine...");
-    let runtime = Runtime::new(&logger)?;
-    let engine = runtime.deserialize_cuda_engine(&engine_data)?;
+    let mut runtime = Runtime::new(&logger)?;
+    let mut engine = runtime.deserialize_cuda_engine(&engine_data)?;
 
     // 4. Inspect engine
     println!("4. Engine information:");

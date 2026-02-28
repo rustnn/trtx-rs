@@ -74,10 +74,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             // Step 3: Inference phase
             println!("3. Loading engine for inference...");
 
-            let runtime = Runtime::new(&logger)?;
+            let mut runtime = Runtime::new(&logger)?;
             println!("   ✓ Runtime created");
 
-            let engine = runtime.deserialize_cuda_engine(engine_data.as_ref())?;
+            let mut engine = runtime.deserialize_cuda_engine(engine_data.as_ref())?;
             println!("   ✓ Engine deserialized");
 
             // Query engine information

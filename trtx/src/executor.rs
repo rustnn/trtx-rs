@@ -94,7 +94,7 @@ fn execute_engine(
 ) -> Result<Vec<TensorOutput>> {
     // Create runtime and deserialize engine
     let mut runtime = Runtime::new(logger)?;
-    let engine = runtime.deserialize_cuda_engine(engine_data)?;
+    let mut engine = runtime.deserialize_cuda_engine(engine_data)?;
     let mut context = engine.create_execution_context()?;
 
     // Get tensor information
