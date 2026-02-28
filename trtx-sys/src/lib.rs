@@ -104,6 +104,7 @@ pub mod real_bindings {
         generate!("nvinfer1::INetworkDefinition")
         generate!("nvinfer1::ITensor")
         generate!("nvinfer1::ILayer")
+        generate!("nvinfer1::IProgressMonitor")
 
         // Derived layer types - for inheritance support
         generate!("nvinfer1::IActivationLayer")
