@@ -76,13 +76,13 @@ impl<'builder> Builder<'builder> {
 
     pub fn build_serialized_network<'network, 'config_borrow>(
         &mut self,
-        network: &'network NetworkDefinition,
+        network: &'network mut NetworkDefinition,
         config: &'config_borrow mut BuilderConfig,
     ) -> Result<HostMemory<'_>> {
         let serialized_engine = unsafe {
             self.inner
                 .pin_mut()
-                .buildSerializedNetwork(network.inner.lock()?.as_mut(), config.inner.pin_mut())
+                .buildSerializedNetwork(network.inner.pin_mut(), config.inner.pin_mut())
                 .as_mut()
         }
         .ok_or_else(|| Error::Runtime("Failed to build serialized network".to_string()))?;

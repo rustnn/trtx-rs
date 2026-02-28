@@ -23,7 +23,7 @@ impl OnnxParser {
         feature = "dlopen_tensorrt_onnxparser"
     ))]
     pub fn new(network: &mut NetworkDefinition, logger: &Logger) -> Result<Self> {
-        let network_ptr = network.as_mut_ptr();
+        let network_ptr = network.inner.as_mut_ptr();
         let logger_ptr = logger.as_logger_ptr();
         let parser_ptr = {
             #[cfg(feature = "link_tensorrt_onnxparser")]

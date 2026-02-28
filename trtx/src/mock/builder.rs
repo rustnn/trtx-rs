@@ -191,7 +191,7 @@ impl<'a> Builder<'a> {
 
     pub fn build_serialized_network(
         &self,
-        network: &mut NetworkDefinition,
+        network: &NetworkDefinition,
         config: &mut BuilderConfig,
     ) -> Result<Vec<u8>> {
         build_serialized_network(self.inner, network.as_mut_ptr(), config.as_ptr())

@@ -2,14 +2,9 @@
 
 use std::ffi::CStr;
 use std::marker::PhantomData;
-use std::pin::Pin;
-use std::ptr;
 
 use cxx::UniquePtr;
-use trtx_sys::nvinfer1::{
-    self, DataType, ICudaEngine, IEngineInspector, IExecutionContext, LayerInformationFormat,
-    TensorIOMode,
-};
+use trtx_sys::nvinfer1::{self, DataType, ICudaEngine, LayerInformationFormat, TensorIOMode};
 
 use crate::error::{Error, Result};
 use crate::logger::Logger;
@@ -149,8 +144,13 @@ impl<'engine> CudaEngine<'engine> {
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorBytesPerComponent`].
     pub fn get_tensor_bytes_per_component(&self, name: &str) -> Result<i32> {
-        let name_cstr = std::ffi::CString::new(name)?;
-        Ok(unsafe { self.inner.getTensorBytesPerComponent(name_cstr.as_ptr()) })
+        #[cfg(not(feature = "mock"))]
+        {
+            let name_cstr = std::ffi::CString::new(name)?;
+            Ok(unsafe { self.inner.getTensorBytesPerComponent(name_cstr.as_ptr()) })
+        }
+        #[cfg(feature = "mock")]
+        Ok(42)
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorBytesPerComponent`] (profile variant).
@@ -159,17 +159,28 @@ impl<'engine> CudaEngine<'engine> {
         name: &str,
         profile_index: i32,
     ) -> Result<i32> {
-        let name_cstr = std::ffi::CString::new(name)?;
-        Ok(unsafe {
-            self.inner
-                .getTensorBytesPerComponent1(name_cstr.as_ptr(), profile_index)
-        })
+        if !self.inner.is_null() {
+            let name_cstr = std::ffi::CString::new(name)?;
+            Ok(unsafe {
+                self.inner
+                    .getTensorBytesPerComponent1(name_cstr.as_ptr(), profile_index)
+            })
+        } else {
+            Ok(0)
+        }
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorComponentsPerElement`].
     pub fn get_tensor_components_per_element(&self, name: &str) -> Result<i32> {
-        let name_cstr = std::ffi::CString::new(name)?;
-        Ok(unsafe { self.inner.getTensorComponentsPerElement(name_cstr.as_ptr()) })
+        #[cfg(not(feature = "mock"))]
+        {
+            let name_cstr = std::ffi::CString::new(name)?;
+            Ok(unsafe { self.inner.getTensorComponentsPerElement(name_cstr.as_ptr()) })
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(42)
+        }
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorComponentsPerElement`] (profile variant).
@@ -178,54 +189,88 @@ impl<'engine> CudaEngine<'engine> {
         name: &str,
         profile_index: i32,
     ) -> Result<i32> {
-        let name_cstr = std::ffi::CString::new(name)?;
-        Ok(unsafe {
-            self.inner
-                .getTensorComponentsPerElement1(name_cstr.as_ptr(), profile_index)
-        })
+        #[cfg(not(feature = "mock"))]
+        {
+            let name_cstr = std::ffi::CString::new(name)?;
+            Ok(unsafe {
+                self.inner
+                    .getTensorComponentsPerElement1(name_cstr.as_ptr(), profile_index)
+            })
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(42)
+        }
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::createEngineInspector`].
     /// Returns an inspector that can print layer and engine information (e.g. JSON or one-line format).
     pub fn create_engine_inspector(&self) -> Result<EngineInspector<'_>> {
-        let inspector = self.inner.createEngineInspector();
-        let inspector = unsafe {
-            inspector
-                .as_mut()
-                .ok_or_else(|| Error::Runtime("Failed to create engine inspector".to_string()))?
-        };
-        Ok(EngineInspector {
-            inner: unsafe { Pin::new_unchecked(inspector) },
-        })
+        #[cfg(not(feature = "mock"))]
+        {
+            let inspector = self.inner.createEngineInspector();
+            let inspector = unsafe {
+                inspector.as_mut().ok_or_else(|| {
+                    Error::Runtime("Failed to create engine inspector".to_string())
+                })?
+            };
+            Ok(EngineInspector {
+                inner: unsafe { UniquePtr::from_raw(inspector) },
+                _engine: Default::default(),
+            })
+        }
+        #[cfg(feature = "mock")]
+        {
+            Ok(EngineInspector {
+                inner: unsafe { UniquePtr::null() },
+                _engine: Default::default(),
+            })
+        }
     }
 
     /// Returns the data type of the tensor (e.g. kFLOAT, kHALF).
     /// Required for correct buffer sizing and f32/f16 conversion when I/O uses half precision.
     pub fn get_tensor_dtype(&self, name: &str) -> Result<trtx_sys::DataType> {
-        let name_cstr = std::ffi::CString::new(name)?;
-        Ok(unsafe { self.inner.getTensorDataType(name_cstr.as_ptr()).into() })
+        #[cfg(not(feature = "mock"))]
+        {
+            let name_cstr = std::ffi::CString::new(name)?;
+            Ok(unsafe { self.inner.getTensorDataType(name_cstr.as_ptr()).into() })
+        }
+        #[cfg(feature = "mock")]
+        Ok(trtx_sys::DataType::kFLOAT)
     }
 
     pub fn create_execution_context(&'_ mut self) -> Result<ExecutionContext<'engine>> {
-        let context_ptr = self.inner.pin_mut().createExecutionContext(
-            trtx_sys::nvinfer1::ExecutionContextAllocationStrategy::kSTATIC,
-        );
-        if context_ptr.is_null() {
-            return Err(Error::Runtime(
-                "Failed to create execution context".to_string(),
-            ));
+        #[cfg(not(feature = "mock"))]
+        {
+            let context_ptr = self.inner.pin_mut().createExecutionContext(
+                trtx_sys::nvinfer1::ExecutionContextAllocationStrategy::kSTATIC,
+            );
+            if context_ptr.is_null() {
+                return Err(Error::Runtime(
+                    "Failed to create execution context".to_string(),
+                ));
+            }
+            Ok(ExecutionContext {
+                inner: unsafe { UniquePtr::from_raw(context_ptr) },
+                _engine: std::marker::PhantomData,
+            })
         }
-        Ok(ExecutionContext {
-            inner: context_ptr as *mut _,
-            _engine: std::marker::PhantomData,
-        })
+        #[cfg(feature = "mock")]
+        {
+            Ok(ExecutionContext {
+                inner: UniquePtr::null(),
+                _engine: std::marker::PhantomData,
+            })
+        }
     }
 }
 
 /// Engine inspector for layer/engine information (real mode).
 /// See [`trtx_sys::nvinfer1::IEngineInspector`].
 pub struct EngineInspector<'engine> {
-    inner: Pin<&'engine mut IEngineInspector>,
+    inner: UniquePtr<nvinfer1::IEngineInspector>,
+    _engine: PhantomData<&'engine nvinfer1::ICudaEngine>,
 }
 
 impl EngineInspector<'_> {
@@ -260,17 +305,9 @@ impl EngineInspector<'_> {
     }
 }
 
-impl Drop for EngineInspector<'_> {
-    fn drop(&mut self) {
-        unsafe {
-            ptr::drop_in_place(Pin::get_unchecked_mut(self.inner.as_mut()) as *mut IEngineInspector);
-        };
-    }
-}
-
 /// Execution context (real mode)
 pub struct ExecutionContext<'a> {
-    inner: *mut std::ffi::c_void,
+    inner: UniquePtr<nvinfer1::IExecutionContext>,
     _engine: std::marker::PhantomData<&'a CudaEngine<'a>>,
 }
 
@@ -285,14 +322,19 @@ impl<'a> ExecutionContext<'a> {
         name: &str,
         data: *mut std::ffi::c_void,
     ) -> Result<()> {
-        if self.inner.is_null() {
-            return Err(Error::Runtime("Invalid execution context".to_string()));
-        }
-        let name_cstr = std::ffi::CString::new(name)?;
-        let success = crate::autocxx_helpers::cast_and_pin::<IExecutionContext>(self.inner)
-            .setTensorAddress(name_cstr.as_ptr(), data as *mut _);
-        if !success {
-            return Err(Error::Runtime("Failed to set tensor address".to_string()));
+        #[cfg(not(feature = "mock"))]
+        {
+            if self.inner.is_null() {
+                return Err(Error::Runtime("Invalid execution context".to_string()));
+            }
+            let name_cstr = std::ffi::CString::new(name)?;
+            let success = self
+                .inner
+                .pin_mut()
+                .setTensorAddress(name_cstr.as_ptr(), data as *mut _);
+            if !success {
+                return Err(Error::Runtime("Failed to set tensor address".to_string()));
+            }
         }
         Ok(())
     }
@@ -303,29 +345,19 @@ impl<'a> ExecutionContext<'a> {
     /// `cuda_stream` must be a valid CUDA stream, and all tensor addresses must
     /// point to valid device memory.
     pub unsafe fn enqueue_v3(&mut self, cuda_stream: *mut std::ffi::c_void) -> Result<()> {
-        if self.inner.is_null() {
-            return Err(Error::Runtime("Invalid execution context".to_string()));
-        }
-        let success = crate::autocxx_helpers::cast_and_pin::<IExecutionContext>(self.inner)
-            .enqueueV3(cuda_stream as *mut _);
-        if !success {
-            return Err(Error::Runtime("Failed to enqueue inference".to_string()));
+        #[cfg(not(feature = "mock"))]
+        {
+            if self.inner.is_null() {
+                return Err(Error::Runtime("Invalid execution context".to_string()));
+            }
+            let success = self.inner.pin_mut().enqueueV3(cuda_stream as *mut _);
+            if !success {
+                return Err(Error::Runtime("Failed to enqueue inference".to_string()));
+            }
         }
         Ok(())
     }
 }
-
-impl Drop for ExecutionContext<'_> {
-    fn drop(&mut self) {
-        if !self.inner.is_null() {
-            unsafe {
-                trtx_sys::delete_context(self.inner);
-            }
-        }
-    }
-}
-
-unsafe impl Send for ExecutionContext<'_> {}
 
 /// Runtime (real mode)
 pub struct Runtime<'a> {

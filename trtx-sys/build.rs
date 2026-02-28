@@ -121,15 +121,7 @@ fn main() {
     generate_enum_bindings(&crate_root, &out_path);
 
     // Check if we're in mock mode
-    if env::var("CARGO_FEATURE_MOCK").is_ok() {
-        println!("cargo:warning=Building in MOCK mode - no TensorRT-RTX required");
-
-        // Build mock C implementation
-        cc::Build::new().file("mock.c").compile("trtx_mock");
-
-        generate_mock_bindings(&out_path);
-        return;
-    }
+    let is_mock = env::var("CARGO_FEATURE_MOCK").is_ok();
 
     println!("cargo:rerun-if-changed=src/lib.rs");
     println!("cargo:rerun-if-changed=logger_bridge.hpp");
@@ -188,6 +180,9 @@ fn main() {
         .include(&transformed_include_dir)
         .include(&cuda_shim_include_dir);
 
+    if is_mock {
+        cc_build.define("TRTX_MOCK_MODE", "1");
+    }
     if link_trt {
         cc_build.define("TRTX_LINK_TENSORRT_RTX", "1");
     }

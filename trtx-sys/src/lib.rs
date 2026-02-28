@@ -29,10 +29,6 @@
 #![allow(non_snake_case)]
 #![allow(clippy::all)]
 
-// Mock mode uses old-style bindings
-#[cfg(feature = "mock")]
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-
 #[allow(warnings)]
 mod enums {
     include!(concat!(env!("OUT_DIR"), "/enums.rs"));
@@ -41,13 +37,11 @@ mod enums {
 macro_rules! better_enum {
     ($to:ident) => {
         pub use crate::enums::$to;
-        #[cfg(not(feature = "mock"))]
         impl Into<crate::real_bindings::nvinfer1::$to> for $to {
             fn into(self) -> crate::real_bindings::nvinfer1::$to {
                 unsafe { transmute(self) }
             }
         }
-        #[cfg(not(feature = "mock"))]
         impl From<crate::real_bindings::nvinfer1::$to> for $to {
             fn from(value: crate::real_bindings::nvinfer1::$to) -> Self {
                 unsafe { transmute(value) }
@@ -56,7 +50,6 @@ macro_rules! better_enum {
     };
 }
 
-#[cfg(not(feature = "mock"))]
 use std::mem::transmute;
 better_enum!(LayerType);
 better_enum!(ActivationType);
@@ -88,12 +81,12 @@ better_enum!(TopKOperation);
 better_enum!(LayerInformationFormat);
 
 // Real mode uses autocxx
-#[cfg(not(feature = "mock"))]
 pub mod real_bindings {
     use autocxx::prelude::*;
 
     include_cpp! {
         #include "NvInfer.h"
+        #include "NvInferRuntime.h"
         #include "NvOnnxParser.h"
 
         safety!(unsafe_ffi)
@@ -105,6 +98,11 @@ pub mod real_bindings {
         generate!("nvinfer1::ITensor")
         generate!("nvinfer1::ILayer")
         generate!("nvinfer1::IProgressMonitor")
+        generate!("nvinfer1::IStreamWriter")
+        generate!("nvinfer1::v_1_0::IErrorRecorder")
+        generate!("nvinfer1::v_1_0::IProfiler")
+        generate!("nvinfer1::IGpuAllocator")
+        generate!("nvinfer1::IDebugListener")
 
         // Derived layer types - for inheritance support
         generate!("nvinfer1::IActivationLayer")
@@ -455,19 +453,4 @@ pub mod real_bindings {
     }
 }
 
-#[cfg(not(feature = "mock"))]
 pub use real_bindings::*;
-
-#[cfg(test)]
-mod tests {
-    #[cfg(feature = "mock")]
-    use super::*;
-
-    #[test]
-    #[cfg(feature = "mock")]
-    fn test_constants() {
-        // Verify error codes are defined
-        assert_eq!(TRTX_SUCCESS, 0);
-        assert_ne!(TRTX_ERROR_INVALID_ARGUMENT, TRTX_SUCCESS);
-    }
-}

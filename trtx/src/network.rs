@@ -17,7 +17,6 @@ use trtx_sys::nvinfer1::{
 };
 
 use crate::error::Result;
-#[cfg(not(feature = "mock"))]
 pub use crate::real::network::NetworkDefinition;
 
 /// Kernel and optional bias weights for convolution and deconvolution layers.

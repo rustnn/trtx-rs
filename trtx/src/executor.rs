@@ -80,7 +80,7 @@ fn build_engine_from_onnx(logger: &Logger, onnx_bytes: &[u8]) -> Result<Vec<u8>>
     config.set_memory_pool_limit(MemoryPoolType::kWORKSPACE, 1 << 30);
 
     // Build serialized engine
-    let memory = builder.build_serialized_network(&network, &mut config)?;
+    let memory = builder.build_serialized_network(&mut network, &mut config)?;
 
     // This makes an extra copy since the `memory` depends on the lifetime of builder
     Ok(memory.to_vec())

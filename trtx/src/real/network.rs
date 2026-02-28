@@ -1,9 +1,10 @@
 //! Real TensorRT network implementation
 //! No #[cfg] - this module is only compiled when mock feature is disabled
 
+use cxx::UniquePtr;
+use std::marker::PhantomData;
 use std::mem::transmute;
 use std::pin::Pin;
-use std::ptr;
 use std::sync::Mutex;
 use trtx_sys::nvinfer1::{IConcatenationLayer, INetworkDefinition, ITensor};
 use trtx_sys::{DataType, LayerType, MatrixOperation, ScaleMode, TopKOperation};
@@ -270,34 +271,32 @@ impl Tensor<'_> {
 
 /// Network definition for building TensorRT engines
 pub struct NetworkDefinition<'builder> {
-    pub(crate) inner: Mutex<Pin<&'builder mut INetworkDefinition>>,
+    //pub(crate) inner: Mutex<Pin<&'builder mut INetworkDefinition>>,
+    pub(crate) inner: UniquePtr<INetworkDefinition>,
+    _builder: PhantomData<&'builder trtx_sys::nvinfer1::IBuilder>,
 }
 
 impl<'builder> NetworkDefinition<'builder> {
     pub(crate) fn from_ptr(ptr: &'builder mut INetworkDefinition) -> Self {
         Self {
-            inner: unsafe { Mutex::new(Pin::new_unchecked(ptr)) },
+            inner: unsafe { UniquePtr::from_raw(ptr) },
+            _builder: Default::default(),
         }
-    }
-
-    pub(crate) fn as_mut_ptr(&mut self) -> *mut INetworkDefinition {
-        unsafe { self.inner.lock().unwrap().as_mut().get_unchecked_mut() }
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addInput`].
     pub fn add_input(
-        &self,
+        &mut self,
         name: &str,
         data_type: trtx_sys::DataType,
         dims: &[i32],
-    ) -> Result<Tensor<'_>> {
+    ) -> Result<Tensor<'builder>> {
         let name_cstr = std::ffi::CString::new(name)?;
         let dims_i64: Vec<i64> = dims.iter().map(|&d| d as i64).collect();
         let dims_struct = trtx_sys::Dims::from_slice(&dims_i64);
         let tensor_ptr = unsafe {
             self.inner
-                .lock()?
-                .as_mut()
+                .pin_mut()
                 .addInput(name_cstr.as_ptr(), data_type.into(), &dims_struct)
         };
         if tensor_ptr.is_null() {
@@ -309,27 +308,25 @@ impl<'builder> NetworkDefinition<'builder> {
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::markOutput`].
-    pub fn mark_output(&self, tensor: &Tensor) {
+    pub fn mark_output(&mut self, tensor: &Tensor) {
         self.inner
-            .lock()
-            .unwrap()
-            .as_mut()
+            .pin_mut()
             .markOutput(tensor.inner.lock().unwrap().as_mut());
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::getNbInputs`].
     pub fn get_nb_inputs(&self) -> i32 {
-        self.inner.lock().unwrap().as_ref().getNbInputs()
+        self.inner.getNbInputs()
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::getNbOutputs`].
     pub fn get_nb_outputs(&self) -> i32 {
-        self.inner.lock().unwrap().as_ref().getNbOutputs()
+        self.inner.getNbOutputs()
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::getInput`].
     pub fn get_input(&self, index: i32) -> Result<Tensor<'_>> {
-        let tensor_ptr = self.inner.lock().unwrap().as_ref().getInput(index);
+        let tensor_ptr = self.inner.getInput(index);
         if tensor_ptr.is_null() {
             return Err(Error::Runtime(format!(
                 "Failed to get input at index {}",
@@ -343,7 +340,7 @@ impl<'builder> NetworkDefinition<'builder> {
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::getOutput`].
     pub fn get_output(&self, index: i32) -> Result<Tensor<'_>> {
-        let tensor_ptr = self.inner.lock().unwrap().as_ref().getOutput(index);
+        let tensor_ptr = self.inner.getOutput(index);
         if tensor_ptr.is_null() {
             return Err(Error::Runtime(format!(
                 "Failed to get output at index {}",
@@ -357,12 +354,12 @@ impl<'builder> NetworkDefinition<'builder> {
 
     /// Number of layers in the network (for introspection/dumping).
     pub fn get_nb_layers(&self) -> i32 {
-        self.inner.lock().unwrap().as_ref().getNbLayers()
+        self.inner.getNbLayers()
     }
 
     /// Layer name at index (for introspection/dumping). Returns "(Unnamed)" if null.
     pub fn get_layer_name(&self, layer_index: i32) -> Result<String> {
-        let layer_ptr = self.inner.lock().unwrap().as_ref().getLayer(layer_index);
+        let layer_ptr = self.inner.getLayer(layer_index);
         unsafe { layer_ptr.as_mut() }
             .ok_or_else(|| Error::Runtime(format!("No layer at index {}", layer_index)))?;
         let name_ptr = unsafe {
@@ -381,7 +378,7 @@ impl<'builder> NetworkDefinition<'builder> {
 
     /// Layer type enum value at index (for introspection/dumping). See TensorRT LayerType.
     pub fn get_layer_type(&self, layer_index: i32) -> Result<i32> {
-        let layer_ptr = self.inner.lock()?.getLayer(layer_index);
+        let layer_ptr = self.inner.getLayer(layer_index);
         if layer_ptr.is_null() {
             return Err(Error::Runtime(format!("No layer at index {}", layer_index)));
         }
@@ -394,14 +391,13 @@ impl<'builder> NetworkDefinition<'builder> {
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addActivation`].
     pub fn add_activation(
-        &self,
+        &mut self,
         input: &Tensor,
         activation_type: trtx_sys::ActivationType,
-    ) -> Result<ActivationLayer<'_>> {
+    ) -> Result<ActivationLayer<'builder>> {
         let layer_ptr = self
             .inner
-            .lock()?
-            .as_mut()
+            .pin_mut()
             .addActivation(input.inner.lock()?.as_mut(), activation_type.into());
         let layer = unsafe { layer_ptr.as_mut() }
             .ok_or(Error::LayerCreationFailed(LayerType::kACTIVATION))?;
@@ -413,12 +409,10 @@ impl<'builder> NetworkDefinition<'builder> {
         &mut self,
         input: &mut Tensor,
         op: trtx_sys::nvinfer1::UnaryOperation,
-    ) -> Result<UnaryLayer<'_>> {
+    ) -> Result<UnaryLayer<'builder>> {
         let layer_ptr = self
             .inner
-            .lock()
-            .unwrap()
-            .as_mut()
+            .pin_mut()
             .addUnary(input.inner.lock().unwrap().as_mut(), op);
         Ok(UnaryLayer::from_ptr(unsafe {
             layer_ptr
@@ -431,9 +425,7 @@ impl<'builder> NetworkDefinition<'builder> {
     pub fn add_identity(&mut self, input: &mut Tensor) -> Result<IdentityLayer<'_>> {
         let layer_ptr = self
             .inner
-            .lock()
-            .unwrap()
-            .as_mut()
+            .pin_mut()
             .addIdentity(input.inner.lock().unwrap().as_mut());
         Ok(IdentityLayer::from_ptr(unsafe {
             layer_ptr
@@ -444,15 +436,13 @@ impl<'builder> NetworkDefinition<'builder> {
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addCast`].
     pub fn add_cast(
-        &self,
+        &mut self,
         input: &mut Tensor,
         to_type: trtx_sys::nvinfer1::DataType,
     ) -> Result<CastLayer<'_>> {
         let layer_ptr = self
             .inner
-            .lock()
-            .unwrap()
-            .as_mut()
+            .pin_mut()
             .addCast(input.inner.lock().unwrap().as_mut(), to_type);
         Ok(CastLayer::from_ptr(unsafe {
             layer_ptr
@@ -467,8 +457,8 @@ impl<'builder> NetworkDefinition<'builder> {
         input1: &mut Tensor,
         input2: &mut Tensor,
         op: trtx_sys::nvinfer1::ElementWiseOperation,
-    ) -> Result<ElementWiseLayer<'_>> {
-        let layer_ptr = self.inner.lock().unwrap().as_mut().addElementWise(
+    ) -> Result<ElementWiseLayer<'builder>> {
+        let layer_ptr = self.inner.pin_mut().addElementWise(
             input1.inner.lock().unwrap().as_mut(),
             input2.inner.lock().unwrap().as_mut(),
             op,
@@ -488,7 +478,7 @@ impl<'builder> NetworkDefinition<'builder> {
         window_size: &[i32; 2],
     ) -> Result<PoolingLayer<'_>> {
         let window_dims = trtx_sys::Dims::new_2d(window_size[0] as i64, window_size[1] as i64);
-        let layer_ptr = self.inner.lock().unwrap().as_mut().addPoolingNd(
+        let layer_ptr = self.inner.pin_mut().addPoolingNd(
             input.inner.lock().unwrap().as_mut(),
             pooling_type.into(),
             &window_dims,
@@ -504,9 +494,7 @@ impl<'builder> NetworkDefinition<'builder> {
     pub fn add_shuffle(&mut self, input: &mut Tensor) -> Result<ShuffleLayer<'_>> {
         let layer_ptr = self
             .inner
-            .lock()
-            .unwrap()
-            .as_mut()
+            .pin_mut()
             .addShuffle(input.inner.lock().unwrap().as_mut());
         Ok(ShuffleLayer::from_ptr(unsafe {
             layer_ptr
@@ -523,7 +511,7 @@ impl<'builder> NetworkDefinition<'builder> {
         input1: &mut Tensor,
         op1: MatrixOperation,
     ) -> Result<MatrixMultiplyLayer<'_>> {
-        let layer_ptr = self.inner.lock().unwrap().as_mut().addMatrixMultiply(
+        let layer_ptr = self.inner.pin_mut().addMatrixMultiply(
             input0.inner.lock().unwrap().as_mut(),
             op0.into(),
             input1.inner.lock().unwrap().as_mut(),
@@ -595,7 +583,7 @@ impl<'builder> NetworkDefinition<'builder> {
         );
         let bias_w =
             trtx_sys::nvinfer1::Weights::new_with_type(bias_dtype_val.into(), bias_ptr, bias_count);
-        let layer_ptr = self.inner.get_mut()?.as_mut().addConvolutionNd(
+        let layer_ptr = self.inner.pin_mut().addConvolutionNd(
             input.inner.lock()?.as_mut(),
             nb_output_maps as i64,
             &kernel_dims,
@@ -673,7 +661,7 @@ impl<'builder> NetworkDefinition<'builder> {
         );
         let bias_w =
             trtx_sys::nvinfer1::Weights::new_with_type(bias_dtype_val.into(), bias_ptr, bias_count);
-        let layer_ptr = self.inner.get_mut()?.as_mut().addDeconvolutionNd(
+        let layer_ptr = self.inner.pin_mut().addDeconvolutionNd(
             input.inner.lock()?.as_mut(),
             nb_output_maps as i64,
             kernel_dims,
@@ -698,8 +686,7 @@ impl<'builder> NetworkDefinition<'builder> {
             .collect();
         let layer_ptr = unsafe {
             trtx_sys::network_add_concatenation(
-                self.inner.lock()?.as_mut().get_unchecked_mut() as *mut INetworkDefinition
-                    as *mut std::ffi::c_void,
+                self.inner.as_mut_ptr() as *mut std::ffi::c_void,
                 input_ptrs.as_mut_ptr(),
                 inputs.len() as i32,
             )
@@ -711,11 +698,11 @@ impl<'builder> NetworkDefinition<'builder> {
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConstant`].
     pub fn add_constant(
-        &self,
+        &mut self,
         dims: &[i32],
         weights: &[u8],
         data_type: trtx_sys::DataType,
-    ) -> Result<ConstantLayer<'_>> {
+    ) -> Result<ConstantLayer<'builder>> {
         let element_count: i64 = dims.iter().map(|&d| d as i64).product();
         let bytes_per_element = match data_type {
             DataType::kFLOAT => 4,
@@ -747,9 +734,7 @@ impl<'builder> NetworkDefinition<'builder> {
         );
         let layer_ptr = self
             .inner
-            .lock()
-            .unwrap()
-            .as_mut()
+            .pin_mut()
             .addConstant(&dims_struct, weights_struct);
         Ok(ConstantLayer::from_ptr(unsafe {
             layer_ptr
@@ -762,9 +747,7 @@ impl<'builder> NetworkDefinition<'builder> {
     pub fn add_softmax(&mut self, input: &Tensor, axes: u32) -> Result<SoftMaxLayer<'_>> {
         let layer_ptr = unsafe {
             self.inner
-                .lock()
-                .unwrap()
-                .as_mut()
+                .pin_mut()
                 .addSoftMax(input.inner.lock().unwrap().as_mut())
                 .as_mut()
         }
@@ -814,7 +797,7 @@ impl<'builder> NetworkDefinition<'builder> {
             power.as_ptr() as *const std::ffi::c_void,
             weight_count,
         );
-        let layer_ptr = self.inner.lock().unwrap().as_mut().addScale(
+        let layer_ptr = self.inner.pin_mut().addScale(
             input.inner.lock().unwrap().as_mut(),
             mode.into(),
             shift_w,
@@ -836,7 +819,7 @@ impl<'builder> NetworkDefinition<'builder> {
         axes: u32,
         keep_dims: bool,
     ) -> Result<ReduceLayer<'_>> {
-        let layer_ptr = self.inner.lock().unwrap().as_mut().addReduce(
+        let layer_ptr = self.inner.pin_mut().addReduce(
             input.inner.lock().unwrap().as_mut(),
             op,
             axes,
@@ -851,13 +834,13 @@ impl<'builder> NetworkDefinition<'builder> {
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addCumulative`].
     pub fn add_cumulative(
-        &self,
+        &mut self,
         input: &mut Tensor,
         axis: i32,
         op: trtx_sys::CumulativeOperation,
         exclusive: bool,
         reverse: bool,
-    ) -> Result<CumulativeLayer<'_>> {
+    ) -> Result<CumulativeLayer<'builder>> {
         let axis_bytes = axis.to_le_bytes();
         let axis_constant = self.add_constant(&[], &axis_bytes, trtx_sys::DataType::kINT32)?;
         let axis_tensor = axis_constant.get_output(0)?;
@@ -866,14 +849,14 @@ impl<'builder> NetworkDefinition<'builder> {
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addCumulative`].
     pub fn add_cumulative_with_axis_tensor(
-        &self,
+        &mut self,
         input: &Tensor,
         axis_tensor: &Tensor,
         op: trtx_sys::CumulativeOperation,
         exclusive: bool,
         reverse: bool,
-    ) -> Result<CumulativeLayer<'_>> {
-        let layer_ptr = self.inner.lock().unwrap().as_mut().addCumulative(
+    ) -> Result<CumulativeLayer<'builder>> {
+        let layer_ptr = self.inner.pin_mut().addCumulative(
             input.inner.lock().unwrap().as_mut(),
             axis_tensor.inner.lock().unwrap().as_mut(),
             op.into(),
@@ -906,7 +889,7 @@ impl<'builder> NetworkDefinition<'builder> {
         let start_dims = trtx_sys::Dims::from_slice(&start_i64);
         let size_dims = trtx_sys::Dims::from_slice(&size_i64);
         let stride_dims = trtx_sys::Dims::from_slice(&stride_i64);
-        let layer_ptr = self.inner.lock().unwrap().as_mut().addSlice(
+        let layer_ptr = self.inner.pin_mut().addSlice(
             input.inner.lock().unwrap().as_mut(),
             &start_dims,
             &size_dims,
@@ -927,12 +910,10 @@ impl<'builder> NetworkDefinition<'builder> {
         k: i32,
         axes: u32,
     ) -> Result<TopKLayer<'_>> {
-        let layer_ptr = self.inner.lock().unwrap().as_mut().addTopK(
-            input.inner.lock().unwrap().as_mut(),
-            op.into(),
-            k,
-            axes,
-        );
+        let layer_ptr =
+            self.inner
+                .pin_mut()
+                .addTopK(input.inner.lock().unwrap().as_mut(), op.into(), k, axes);
         Ok(TopKLayer::from_ptr(unsafe {
             layer_ptr
                 .as_mut()
@@ -943,9 +924,7 @@ impl<'builder> NetworkDefinition<'builder> {
     pub fn add_resize(&mut self, input: &mut Tensor) -> Result<ResizeLayer<'_>> {
         let layer_ptr = self
             .inner
-            .lock()
-            .unwrap()
-            .as_mut()
+            .pin_mut()
             .addResize(input.inner.lock().unwrap().as_mut());
         Ok(ResizeLayer::from_ptr(unsafe {
             layer_ptr
@@ -961,7 +940,7 @@ impl<'builder> NetworkDefinition<'builder> {
         indices: &mut Tensor,
         axis: i32,
     ) -> Result<GatherLayer<'_>> {
-        let layer_ptr = self.inner.lock().unwrap().as_mut().addGather(
+        let layer_ptr = self.inner.pin_mut().addGather(
             data.inner.lock().unwrap().as_mut(),
             indices.inner.lock().unwrap().as_mut(),
             axis,
@@ -981,7 +960,7 @@ impl<'builder> NetworkDefinition<'builder> {
         updates: &mut Tensor,
         mode: trtx_sys::nvinfer1::ScatterMode,
     ) -> Result<ScatterLayer<'_>> {
-        let layer_ptr = self.inner.lock().unwrap().as_mut().addScatter(
+        let layer_ptr = self.inner.pin_mut().addScatter(
             data.inner.lock().unwrap().as_mut(),
             indices.inner.lock().unwrap().as_mut(),
             updates.inner.lock().unwrap().as_mut(),
@@ -1001,7 +980,7 @@ impl<'builder> NetworkDefinition<'builder> {
         scale: &mut Tensor,
         output_type: trtx_sys::nvinfer1::DataType,
     ) -> Result<QuantizeLayer<'_>> {
-        let layer_ptr = self.inner.lock().unwrap().as_mut().addQuantize(
+        let layer_ptr = self.inner.pin_mut().addQuantize(
             input.inner.lock().unwrap().as_mut(),
             scale.inner.lock().unwrap().as_mut(),
             output_type,
@@ -1020,7 +999,7 @@ impl<'builder> NetworkDefinition<'builder> {
         scale: &Tensor,
         output_type: trtx_sys::nvinfer1::DataType,
     ) -> Result<DequantizeLayer<'_>> {
-        let layer_ptr = self.inner.lock().unwrap().as_mut().addDequantize(
+        let layer_ptr = self.inner.pin_mut().addDequantize(
             input.inner.lock().unwrap().as_mut(),
             scale.inner.lock().unwrap().as_mut(),
             output_type,
@@ -1039,7 +1018,7 @@ impl<'builder> NetworkDefinition<'builder> {
         then_input: &Tensor,
         else_input: &Tensor,
     ) -> Result<SelectLayer<'_>> {
-        let layer_ptr = self.inner.lock().unwrap().as_mut().addSelect(
+        let layer_ptr = self.inner.pin_mut().addSelect(
             condition.inner.lock().unwrap().as_mut(),
             then_input.inner.lock().unwrap().as_mut(),
             else_input.inner.lock().unwrap().as_mut(),
@@ -1053,7 +1032,7 @@ impl<'builder> NetworkDefinition<'builder> {
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addPaddingNd`].
     pub fn add_padding(
-        &self,
+        &mut self,
         input: &Tensor,
         pre_padding: &[i32],
         post_padding: &[i32],
@@ -1067,7 +1046,7 @@ impl<'builder> NetworkDefinition<'builder> {
         let post_i64: Vec<i64> = post_padding.iter().map(|&d| d as i64).collect();
         let pre_dims = trtx_sys::Dims::from_slice(&pre_i64);
         let post_dims = trtx_sys::Dims::from_slice(&post_i64);
-        let layer_ptr = self.inner.lock().unwrap().as_mut().addPaddingNd(
+        let layer_ptr = self.inner.pin_mut().addPaddingNd(
             input.inner.lock().unwrap().as_mut(),
             &pre_dims,
             &post_dims,
@@ -1083,7 +1062,7 @@ impl<'builder> NetworkDefinition<'builder> {
     pub fn add_assertion(&mut self, condition: &mut Tensor, message: &str) -> Result<()> {
         let message_cstr = std::ffi::CString::new(message)?;
         let layer_ptr = unsafe {
-            self.inner.lock().unwrap().as_mut().addAssertion(
+            self.inner.pin_mut().addAssertion(
                 condition.inner.lock().unwrap().as_mut(),
                 message_cstr.as_ptr(),
             )
@@ -1094,7 +1073,7 @@ impl<'builder> NetworkDefinition<'builder> {
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addLoop`].
     pub fn add_loop(&mut self) -> Result<Loop<'_>> {
-        let loop_ptr = self.inner.lock().unwrap().as_mut().addLoop();
+        let loop_ptr = self.inner.pin_mut().addLoop();
         let loop_ptr = unsafe { loop_ptr.as_mut() }
             .ok_or_else(|| Error::Runtime("Failed to add loop".to_string()))?;
         Ok(Loop {
@@ -1104,7 +1083,7 @@ impl<'builder> NetworkDefinition<'builder> {
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addIfConditional`].
     pub fn add_if_conditional(&mut self) -> Result<IfConditional<'_>> {
-        let if_ptr = self.inner.lock().unwrap().as_mut().addIfConditional();
+        let if_ptr = self.inner.pin_mut().addIfConditional();
         Ok(IfConditional {
             _inner: unsafe {
                 Pin::new_unchecked(
@@ -1115,12 +1094,5 @@ impl<'builder> NetworkDefinition<'builder> {
             }
             .into(),
         })
-    }
-}
-
-// Network is owned by the builder; we hold a reference, so no deletion in Drop.
-impl Drop for NetworkDefinition<'_> {
-    fn drop(&mut self) {
-        unsafe { ptr::drop_in_place(self.inner.get_mut().unwrap()) }
     }
 }
