@@ -2,9 +2,6 @@
 //!
 //! Delegates to real/ or mock/ based on feature flag.
 
-#[cfg(feature = "mock")]
-pub use crate::mock::onnx_parser::OnnxParser;
-#[cfg(not(feature = "mock"))]
 pub use crate::real::onnx_parser::OnnxParser;
 
 #[cfg(test)]

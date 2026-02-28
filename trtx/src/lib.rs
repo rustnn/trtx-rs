@@ -103,6 +103,8 @@
 
 // Allow unnecessary casts - they're needed for real mode (u32) but not mock mode (i32)
 #![cfg_attr(feature = "mock", allow(clippy::unnecessary_cast))]
+// We don't use real parameters in mocks
+#![cfg_attr(feature = "mock", allow(unused))]
 
 mod real;
 

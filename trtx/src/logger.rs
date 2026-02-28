@@ -34,9 +34,6 @@ impl LogHandler for StderrLogger {
     }
 }
 
-#[cfg(feature = "mock")]
-pub use crate::mock::logger::Logger;
-#[cfg(not(feature = "mock"))]
 pub use crate::real::logger::Logger;
 
 #[cfg(test)]

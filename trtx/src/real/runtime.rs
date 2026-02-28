@@ -222,7 +222,7 @@ impl<'engine> CudaEngine<'engine> {
         #[cfg(feature = "mock")]
         {
             Ok(EngineInspector {
-                inner: unsafe { UniquePtr::null() },
+                inner: UniquePtr::null(),
                 _engine: Default::default(),
             })
         }

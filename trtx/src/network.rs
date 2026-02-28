@@ -2,12 +2,9 @@
 //!
 //! Types and implementations. Real/mock impls live in real/ and mock/ folders.
 
-#[cfg(not(feature = "mock"))]
 use std::pin::Pin;
-#[cfg(not(feature = "mock"))]
 use std::sync::Mutex;
 
-#[cfg(not(feature = "mock"))]
 use trtx_sys::nvinfer1::{
     self, IActivationLayer, ICastLayer, IConcatenationLayer, IConstantLayer, IConvolutionLayer,
     ICumulativeLayer, IDeconvolutionLayer, IDequantizeLayer, IElementWiseLayer, IGatherLayer,
@@ -29,24 +26,15 @@ pub struct ConvWeights<'a> {
 }
 
 /// Tensor handle (opaque pointer)
-#[cfg(not(feature = "mock"))]
 pub struct Tensor<'network> {
     pub(crate) inner: Mutex<Pin<&'network mut nvinfer1::ITensor>>,
 }
-#[cfg(not(feature = "mock"))]
 impl Tensor<'_> {}
-
-#[cfg(feature = "mock")]
-pub struct Tensor {}
 
 /// Base trait for all layer types
 pub trait Layer {
     /// Get the output tensor at the specified index
-    #[cfg(not(feature = "mock"))]
     fn get_output(&self, index: i32) -> Result<Tensor<'_>>;
-
-    #[cfg(feature = "mock")]
-    fn get_output(&self, index: i32) -> Result<Tensor>;
 
     fn set_layer_name(&mut self, name: &str) -> Result<()>;
 }
@@ -54,32 +42,20 @@ pub trait Layer {
 /// Macro to define layer struct
 macro_rules! define_network_layer {
     ($name:ident, $iface:ident) => {
-        #[cfg(not(feature = "mock"))]
         pub struct $name<'network> {
             pub(crate) inner: Mutex<Pin<&'network mut $iface>>,
         }
-        #[cfg(not(feature = "mock"))]
         impl Drop for $name<'_> {
             fn drop(&mut self) {
                 unsafe { std::ptr::drop_in_place(self.inner.get_mut().unwrap()) }
             }
         }
 
-        #[cfg(feature = "mock")]
-        pub struct $name {}
-
-        #[cfg(not(feature = "mock"))]
         impl<'network> $name<'network> {
             pub(crate) fn from_ptr(ptr: &'network mut $iface) -> Self {
                 Self {
                     inner: unsafe { Mutex::new(Pin::new_unchecked(ptr)) },
                 }
-            }
-        }
-        #[cfg(feature = "mock")]
-        impl $name {
-            pub(crate) fn from_ptr(_ptr: *mut std::ffi::c_void) -> Self {
-                Self {}
             }
         }
     };
@@ -112,14 +88,9 @@ define_network_layer!(PaddingLayer, IPaddingLayer);
 define_network_layer!(CastLayer, ICastLayer);
 
 // Those are not actual ILayer in TRT
-#[cfg(not(feature = "mock"))]
 pub struct Loop<'network> {
     pub(crate) _inner: Mutex<Pin<&'network mut nvinfer1::ILoop>>,
 }
-#[cfg(not(feature = "mock"))]
 pub struct IfConditional<'network> {
     pub(crate) _inner: Mutex<Pin<&'network mut nvinfer1::IIfConditional>>,
 }
-
-#[cfg(feature = "mock")]
-pub struct NetworkDefinition {}
