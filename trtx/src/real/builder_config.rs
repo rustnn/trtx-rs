@@ -3,7 +3,7 @@
 use crate::Error;
 use crate::Result;
 use cxx::UniquePtr;
-use trtx_sys::nvinfer1::{self};
+use trtx_sys::nvinfer1::{self, IBuilderConfig};
 use trtx_sys::{
     BuilderFlag, ComputeCapability, DeviceType, EngineCapability, HardwareCompatibilityLevel,
     MemoryPoolType, PreviewFeature, ProfilingVerbosity, RuntimePlatform, TilingOptimizationLevel,
@@ -11,7 +11,7 @@ use trtx_sys::{
 
 /// Builder configuration (real mode)
 pub struct BuilderConfig {
-    pub(crate) inner: UniquePtr<nvinfer1::IBuilderConfig>,
+    pub(crate) inner: UniquePtr<IBuilderConfig>,
 }
 
 impl BuilderConfig {

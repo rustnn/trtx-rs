@@ -1,5 +1,7 @@
 //! Real TensorRT runtime implementation
 
+use std::marker::PhantomData;
+
 use cxx::UniquePtr;
 use trtx_sys::nvinfer1;
 
@@ -77,9 +79,9 @@ impl<'a> ExecutionContext<'a> {
 }
 
 /// Runtime (real mode)
-pub struct Runtime<'a> {
+pub struct Runtime<'logger> {
     inner: UniquePtr<nvinfer1::IRuntime>,
-    _logger: &'a Logger,
+    _logger: PhantomData<&'logger Logger>,
 }
 
 impl<'runtime> Runtime<'runtime> {
@@ -123,13 +125,13 @@ impl<'runtime> Runtime<'runtime> {
             }
             Ok(Runtime {
                 inner: unsafe { UniquePtr::from_raw(runtime_ptr) },
-                _logger: logger,
+                _logger: Default::default(),
             })
         }
         #[cfg(feature = "mock")]
         Ok(Runtime {
             inner: UniquePtr::null(),
-            _logger: logger,
+            _logger: Default::default(),
         })
     }
 
