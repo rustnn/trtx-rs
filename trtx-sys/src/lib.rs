@@ -97,10 +97,11 @@ pub mod real_bindings {
         generate!("nvinfer1::INetworkDefinition")
         generate!("nvinfer1::ITensor")
         generate!("nvinfer1::ILayer")
-        generate!("nvinfer1::v_1_0::IProgressMonitor")
-        generate!("nvinfer1::v_1_0::IStreamWriter")
-        generate!("nvinfer1::v_1_0::IErrorRecorder")
-        generate!("nvinfer1::v_1_0::IProfiler")
+        generate!("nvinfer1::IVersionedInterface")
+        generate!("nvinfer1::IProgressMonitor")
+        generate!("nvinfer1::IStreamWriter")
+        generate!("nvinfer1::IErrorRecorder")
+        generate!("nvinfer1::IProfiler")
         generate!("nvinfer1::IGpuAllocator")
         generate!("nvinfer1::IDebugListener")
 
@@ -176,6 +177,7 @@ pub mod real_bindings {
         generate_pod!("nvinfer1::RuntimePlatform")
         generate_pod!("nvinfer1::TilingOptimizationLevel")
         generate_pod!("nvinfer1::ComputeCapability")
+        generate_pod!("nvinfer1::APILanguage")
         // NOTE: RNN enums commented out because IRNNv2Layer (deprecated) cannot be generated
         // generate!("nvinfer1::RNNOperation")
         // generate!("nvinfer1::RNNDirection")

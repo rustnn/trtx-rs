@@ -28,6 +28,9 @@ fn prepare_transformed_headers(trt_dir: &Path, out_dir: &Path) -> PathBuf {
             let replaced = param_regex.replace_all(&replaced, "- `$1`");
             let replaced = replaced
                 .replace("std::size_t", "size_t")
+                // workaround autocxx limitation where there can't be the same type in different
+                // namespaces
+                .replace("namespace v_1_0", "inline namespace v_1_0")
                 .replace("//!", "///")
                 .replace(r"\returns", " - Returns ");
             let replaced = doxy_regex.replace_all(&replaced, "");
