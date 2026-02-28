@@ -16,6 +16,7 @@ pub struct BuilderConfig {
 
 impl BuilderConfig {
     pub(crate) fn new(builder_config: *mut nvinfer1::IBuilderConfig) -> Result<Self> {
+        #[cfg(not(feature = "mock"))]
         if builder_config.is_null() {
             return Err(Error::BuilderConfigCreationFailed);
         }
@@ -25,76 +26,109 @@ impl BuilderConfig {
     }
     /// See [IBuilderConfig::setMemoryPoolLimit]
     pub fn set_memory_pool_limit(&mut self, pool: MemoryPoolType, size: usize) {
+        #[cfg(not(feature = "mock"))]
         self.inner.pin_mut().setMemoryPoolLimit(pool.into(), size);
     }
 
     /// See [IBuilderConfig::setProfilingVerbosity]
     pub fn set_profiling_verbosity(&mut self, verbosity: ProfilingVerbosity) {
+        #[cfg(not(feature = "mock"))]
         self.inner.pin_mut().setProfilingVerbosity(verbosity.into());
     }
 
     /// See [IBuilderConfig::getProfilingVerbosity]
     pub fn get_profiling_verbosity(&self) -> ProfilingVerbosity {
-        self.inner.getProfilingVerbosity().into()
+        if cfg!(not(feature = "mock")) {
+            self.inner.getProfilingVerbosity().into()
+        } else {
+            ProfilingVerbosity::kNONE
+        }
     }
 
     /// See [IBuilderConfig::setAvgTimingIterations]
     pub fn set_avg_timing_iterations(&mut self, avg_timing: i32) {
+        #[cfg(not(feature = "mock"))]
         self.inner.pin_mut().setAvgTimingIterations(avg_timing);
     }
 
     /// See [IBuilderConfig::getAvgTimingIterations]
     pub fn get_avg_timing_iterations(&self) -> i32 {
-        self.inner.getAvgTimingIterations()
+        if cfg!(not(feature = "mock")) {
+            self.inner.getAvgTimingIterations()
+        } else {
+            0
+        }
     }
 
     /// See [IBuilderConfig::setEngineCapability]
     pub fn set_engine_capability(&mut self, capability: EngineCapability) {
+        #[cfg(not(feature = "mock"))]
         self.inner.pin_mut().setEngineCapability(capability.into());
     }
 
     /// See [IBuilderConfig::getEngineCapability]
     pub fn get_engine_capability(&self) -> EngineCapability {
-        self.inner.getEngineCapability().into()
+        if cfg!(not(feature = "mock")) {
+            self.inner.getEngineCapability().into()
+        } else {
+            EngineCapability::kSTANDARD
+        }
     }
 
     /// See [IBuilderConfig::setFlags]
     pub fn set_flags(&mut self, flags: u32) {
+        #[cfg(not(feature = "mock"))]
         self.inner.pin_mut().setFlags(flags);
     }
 
     /// See [IBuilderConfig::getFlags]
     pub fn get_flags(&self) -> u32 {
-        self.inner.getFlags()
+        if cfg!(not(feature = "mock")) {
+            self.inner.getFlags()
+        } else {
+            0
+        }
     }
 
     /// See [IBuilderConfig::setFlag]
     pub fn set_flag(&mut self, flag: BuilderFlag) {
+        #[cfg(not(feature = "mock"))]
         self.inner.pin_mut().setFlag(flag.into());
     }
 
     /// See [IBuilderConfig::clearFlag]
     pub fn clear_flag(&mut self, flag: BuilderFlag) {
+        #[cfg(not(feature = "mock"))]
         self.inner.pin_mut().clearFlag(flag.into());
     }
 
     /// See [IBuilderConfig::getFlag]
     pub fn get_flag(&self, flag: BuilderFlag) -> bool {
-        self.inner.getFlag(flag.into())
+        if cfg!(not(feature = "mock")) {
+            self.inner.getFlag(flag.into())
+        } else {
+            false
+        }
     }
 
     /// See [IBuilderConfig::setDLACore]
     pub fn set_dla_core(&mut self, dla_core: i32) {
+        #[cfg(not(feature = "mock"))]
         self.inner.pin_mut().setDLACore(dla_core);
     }
 
     /// See [IBuilderConfig::getDLACore]
     pub fn get_dla_core(&self) -> i32 {
-        self.inner.getDLACore()
+        if cfg!(not(feature = "mock")) {
+            self.inner.getDLACore()
+        } else {
+            0
+        }
     }
 
     /// See [IBuilderConfig::setDefaultDeviceType]
     pub fn set_default_device_type(&mut self, device_type: DeviceType) {
+        #[cfg(not(feature = "mock"))]
         self.inner
             .pin_mut()
             .setDefaultDeviceType(device_type.into());
@@ -102,36 +136,58 @@ impl BuilderConfig {
 
     /// See [IBuilderConfig::getDefaultDeviceType]
     pub fn get_default_device_type(&self) -> DeviceType {
-        self.inner.getDefaultDeviceType().into()
+        if cfg!(not(feature = "mock")) {
+            self.inner.getDefaultDeviceType().into()
+        } else {
+            DeviceType::kGPU
+        }
     }
 
     /// See [IBuilderConfig::reset]
     pub fn reset(&mut self) {
+        #[cfg(not(feature = "mock"))]
         self.inner.pin_mut().reset();
     }
 
     /// See [IBuilderConfig::getNbOptimizationProfiles]
     pub fn get_nb_optimization_profiles(&self) -> i32 {
-        self.inner.getNbOptimizationProfiles()
+        if cfg!(not(feature = "mock")) {
+            self.inner.getNbOptimizationProfiles()
+        } else {
+            0
+        }
     }
 
     /// See [IBuilderConfig::setTacticSources]
     pub fn set_tactic_sources(&mut self, sources: u32) -> bool {
-        self.inner.pin_mut().setTacticSources(sources)
+        if cfg!(not(feature = "mock")) {
+            self.inner.pin_mut().setTacticSources(sources)
+        } else {
+            true
+        }
     }
 
     /// See [IBuilderConfig::getTacticSources]
     pub fn get_tactic_sources(&self) -> u32 {
-        self.inner.getTacticSources()
+        if cfg!(not(feature = "mock")) {
+            self.inner.getTacticSources()
+        } else {
+            0
+        }
     }
 
     /// See [IBuilderConfig::getMemoryPoolLimit]
     pub fn get_memory_pool_limit(&self, pool: MemoryPoolType) -> usize {
-        self.inner.getMemoryPoolLimit(pool.into())
+        if cfg!(not(feature = "mock")) {
+            self.inner.getMemoryPoolLimit(pool.into())
+        } else {
+            0
+        }
     }
 
     /// See [IBuilderConfig::setPreviewFeature]
     pub fn set_preview_feature(&mut self, feature: PreviewFeature, enable: bool) {
+        #[cfg(not(feature = "mock"))]
         self.inner
             .pin_mut()
             .setPreviewFeature(feature.into(), enable);
@@ -139,21 +195,31 @@ impl BuilderConfig {
 
     /// See [IBuilderConfig::getPreviewFeature]
     pub fn get_preview_feature(&self, feature: PreviewFeature) -> bool {
-        self.inner.getPreviewFeature(feature.into())
+        if cfg!(not(feature = "mock")) {
+            self.inner.getPreviewFeature(feature.into())
+        } else {
+            false
+        }
     }
 
     /// See [IBuilderConfig::setBuilderOptimizationLevel]
     pub fn set_builder_optimization_level(&mut self, level: i32) {
+        #[cfg(not(feature = "mock"))]
         self.inner.pin_mut().setBuilderOptimizationLevel(level);
     }
 
     /// See [IBuilderConfig::getBuilderOptimizationLevel]
     pub fn get_builder_optimization_level(&mut self) -> i32 {
-        self.inner.pin_mut().getBuilderOptimizationLevel()
+        if cfg!(not(feature = "mock")) {
+            self.inner.pin_mut().getBuilderOptimizationLevel()
+        } else {
+            0
+        }
     }
 
     /// See [IBuilderConfig::setHardwareCompatibilityLevel]
     pub fn set_hardware_compatibility_level(&mut self, level: HardwareCompatibilityLevel) {
+        #[cfg(not(feature = "mock"))]
         self.inner
             .pin_mut()
             .setHardwareCompatibilityLevel(level.into());
@@ -166,66 +232,105 @@ impl BuilderConfig {
 
     /// See [IBuilderConfig::setMaxAuxStreams]
     pub fn set_max_aux_streams(&mut self, nb_streams: i32) {
+        #[cfg(not(feature = "mock"))]
         self.inner.pin_mut().setMaxAuxStreams(nb_streams);
     }
 
     /// See [IBuilderConfig::getMaxAuxStreams]
     pub fn get_max_aux_streams(&self) -> i32 {
-        self.inner.getMaxAuxStreams()
+        if cfg!(not(feature = "mock")) {
+            self.inner.getMaxAuxStreams()
+        } else {
+            0
+        }
     }
 
     /// See [IBuilderConfig::setRuntimePlatform]
     pub fn set_runtime_platform(&mut self, platform: RuntimePlatform) {
+        #[cfg(not(feature = "mock"))]
         self.inner.pin_mut().setRuntimePlatform(platform.into());
     }
 
     /// See [IBuilderConfig::getRuntimePlatform]
     pub fn get_runtime_platform(&self) -> RuntimePlatform {
-        self.inner.getRuntimePlatform().into()
+        if cfg!(not(feature = "mock")) {
+            self.inner.getRuntimePlatform().into()
+        } else {
+            RuntimePlatform::kSAME_AS_BUILD
+        }
     }
 
     /// See [IBuilderConfig::setMaxNbTactics]
     pub fn set_max_nb_tactics(&mut self, max_nb_tactics: i32) {
+        #[cfg(not(feature = "mock"))]
         self.inner.pin_mut().setMaxNbTactics(max_nb_tactics);
     }
 
     /// See [IBuilderConfig::getMaxNbTactics]
     pub fn get_max_nb_tactics(&self) -> i32 {
-        self.inner.getMaxNbTactics()
+        if cfg!(not(feature = "mock")) {
+            self.inner.getMaxNbTactics()
+        } else {
+            0
+        }
     }
 
     /// See [IBuilderConfig::setTilingOptimizationLevel]
     pub fn set_tiling_optimization_level(&mut self, level: TilingOptimizationLevel) -> bool {
-        self.inner
-            .pin_mut()
-            .setTilingOptimizationLevel(level.into())
+        if cfg!(not(feature = "mock")) {
+            self.inner
+                .pin_mut()
+                .setTilingOptimizationLevel(level.into())
+        } else {
+            true
+        }
     }
 
     /// See [IBuilderConfig::getTilingOptimizationLevel]
     pub fn get_tiling_optimization_level(&self) -> TilingOptimizationLevel {
-        self.inner.getTilingOptimizationLevel().into()
+        if cfg!(not(feature = "mock")) {
+            self.inner.getTilingOptimizationLevel().into()
+        } else {
+            TilingOptimizationLevel::kNONE
+        }
     }
 
     /// See [IBuilderConfig::setL2LimitForTiling]
     pub fn set_l2_limit_for_tiling(&mut self, size: i64) -> bool {
-        self.inner.pin_mut().setL2LimitForTiling(size)
+        if cfg!(not(feature = "mock")) {
+            self.inner.pin_mut().setL2LimitForTiling(size)
+        } else {
+            true
+        }
     }
 
     /// See [IBuilderConfig::getL2LimitForTiling]
     pub fn get_l2_limit_for_tiling(&self) -> i64 {
-        self.inner.getL2LimitForTiling()
+        if cfg!(not(feature = "mock")) {
+            self.inner.getL2LimitForTiling()
+        } else {
+            0
+        }
     }
 
     /// See [IBuilderConfig::setNbComputeCapabilities]
     pub fn set_nb_compute_capabilities(&mut self, max_nb_compute_capabilities: i32) -> bool {
-        self.inner
-            .pin_mut()
-            .setNbComputeCapabilities(max_nb_compute_capabilities)
+        if cfg!(not(feature = "mock")) {
+            self.inner
+                .pin_mut()
+                .setNbComputeCapabilities(max_nb_compute_capabilities)
+        } else {
+            true
+        }
     }
 
     /// See [IBuilderConfig::getNbComputeCapabilities]
     pub fn get_nb_compute_capabilities(&self) -> i32 {
-        self.inner.getNbComputeCapabilities()
+        if cfg!(not(feature = "mock")) {
+            self.inner.getNbComputeCapabilities()
+        } else {
+            0
+        }
     }
 
     /// See [IBuilderConfig::setComputeCapability]
@@ -234,13 +339,21 @@ impl BuilderConfig {
         compute_capability: ComputeCapability,
         index: i32,
     ) -> bool {
-        self.inner
-            .pin_mut()
-            .setComputeCapability(compute_capability.into(), index)
+        if cfg!(not(feature = "mock")) {
+            self.inner
+                .pin_mut()
+                .setComputeCapability(compute_capability.into(), index)
+        } else {
+            true
+        }
     }
 
     /// See [IBuilderConfig::getComputeCapability]
     pub fn get_compute_capability(&self, index: i32) -> ComputeCapability {
-        self.inner.getComputeCapability(index).into()
+        if cfg!(not(feature = "mock")) {
+            self.inner.getComputeCapability(index).into()
+        } else {
+            ComputeCapability::kNONE
+        }
     }
 }

@@ -374,36 +374,44 @@ impl<'runtime> Runtime<'runtime> {
 
     #[cfg(any(feature = "link_tensorrt_rtx", feature = "dlopen_tensorrt_rtx"))]
     pub fn new(logger: &'runtime Logger) -> Result<Self> {
-        let logger_ptr = logger.as_logger_ptr();
-        let runtime_ptr = {
-            #[cfg(feature = "link_tensorrt_rtx")]
-            unsafe {
-                trtx_sys::create_infer_runtime(logger_ptr)
-            }
-            #[cfg(not(feature = "link_tensorrt_rtx"))]
-            #[cfg(feature = "dlopen_tensorrt_rtx")]
-            unsafe {
-                use libloading::Symbol;
-                use std::ffi::c_void;
-
-                use crate::TRTLIB;
-                if !TRTLIB.read()?.is_some() {
-                    crate::dynamically_load_tensorrt(None::<String>)?;
+        #[cfg(not(feature = "mock"))]
+        {
+            let logger_ptr = logger.as_logger_ptr();
+            let runtime_ptr = {
+                #[cfg(feature = "link_tensorrt_rtx")]
+                unsafe {
+                    trtx_sys::create_infer_runtime(logger_ptr)
                 }
+                #[cfg(not(feature = "link_tensorrt_rtx"))]
+                #[cfg(feature = "dlopen_tensorrt_rtx")]
+                unsafe {
+                    use libloading::Symbol;
+                    use std::ffi::c_void;
 
-                let lock = TRTLIB.read()?;
-                let create_infer_runtime: Symbol<fn(*mut c_void, u32) -> *mut c_void> = lock
-                    .as_ref()
-                    .ok_or(Error::TrtRtxLibraryNotLoaded)?
-                    .get(b"createInferRuntime_INTERNAL")?;
-                create_infer_runtime(logger_ptr, trtx_sys::get_tensorrt_version())
+                    use crate::TRTLIB;
+                    if !TRTLIB.read()?.is_some() {
+                        crate::dynamically_load_tensorrt(None::<String>)?;
+                    }
+
+                    let lock = TRTLIB.read()?;
+                    let create_infer_runtime: Symbol<fn(*mut c_void, u32) -> *mut c_void> = lock
+                        .as_ref()
+                        .ok_or(Error::TrtRtxLibraryNotLoaded)?
+                        .get(b"createInferRuntime_INTERNAL")?;
+                    create_infer_runtime(logger_ptr, trtx_sys::get_tensorrt_version())
+                }
+            } as *mut nvinfer1::IRuntime;
+            if runtime_ptr.is_null() {
+                return Err(Error::Runtime("Failed to create runtime".to_string()));
             }
-        } as *mut nvinfer1::IRuntime;
-        if runtime_ptr.is_null() {
-            return Err(Error::Runtime("Failed to create runtime".to_string()));
+            Ok(Runtime {
+                inner: unsafe { UniquePtr::from_raw(runtime_ptr) },
+                _logger: logger,
+            })
         }
+        #[cfg(feature = "mock")]
         Ok(Runtime {
-            inner: unsafe { UniquePtr::from_raw(runtime_ptr) },
+            inner: UniquePtr::null(),
             _logger: logger,
         })
     }

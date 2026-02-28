@@ -51,7 +51,7 @@
 //! let logger = Logger::stderr()?;
 //!
 //! // Build phase
-//! let builder = Builder::new(&logger)?;
+//! let mut builder = Builder::new(&logger)?;
 //! let mut network = builder.create_network(network_flags::EXPLICIT_BATCH)?;
 //! let mut config = builder.create_config()?;
 //!
@@ -63,8 +63,8 @@
 //! std::fs::write("model.engine", &engine_data)?;
 //!
 //! // Inference phase
-//! let runtime = Runtime::new(&logger)?;
-//! let engine = runtime.deserialize_cuda_engine(&engine_data)?;
+//! let mut runtime = Runtime::new(&logger)?;
+//! let mut engine = runtime.deserialize_cuda_engine(&engine_data)?;
 //! let context = engine.create_execution_context()?;
 //!
 //! // List I/O tensors
@@ -105,6 +105,7 @@
 #![cfg_attr(feature = "mock", allow(clippy::unnecessary_cast))]
 // We don't use real parameters in mocks
 #![cfg_attr(feature = "mock", allow(unused))]
+#![cfg_attr(feature = "mock", allow(unused_variables))]
 
 mod real;
 

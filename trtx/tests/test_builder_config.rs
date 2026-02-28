@@ -40,6 +40,7 @@ mod tests {
 
         // Test DLA core
         config.set_dla_core(-1);
+        #[cfg(not(feature = "mock"))]
         assert_eq!(config.get_dla_core(), -1);
 
         // Test device type

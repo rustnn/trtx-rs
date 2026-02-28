@@ -70,7 +70,7 @@ fn build_engine_from_onnx(logger: &Logger, onnx_bytes: &[u8]) -> Result<Vec<u8>>
     let mut network = builder.create_network(network_flags::EXPLICIT_BATCH)?;
 
     // Parse ONNX model
-    let parser = OnnxParser::new(&mut network, logger)?;
+    let mut parser = OnnxParser::new(&mut network, logger)?;
     parser.parse(onnx_bytes)?;
 
     // Configure builder

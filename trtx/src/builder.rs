@@ -13,7 +13,4 @@ pub use trtx_sys::{
     MemoryPoolType, PreviewFeature, ProfilingVerbosity, RuntimePlatform, TilingOptimizationLevel,
 };
 
-#[cfg(feature = "mock")]
-pub use crate::mock::builder::{Builder, BuilderConfig};
-#[cfg(not(feature = "mock"))]
 pub use crate::real::builder::{Builder, BuilderConfig};
