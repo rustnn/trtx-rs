@@ -89,6 +89,7 @@ better_enum!(TopKOperation);
 better_enum!(LayerInformationFormat);
 better_enum!(TensorLocation);
 better_enum!(SerializationFlag);
+better_enum!(OptProfileSelector);
 
 use autocxx::prelude::*;
 
@@ -114,6 +115,7 @@ include_cpp! {
     generate!("nvinfer1::IGpuAllocator")
     generate!("nvinfer1::IDebugListener")
     generate!("nvinfer1::ISerializationConfig")
+    generate!("nvinfer1::IOptimizationProfile")
 
     // Derived layer types - for inheritance support
     generate!("nvinfer1::IActivationLayer")
@@ -199,6 +201,7 @@ include_cpp! {
     generate!("nvinfer1::ErrorCode")
     generate!("nvinfer1::SerializationFlags")
     generate!("nvinfer1::SerializationFlag")
+    generate!("nvinfer1::OptProfileSelector")
 
     subclass!("nvinfer1::IProgressMonitor", ProgressMonitor)
     subclass!("nvinfer1::IGpuAllocator", GpuAllocator)

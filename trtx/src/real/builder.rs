@@ -1,17 +1,24 @@
 //! Real TensorRT builder implementation
+use std::marker::PhantomData;
+
 use crate::error::{Error, Result};
 use crate::logger::Logger;
 use crate::network::NetworkDefinition;
 use crate::real::host_memory::HostMemory;
 use autocxx::cxx::memory::UniquePtr;
-use trtx_sys::nvinfer1::IBuilder;
+use trtx_sys::nvinfer1::{self, IBuilder};
 
 pub use super::builder_config::BuilderConfig;
+
+pub struct OptimizationProfile<'builder> {
+    inner: UniquePtr<nvinfer1::IOptimizationProfile>,
+    _builder: PhantomData<&'builder nvinfer1::IBuilder>,
+}
 
 /// Builder (real mode)
 pub struct Builder<'a> {
     inner: UniquePtr<IBuilder>,
-    _logger: &'a Logger,
+    _logger: PhantomData<&'a Logger>,
 }
 
 impl<'builder> Builder<'builder> {
@@ -57,13 +64,13 @@ impl<'builder> Builder<'builder> {
             }
             Ok(Builder {
                 inner: unsafe { UniquePtr::from_raw(builder_ptr) },
-                _logger: logger,
+                _logger: Default::default(),
             })
         }
         #[cfg(feature = "mock")]
         Ok(Builder {
             inner: UniquePtr::null(),
-            _logger: logger,
+            _logger: Default::default(),
         })
     }
 
@@ -102,5 +109,21 @@ impl<'builder> Builder<'builder> {
         .ok_or_else(|| Error::Runtime("Failed to build serialized network".to_string()))?;
 
         Ok(unsafe { HostMemory::from_raw(serialized_engine) })
+    }
+
+    pub fn creata_optimization_profile(&mut self) -> Result<OptimizationProfile<'builder>> {
+        let profile = unsafe {
+            self.inner
+                .pin_mut()
+                .createOptimizationProfile()
+                .as_mut()
+                .ok_or_else(|| {
+                    Error::Runtime("Failed to create optimization profile").to_string()
+                })?
+        };
+        Ok(OptimizationProfile {
+            inner: unsafe { UniquePtr::from_raw(profile) },
+            _builder: Default::default(),
+        })
     }
 }
