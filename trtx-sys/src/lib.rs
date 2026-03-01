@@ -37,13 +37,13 @@ mod enums {
 macro_rules! better_enum {
     ($to:ident) => {
         pub use crate::enums::$to;
-        impl Into<crate::real_bindings::nvinfer1::$to> for $to {
-            fn into(self) -> crate::real_bindings::nvinfer1::$to {
+        impl Into<crate::nvinfer1::$to> for $to {
+            fn into(self) -> crate::nvinfer1::$to {
                 unsafe { transmute(self) }
             }
         }
-        impl From<crate::real_bindings::nvinfer1::$to> for $to {
-            fn from(value: crate::real_bindings::nvinfer1::$to) -> Self {
+        impl From<crate::nvinfer1::$to> for $to {
+            fn from(value: crate::nvinfer1::$to) -> Self {
                 unsafe { transmute(value) }
             }
         }
@@ -80,315 +80,304 @@ better_enum!(UnaryOperation);
 better_enum!(TopKOperation);
 better_enum!(LayerInformationFormat);
 
-// Real mode uses autocxx
-pub mod real_bindings {
-    use std::ffi::CStr;
+use std::ffi::CStr;
 
-    use autocxx::prelude::*;
-    use autocxx::subclass::*;
+use autocxx::prelude::*;
+use autocxx::subclass::*;
 
-    #[subclass]
-    #[derive(Default)]
-    pub struct ProgressMonitorHolder {
-        inner: Option<Box<dyn ProgressMonitor>>,
-    }
+#[subclass]
+#[derive(Default)]
+pub struct ProgressMonitorHolder {
+    inner: Option<Box<dyn ProgressMonitor>>,
+}
 
-    impl ProgressMonitorHolder {
-        pub fn new(inner: Box<dyn ProgressMonitor>) -> Self {
-            Self {
-                inner: Some(inner),
-                ..Default::default()
-            }
+impl ProgressMonitorHolder {
+    pub fn new(inner: Box<dyn ProgressMonitor>) -> Self {
+        Self {
+            inner: Some(inner),
+            ..Default::default()
         }
     }
+}
 
-    impl nvinfer1::IProgressMonitor_methods for ProgressMonitorHolder {
-        unsafe fn phaseStart(
-            &mut self,
-            phaseName: *const ::std::os::raw::c_char,
-            parentPhase: *const ::std::os::raw::c_char,
-            nbSteps: i32,
-        ) {
-            let phase_name = CStr::from_ptr(phaseName);
-            let parent_phase = CStr::from_ptr(parentPhase);
-            self.inner
-                .as_mut()
-                .expect("construction only possible with Some")
-                .phase_start(
-                    &phase_name.to_string_lossy(),
-                    &parent_phase.to_string_lossy(),
-                    nbSteps,
-                );
-        }
-        unsafe fn stepComplete(
-            &mut self,
-            phaseName: *const ::std::os::raw::c_char,
-            step: i32,
-        ) -> bool {
-            let phase_name = CStr::from_ptr(phaseName);
-            self.inner
-                .as_mut()
-                .expect("construction only possible with Some")
-                .step_complete(&phase_name.to_string_lossy(), step)
-        }
-        unsafe fn phaseFinish(&mut self, phaseName: *const ::std::os::raw::c_char) {
-            let phase_name = CStr::from_ptr(phaseName);
-            self.inner
-                .as_mut()
-                .expect("construction only possible with Some")
-                .phase_finish(&phase_name.to_string_lossy());
-        }
+impl nvinfer1::IProgressMonitor_methods for ProgressMonitorHolder {
+    unsafe fn phaseStart(
+        &mut self,
+        phaseName: *const ::std::os::raw::c_char,
+        parentPhase: *const ::std::os::raw::c_char,
+        nbSteps: i32,
+    ) {
+        let phase_name = CStr::from_ptr(phaseName);
+        let parent_phase = CStr::from_ptr(parentPhase);
+        self.inner
+            .as_mut()
+            .expect("construction only possible with Some")
+            .phase_start(
+                &phase_name.to_string_lossy(),
+                &parent_phase.to_string_lossy(),
+                nbSteps,
+            );
     }
-
-    include_cpp! {
-        #include "NvInfer.h"
-        #include "NvInferRuntime.h"
-        #include "NvOnnxParser.h"
-
-        safety!(unsafe_ffi)
-
-        // Core TensorRT types
-        generate!("nvinfer1::IBuilder")
-        generate!("nvinfer1::IBuilderConfig")
-        generate!("nvinfer1::INetworkDefinition")
-        generate!("nvinfer1::ITensor")
-        generate!("nvinfer1::ILayer")
-        generate!("nvinfer1::IVersionedInterface")
-        generate!("nvinfer1::IProgressMonitor")
-        generate!("nvinfer1::IStreamWriter")
-        generate!("nvinfer1::IErrorRecorder")
-        generate!("nvinfer1::IProfiler")
-        generate!("nvinfer1::IGpuAllocator")
-        generate!("nvinfer1::IDebugListener")
-
-        // Derived layer types - for inheritance support
-        generate!("nvinfer1::IActivationLayer")
-        generate!("nvinfer1::IConvolutionLayer")
-        generate!("nvinfer1::IPoolingLayer")
-        generate!("nvinfer1::IElementWiseLayer")
-        generate!("nvinfer1::IShuffleLayer")
-        generate!("nvinfer1::IConcatenationLayer")
-        generate!("nvinfer1::IMatrixMultiplyLayer")
-        generate!("nvinfer1::IConstantLayer")
-        generate!("nvinfer1::ISoftMaxLayer")
-        generate!("nvinfer1::IScaleLayer")
-        generate!("nvinfer1::IReduceLayer")
-        generate!("nvinfer1::ISliceLayer")
-        generate!("nvinfer1::IResizeLayer")
-        generate!("nvinfer1::ITopKLayer")
-        generate!("nvinfer1::IGatherLayer")
-        generate!("nvinfer1::IScatterLayer")
-        generate!("nvinfer1::ISelectLayer")
-        generate!("nvinfer1::IUnaryLayer")
-        generate!("nvinfer1::IIdentityLayer")
-        generate!("nvinfer1::IPaddingLayer")
-        generate!("nvinfer1::ICastLayer")
-        generate!("nvinfer1::IDeconvolutionLayer")
-        generate!("nvinfer1::IQuantizeLayer")
-        generate!("nvinfer1::IDequantizeLayer")
-        generate!("nvinfer1::IAssertionLayer")
-        generate!("nvinfer1::ICumulativeLayer")
-        generate!("nvinfer1::ILoop")
-        generate!("nvinfer1::IIfConditional")
-        // NOTE: IRNNv2Layer is deprecated (TRT_DEPRECATED) and autocxx cannot generate bindings for it
-        // RNN operations (lstm, lstmCell, gru, gruCell) remain deferred until we can work around this
-        // generate!("nvinfer1::IRNNv2Layer")
-
-        generate!("nvinfer1::IRuntime")
-        generate!("nvinfer1::ICudaEngine")
-        generate!("nvinfer1::IExecutionContext")
-        generate!("nvinfer1::IEngineInspector")
-        generate!("nvinfer1::IHostMemory")
-        generate!("nvinfer1::LayerInformationFormat")
-
-        // Try generating Dims64 directly (base class, not the typedef alias)
-        generate_pod!("nvinfer1::Dims64")
-
-        generate_pod!("nvinfer1::DataType")
-        generate_pod!("nvinfer1::TensorIOMode")
-        generate_pod!("nvinfer1::MemoryPoolType")
-        generate_pod!("nvinfer1::NetworkDefinitionCreationFlag")
-        generate_pod!("nvinfer1::ActivationType")
-        generate_pod!("nvinfer1::PoolingType")
-        generate_pod!("nvinfer1::ElementWiseOperation")
-        generate_pod!("nvinfer1::MatrixOperation")
-        generate_pod!("nvinfer1::UnaryOperation")
-        generate_pod!("nvinfer1::ReduceOperation")
-        generate_pod!("nvinfer1::CumulativeOperation")
-        generate_pod!("nvinfer1::GatherMode")
-        generate_pod!("nvinfer1::ScatterMode")
-        generate_pod!("nvinfer1::InterpolationMode")
-        generate_pod!("nvinfer1::ResizeCoordinateTransformation")
-        generate_pod!("nvinfer1::ResizeSelector")
-        generate_pod!("nvinfer1::ResizeRoundMode")
-        generate_pod!("nvinfer1::ProfilingVerbosity")
-        generate_pod!("nvinfer1::EngineCapability")
-        generate_pod!("nvinfer1::BuilderFlag")
-        generate_pod!("nvinfer1::BuilderFlags")
-        generate_pod!("nvinfer1::DeviceType")
-        generate_pod!("nvinfer1::TacticSource")
-        generate_pod!("nvinfer1::TacticSources")
-        generate_pod!("nvinfer1::PreviewFeature")
-        generate_pod!("nvinfer1::HardwareCompatibilityLevel")
-        generate_pod!("nvinfer1::RuntimePlatform")
-        generate_pod!("nvinfer1::TilingOptimizationLevel")
-        generate_pod!("nvinfer1::ComputeCapability")
-        generate_pod!("nvinfer1::APILanguage")
-        // NOTE: RNN enums commented out because IRNNv2Layer (deprecated) cannot be generated
-        // generate!("nvinfer1::RNNOperation")
-        // generate!("nvinfer1::RNNDirection")
-        // generate!("nvinfer1::RNNInputMode")
-        // generate!("nvinfer1::RNNGateType")
-        generate_pod!("nvinfer1::Weights")
-        generate_pod!("nvinfer1::Permutation")
-        generate!("nvinfer1::TensorFormat")
-        subclass!("nvinfer1::IProgressMonitor", ProgressMonitorHolder)
-        // NOTE: createInferBuilder/Runtime moved to logger_bridge.cpp (autocxx struggles with these)
-
-        // ONNX Parser
-        generate!("nvonnxparser::IParser")
-        // NOTE: createParser also moved to logger_bridge.cpp
-
+    unsafe fn stepComplete(&mut self, phaseName: *const ::std::os::raw::c_char, step: i32) -> bool {
+        let phase_name = CStr::from_ptr(phaseName);
+        self.inner
+            .as_mut()
+            .expect("construction only possible with Some")
+            .step_complete(&phase_name.to_string_lossy(), step)
     }
-
-    // Logger bridge C functions
-    extern "C" {
-        pub fn get_tensorrt_version() -> u32;
-        pub fn create_rust_logger_bridge(
-            callback: RustLogCallback,
-            user_data: *mut std::ffi::c_void,
-        ) -> *mut RustLoggerBridge;
-
-        pub fn destroy_rust_logger_bridge(logger: *mut RustLoggerBridge);
-
-        pub fn get_logger_interface(logger: *mut RustLoggerBridge) -> *mut std::ffi::c_void; // Returns ILogger*
-
-        // TensorRT factory functions (wrapped as simple C functions)
-        #[cfg(feature = "link_tensorrt_rtx")]
-        pub fn create_infer_builder(logger: *mut std::ffi::c_void) -> *mut std::ffi::c_void; // Returns IBuilder*
-
-        #[cfg(feature = "link_tensorrt_rtx")]
-        pub fn create_infer_runtime(logger: *mut std::ffi::c_void) -> *mut std::ffi::c_void; // Returns IRuntime*
-
-        // ONNX Parser factory function
-        #[cfg(feature = "link_tensorrt_onnxparser")]
-        pub fn create_onnx_parser(
-            network: *mut std::ffi::c_void,
-            logger: *mut std::ffi::c_void,
-        ) -> *mut std::ffi::c_void; // Returns IParser*
-                                    //
-        pub fn network_add_concatenation(
-            network: *mut std::ffi::c_void,
-            inputs: *mut *mut std::ffi::c_void,
-            nb_inputs: i32,
-        ) -> *mut std::ffi::c_void;
-
-        // Parser methods
-        pub fn parser_parse(
-            parser: *mut std::ffi::c_void,
-            data: *const std::ffi::c_void,
-            size: usize,
-        ) -> bool;
-        pub fn parser_get_nb_errors(parser: *mut std::ffi::c_void) -> i32;
-        pub fn parser_get_error(parser: *mut std::ffi::c_void, index: i32)
-            -> *mut std::ffi::c_void;
-        pub fn parser_error_desc(error: *mut std::ffi::c_void) -> *const std::os::raw::c_char;
-
+    unsafe fn phaseFinish(&mut self, phaseName: *const ::std::os::raw::c_char) {
+        let phase_name = CStr::from_ptr(phaseName);
+        self.inner
+            .as_mut()
+            .expect("construction only possible with Some")
+            .phase_finish(&phase_name.to_string_lossy());
     }
+}
 
-    // Opaque type for logger bridge
-    #[repr(C)]
-    pub struct RustLoggerBridge {
-        _unused: [u8; 0],
-    }
+include_cpp! {
+    #include "NvInfer.h"
+    #include "NvInferRuntime.h"
+    #include "NvOnnxParser.h"
 
-    // Rust callback type for logger
-    pub type RustLogCallback = unsafe extern "C" fn(
+    safety!(unsafe_ffi)
+
+    // Core TensorRT types
+    generate!("nvinfer1::IBuilder")
+    generate!("nvinfer1::IBuilderConfig")
+    generate!("nvinfer1::INetworkDefinition")
+    generate!("nvinfer1::ITensor")
+    generate!("nvinfer1::ILayer")
+    generate!("nvinfer1::IVersionedInterface")
+    generate!("nvinfer1::IProgressMonitor")
+    generate!("nvinfer1::IStreamWriter")
+    generate!("nvinfer1::IErrorRecorder")
+    generate!("nvinfer1::IProfiler")
+    generate!("nvinfer1::IGpuAllocator")
+    generate!("nvinfer1::IDebugListener")
+
+    // Derived layer types - for inheritance support
+    generate!("nvinfer1::IActivationLayer")
+    generate!("nvinfer1::IConvolutionLayer")
+    generate!("nvinfer1::IPoolingLayer")
+    generate!("nvinfer1::IElementWiseLayer")
+    generate!("nvinfer1::IShuffleLayer")
+    generate!("nvinfer1::IConcatenationLayer")
+    generate!("nvinfer1::IMatrixMultiplyLayer")
+    generate!("nvinfer1::IConstantLayer")
+    generate!("nvinfer1::ISoftMaxLayer")
+    generate!("nvinfer1::IScaleLayer")
+    generate!("nvinfer1::IReduceLayer")
+    generate!("nvinfer1::ISliceLayer")
+    generate!("nvinfer1::IResizeLayer")
+    generate!("nvinfer1::ITopKLayer")
+    generate!("nvinfer1::IGatherLayer")
+    generate!("nvinfer1::IScatterLayer")
+    generate!("nvinfer1::ISelectLayer")
+    generate!("nvinfer1::IUnaryLayer")
+    generate!("nvinfer1::IIdentityLayer")
+    generate!("nvinfer1::IPaddingLayer")
+    generate!("nvinfer1::ICastLayer")
+    generate!("nvinfer1::IDeconvolutionLayer")
+    generate!("nvinfer1::IQuantizeLayer")
+    generate!("nvinfer1::IDequantizeLayer")
+    generate!("nvinfer1::IAssertionLayer")
+    generate!("nvinfer1::ICumulativeLayer")
+    generate!("nvinfer1::ILoop")
+    generate!("nvinfer1::IIfConditional")
+    // NOTE: IRNNv2Layer is deprecated (TRT_DEPRECATED) and autocxx cannot generate bindings for it
+    // RNN operations (lstm, lstmCell, gru, gruCell) remain deferred until we can work around this
+    // generate!("nvinfer1::IRNNv2Layer")
+
+    generate!("nvinfer1::IRuntime")
+    generate!("nvinfer1::ICudaEngine")
+    generate!("nvinfer1::IExecutionContext")
+    generate!("nvinfer1::IEngineInspector")
+    generate!("nvinfer1::IHostMemory")
+    generate!("nvinfer1::LayerInformationFormat")
+
+    // Try generating Dims64 directly (base class, not the typedef alias)
+    generate_pod!("nvinfer1::Dims64")
+
+    generate_pod!("nvinfer1::DataType")
+    generate_pod!("nvinfer1::TensorIOMode")
+    generate_pod!("nvinfer1::MemoryPoolType")
+    generate_pod!("nvinfer1::NetworkDefinitionCreationFlag")
+    generate_pod!("nvinfer1::ActivationType")
+    generate_pod!("nvinfer1::PoolingType")
+    generate_pod!("nvinfer1::ElementWiseOperation")
+    generate_pod!("nvinfer1::MatrixOperation")
+    generate_pod!("nvinfer1::UnaryOperation")
+    generate_pod!("nvinfer1::ReduceOperation")
+    generate_pod!("nvinfer1::CumulativeOperation")
+    generate_pod!("nvinfer1::GatherMode")
+    generate_pod!("nvinfer1::ScatterMode")
+    generate_pod!("nvinfer1::InterpolationMode")
+    generate_pod!("nvinfer1::ResizeCoordinateTransformation")
+    generate_pod!("nvinfer1::ResizeSelector")
+    generate_pod!("nvinfer1::ResizeRoundMode")
+    generate_pod!("nvinfer1::ProfilingVerbosity")
+    generate_pod!("nvinfer1::EngineCapability")
+    generate_pod!("nvinfer1::BuilderFlag")
+    generate_pod!("nvinfer1::BuilderFlags")
+    generate_pod!("nvinfer1::DeviceType")
+    generate_pod!("nvinfer1::TacticSource")
+    generate_pod!("nvinfer1::TacticSources")
+    generate_pod!("nvinfer1::PreviewFeature")
+    generate_pod!("nvinfer1::HardwareCompatibilityLevel")
+    generate_pod!("nvinfer1::RuntimePlatform")
+    generate_pod!("nvinfer1::TilingOptimizationLevel")
+    generate_pod!("nvinfer1::ComputeCapability")
+    generate_pod!("nvinfer1::APILanguage")
+    // NOTE: RNN enums commented out because IRNNv2Layer (deprecated) cannot be generated
+    // generate!("nvinfer1::RNNOperation")
+    // generate!("nvinfer1::RNNDirection")
+    // generate!("nvinfer1::RNNInputMode")
+    // generate!("nvinfer1::RNNGateType")
+    generate_pod!("nvinfer1::Weights")
+    generate_pod!("nvinfer1::Permutation")
+    generate!("nvinfer1::TensorFormat")
+    subclass!("nvinfer1::IProgressMonitor", ProgressMonitorHolder)
+    // NOTE: createInferBuilder/Runtime moved to logger_bridge.cpp (autocxx struggles with these)
+
+    // ONNX Parser
+    generate!("nvonnxparser::IParser")
+    // NOTE: createParser also moved to logger_bridge.cpp
+
+}
+
+// Logger bridge C functions
+extern "C" {
+    pub fn get_tensorrt_version() -> u32;
+    pub fn create_rust_logger_bridge(
+        callback: RustLogCallback,
         user_data: *mut std::ffi::c_void,
-        severity: i32,
-        msg: *const std::os::raw::c_char,
-    );
+    ) -> *mut RustLoggerBridge;
 
-    // Re-export TensorRT types from the private ffi module
-    pub mod nvinfer1 {
-        pub use super::ffi::nvinfer1::*;
+    pub fn destroy_rust_logger_bridge(logger: *mut RustLoggerBridge);
+
+    pub fn get_logger_interface(logger: *mut RustLoggerBridge) -> *mut std::ffi::c_void; // Returns ILogger*
+
+    // TensorRT factory functions (wrapped as simple C functions)
+    #[cfg(feature = "link_tensorrt_rtx")]
+    pub fn create_infer_builder(logger: *mut std::ffi::c_void) -> *mut std::ffi::c_void; // Returns IBuilder*
+
+    #[cfg(feature = "link_tensorrt_rtx")]
+    pub fn create_infer_runtime(logger: *mut std::ffi::c_void) -> *mut std::ffi::c_void; // Returns IRuntime*
+
+    // ONNX Parser factory function
+    #[cfg(feature = "link_tensorrt_onnxparser")]
+    pub fn create_onnx_parser(
+        network: *mut std::ffi::c_void,
+        logger: *mut std::ffi::c_void,
+    ) -> *mut std::ffi::c_void; // Returns IParser*
+                                //
+    pub fn network_add_concatenation(
+        network: *mut std::ffi::c_void,
+        inputs: *mut *mut std::ffi::c_void,
+        nb_inputs: i32,
+    ) -> *mut std::ffi::c_void;
+
+    // Parser methods
+    pub fn parser_parse(
+        parser: *mut std::ffi::c_void,
+        data: *const std::ffi::c_void,
+        size: usize,
+    ) -> bool;
+    pub fn parser_get_nb_errors(parser: *mut std::ffi::c_void) -> i32;
+    pub fn parser_get_error(parser: *mut std::ffi::c_void, index: i32) -> *mut std::ffi::c_void;
+    pub fn parser_error_desc(error: *mut std::ffi::c_void) -> *const std::os::raw::c_char;
+
+}
+
+// Opaque type for logger bridge
+#[repr(C)]
+pub struct RustLoggerBridge {
+    _unused: [u8; 0],
+}
+
+// Rust callback type for logger
+pub type RustLogCallback = unsafe extern "C" fn(
+    user_data: *mut std::ffi::c_void,
+    severity: i32,
+    msg: *const std::os::raw::c_char,
+);
+
+// Re-export TensorRT types from the private ffi module
+pub mod nvinfer1 {
+    pub use super::ffi::nvinfer1::*;
+}
+
+#[cfg(feature = "onnxparser")]
+pub mod nvonnxparser {
+    pub use super::ffi::nvonnxparser::*;
+}
+
+// Re-export Dims64 as Dims to match TensorRT's typedef
+pub use nvinfer1::Dims64;
+pub type Dims = Dims64;
+
+// Re-export InterpolationMode as ResizeMode to match TensorRT's typedef
+pub type ResizeMode = InterpolationMode;
+
+/// Helper methods for Dims construction (avoiding name collision with generated constructor)
+impl Dims64 {
+    /// Create a Dims from a slice of dimensions
+    pub fn from_slice(dims: &[i64]) -> Self {
+        let mut d = [0i64; 8];
+        let nb_dims = dims.len().min(8) as i32;
+        d[..nb_dims as usize].copy_from_slice(&dims[..nb_dims as usize]);
+        Self { nbDims: nb_dims, d }
     }
 
-    #[cfg(feature = "onnxparser")]
-    pub mod nvonnxparser {
-        pub use super::ffi::nvonnxparser::*;
-    }
-
-    // Re-export Dims64 as Dims to match TensorRT's typedef
-    pub use nvinfer1::Dims64;
-    pub type Dims = Dims64;
-
-    // Re-export InterpolationMode as ResizeMode to match TensorRT's typedef
-    pub use nvinfer1::InterpolationMode;
-    pub type ResizeMode = InterpolationMode;
-
-    /// Helper methods for Dims construction (avoiding name collision with generated constructor)
-    impl Dims64 {
-        /// Create a Dims from a slice of dimensions
-        pub fn from_slice(dims: &[i64]) -> Self {
-            let mut d = [0i64; 8];
-            let nb_dims = dims.len().min(8) as i32;
-            d[..nb_dims as usize].copy_from_slice(&dims[..nb_dims as usize]);
-            Self { nbDims: nb_dims, d }
-        }
-
-        /// Create a 2D Dims
-        pub fn new_2d(d0: i64, d1: i64) -> Self {
-            Self {
-                nbDims: 2,
-                d: [d0, d1, 0, 0, 0, 0, 0, 0],
-            }
-        }
-
-        /// Create a 3D Dims
-        pub fn new_3d(d0: i64, d1: i64, d2: i64) -> Self {
-            Self {
-                nbDims: 3,
-                d: [d0, d1, d2, 0, 0, 0, 0, 0],
-            }
-        }
-
-        /// Create a 4D Dims
-        pub fn new_4d(d0: i64, d1: i64, d2: i64, d3: i64) -> Self {
-            Self {
-                nbDims: 4,
-                d: [d0, d1, d2, d3, 0, 0, 0, 0],
-            }
+    /// Create a 2D Dims
+    pub fn new_2d(d0: i64, d1: i64) -> Self {
+        Self {
+            nbDims: 2,
+            d: [d0, d1, 0, 0, 0, 0, 0, 0],
         }
     }
 
-    // Re-export Weights
-    pub use nvinfer1::Weights;
-
-    use crate::ProgressMonitor;
-
-    /// Helper methods for Weights construction
-    impl nvinfer1::Weights {
-        /// Create a Weights with FLOAT data type
-        pub fn new_float(values_ptr: *const std::ffi::c_void, count_val: i64) -> Self {
-            Self {
-                type_: nvinfer1::DataType::kFLOAT,
-                values: values_ptr,
-                count: count_val,
-            }
+    /// Create a 3D Dims
+    pub fn new_3d(d0: i64, d1: i64, d2: i64) -> Self {
+        Self {
+            nbDims: 3,
+            d: [d0, d1, d2, 0, 0, 0, 0, 0],
         }
+    }
 
-        /// Create a Weights with specified data type
-        pub fn new_with_type(
-            data_type: nvinfer1::DataType,
-            values_ptr: *const std::ffi::c_void,
-            count_val: i64,
-        ) -> Self {
-            Self {
-                type_: data_type,
-                values: values_ptr,
-                count: count_val,
-            }
+    /// Create a 4D Dims
+    pub fn new_4d(d0: i64, d1: i64, d2: i64, d3: i64) -> Self {
+        Self {
+            nbDims: 4,
+            d: [d0, d1, d2, d3, 0, 0, 0, 0],
+        }
+    }
+}
+
+// Re-export Weights
+pub use nvinfer1::Weights;
+
+/// Helper methods for Weights construction
+impl nvinfer1::Weights {
+    /// Create a Weights with FLOAT data type
+    pub fn new_float(values_ptr: *const std::ffi::c_void, count_val: i64) -> Self {
+        Self {
+            type_: nvinfer1::DataType::kFLOAT,
+            values: values_ptr,
+            count: count_val,
+        }
+    }
+
+    /// Create a Weights with specified data type
+    pub fn new_with_type(
+        data_type: nvinfer1::DataType,
+        values_ptr: *const std::ffi::c_void,
+        count_val: i64,
+    ) -> Self {
+        Self {
+            type_: data_type,
+            values: values_ptr,
+            count: count_val,
         }
     }
 }
@@ -398,19 +387,3 @@ pub trait ProgressMonitor {
     fn step_complete(&mut self, phase_name: &str, step: i32) -> bool;
     fn phase_finish(&mut self, phase_name: &str);
 }
-
-//#[subclass]
-//#[derive(Default)]
-//pub struct ProgressMonitorHolder;
-//{
-////inner: Box<dyn ProgressMonitor>,
-//}
-
-//impl ProgressMonitorHolder {
-////fn new(inner: Box<dyn ProgressMonitor>) -> Self {
-////Self { inner }
-////}
-//}
-//impl IProgressMonitor_methods for ProgressMonitorHolder {}
-
-pub use real_bindings::*;
