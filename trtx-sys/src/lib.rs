@@ -30,7 +30,9 @@
 #![allow(clippy::all)]
 
 mod interfaces;
-pub use crate::interfaces::GpuAllocator;
+pub use crate::interfaces::{AllocateGpu, GpuAllocator};
+pub use crate::interfaces::{DebugListener, ProcessDebugTensor};
+pub use crate::interfaces::{ErrorRecorder, RecordError};
 pub use crate::interfaces::{HandleProgress, ProgressMonitor};
 
 #[allow(warnings)]
@@ -83,12 +85,14 @@ better_enum!(ScatterMode);
 better_enum!(UnaryOperation);
 better_enum!(TopKOperation);
 better_enum!(LayerInformationFormat);
+better_enum!(TensorLocation);
 
 use autocxx::prelude::*;
 
 include_cpp! {
     #include "NvInfer.h"
     #include "NvInferRuntime.h"
+    #include "NvInferRuntimeBase.h"
     #include "NvOnnxParser.h"
 
     safety!(unsafe_ffi)
@@ -190,9 +194,12 @@ include_cpp! {
     generate!("nvinfer1::TensorFormat")
     subclass!("nvinfer1::IProgressMonitor", ProgressMonitor)
     subclass!("nvinfer1::IGpuAllocator", GpuAllocator)
+    subclass!("nvinfer1::IErrorRecorder", ErrorRecorder)
+    subclass!("nvinfer1::IDebugListener", DebugListener)
     // NOTE: createInferBuilder/Runtime moved to logger_bridge.cpp (autocxx struggles with these)
 
     // ONNX Parser
+    //generate_pod!("nvinfer1::ErrorCode")
     generate!("nvonnxparser::IParser")
     // NOTE: createParser also moved to logger_bridge.cpp
 

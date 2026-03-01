@@ -1,13 +1,16 @@
-use crate::ffi;
+use crate::{enums::ErrorCode, ffi, DataType, Dims64, TensorLocation};
 use ::autocxx::subclass::*;
-use std::ffi::CStr;
+use std::{
+    ffi::{c_char, CStr},
+    ptr::null_mut,
+};
 
 use crate::nvinfer1;
 
 /// Rust version of the [nvinfer1::IProgressMonitor]
 ///
 /// Put into a [ProgressMonitor] to subclass [nvinfer1::IProgressMonitor]
-pub trait HandleProgress {
+pub trait HandleProgress: Send + Sync {
     /// See [nvinfer::IProgressMonitor::phaseStart]
     fn phase_start(&mut self, phase_name: &str, parent_phase: &str, num_steps: i32);
     /// See [nvinfer::IProgressMonitor::stepComplete]. Return whether to continue building or cancel
@@ -87,10 +90,12 @@ impl GpuAllocator {
 
 impl nvinfer1::IGpuAllocator_methods for GpuAllocator {
     fn allocate(&mut self, size: u64, alignment: u64, flags: u32) -> *mut autocxx::c_void {
-        self.inner
-            .as_mut()
-            .unwrap()
-            .allocate(size, alignment, flags)
+        unsafe {
+            self.inner
+                .as_mut()
+                .unwrap()
+                .allocate_async(size, alignment, flags, null_mut())
+        }
     }
     unsafe fn allocateAsync(
         &mut self,
@@ -121,7 +126,12 @@ impl nvinfer1::IGpuAllocator_methods for GpuAllocator {
     }
 
     unsafe fn deallocate(&mut self, data: *mut autocxx::c_void) -> bool {
-        unsafe { self.inner.as_mut().unwrap().deallocate(data) }
+        unsafe {
+            self.inner
+                .as_mut()
+                .unwrap()
+                .deallocate_async(data, null_mut())
+        }
     }
     unsafe fn deallocateAsync(
         &mut self,
@@ -135,8 +145,10 @@ impl nvinfer1::IGpuAllocator_methods for GpuAllocator {
     }
 }
 
-pub trait AllocateGpu {
-    fn allocate(&mut self, size: u64, alignment: u64, flags: u32) -> *mut autocxx::c_void;
+pub trait AllocateGpu: Send + Sync {
+    // we omit the following deprecated methods
+    //fn allocate(&mut self, size: u64, alignment: u64, flags: u32) -> *mut autocxx::c_void;
+    //unsafe fn deallocate(&mut self, data: *mut autocxx::c_void) -> bool;
     unsafe fn allocate_async(
         &mut self,
         size: u64,
@@ -150,10 +162,128 @@ pub trait AllocateGpu {
         alignment: u64,
         new_size: u64,
     ) -> *mut autocxx::c_void;
-    unsafe fn deallocate(&mut self, data: *mut autocxx::c_void) -> bool;
     unsafe fn deallocate_async(
         &mut self,
         data: *mut autocxx::c_void,
         cuda_stream: *mut crate::ffi::CUstream_st,
+    ) -> bool;
+}
+
+#[subclass]
+#[derive(Default)]
+pub struct ErrorRecorder {
+    inner: Option<Box<dyn RecordError>>,
+}
+
+impl ErrorRecorder {
+    pub fn new(inner: Box<dyn RecordError>) -> Self {
+        Self {
+            inner: Some(inner),
+            ..Default::default()
+        }
+    }
+}
+
+impl nvinfer1::IErrorRecorder_methods for ErrorRecorder {
+    fn getNbErrors(&self) -> i32 {
+        self.inner.as_ref().unwrap().nb_errors()
+    }
+    fn getErrorCode(&self, errorIdx: i32) -> i32 {
+        self.inner.as_ref().unwrap().error_code(errorIdx) as i32
+    }
+    fn getErrorDesc(&self, errorIdx: i32) -> *const ::std::os::raw::c_char {
+        self.inner.as_ref().unwrap().error_desc(errorIdx).as_ptr()
+    }
+    fn hasOverflowed(&self) -> bool {
+        self.inner.as_ref().unwrap().has_overflowed()
+    }
+    fn clear(&mut self) {
+        self.inner.as_mut().unwrap().clear()
+    }
+    unsafe fn reportError(&mut self, val: i32, desc: *const ::std::os::raw::c_char) -> bool {
+        let desc = CStr::from_ptr(desc);
+        self.inner.as_mut().unwrap().report_error(
+            match val {
+                0 => ErrorCode::kSUCCESS,
+                1 => ErrorCode::kUNSPECIFIED_ERROR,
+                2 => ErrorCode::kINTERNAL_ERROR,
+                3 => ErrorCode::kINVALID_ARGUMENT,
+                4 => ErrorCode::kINVALID_CONFIG,
+                5 => ErrorCode::kFAILED_ALLOCATION,
+                6 => ErrorCode::kFAILED_INITIALIZATION,
+                7 => ErrorCode::kFAILED_EXECUTION,
+                8 => ErrorCode::kFAILED_COMPUTATION,
+                9 => ErrorCode::kINVALID_STATE,
+                10 => ErrorCode::kUNSUPPORTED_STATE,
+                _ => ErrorCode::kUNSPECIFIED_ERROR,
+            },
+            &desc.to_string_lossy(),
+        )
+    }
+    fn incRefCount(&mut self) -> i32 {
+        self.inner.as_mut().unwrap().inc_ref_count()
+    }
+    fn decRefCount(&mut self) -> i32 {
+        self.inner.as_mut().unwrap().dec_ref_count()
+    }
+}
+
+pub trait RecordError: Send + Sync {
+    fn nb_errors(&self) -> i32;
+    fn error_code(&self, error_idx: i32) -> ErrorCode;
+    fn error_desc(&self, error_idx: i32) -> &CStr;
+    fn has_overflowed(&self) -> bool;
+    fn clear(&mut self);
+    unsafe fn report_error(&mut self, val: ErrorCode, desc: &str) -> bool;
+    fn inc_ref_count(&mut self) -> i32;
+    fn dec_ref_count(&mut self) -> i32;
+}
+
+#[subclass]
+#[derive(Default)]
+pub struct DebugListener {
+    inner: Option<Box<dyn ProcessDebugTensor>>,
+}
+
+impl DebugListener {
+    pub fn new(inner: Box<dyn ProcessDebugTensor>) -> Self {
+        Self {
+            inner: Some(inner),
+            ..Default::default()
+        }
+    }
+}
+
+impl nvinfer1::IDebugListener_methods for DebugListener {
+    unsafe fn processDebugTensor(
+        &mut self,
+        addr: *const autocxx::c_void,
+        location: nvinfer1::TensorLocation,
+        type_: nvinfer1::DataType,
+        shape: &Dims64,
+        name: *const c_char,
+        stream: *mut ffi::CUstream_st,
+    ) -> bool {
+        let name = CStr::from_ptr(name);
+        self.inner.as_mut().unwrap().process_debug_tensor(
+            addr,
+            location.into(),
+            type_.into(),
+            shape,
+            &name.to_string_lossy(),
+            stream,
+        )
+    }
+}
+
+pub trait ProcessDebugTensor: Send + Sync {
+    unsafe fn process_debug_tensor(
+        &mut self,
+        addr: *const autocxx::c_void,
+        location: TensorLocation,
+        type_: DataType,
+        shape: &Dims64,
+        name: &str,
+        stream: *mut ffi::CUstream_st,
     ) -> bool;
 }

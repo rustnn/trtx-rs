@@ -31,6 +31,12 @@ fn prepare_transformed_headers(trt_dir: &Path, out_dir: &Path) -> PathBuf {
                 // workaround autocxx limitation where there can't be the same type in different
                 // namespaces
                 .replace("namespace v_1_0", "inline namespace v_1_0")
+                .replace("namespace impl", "inline namespace impl")
+                .replace("ErrorCode getErrorCode", "int32_t getErrorCode")
+                .replace(
+                    "bool reportError(ErrorCode val",
+                    "bool reportError(int32_t val",
+                )
                 .replace("noexcept", "")
                 .replace("//!", "///")
                 .replace(r"\returns", " - Returns ");
@@ -87,9 +93,11 @@ fn generate_enum_bindings(crate_root: &str, out_path: &Path) {
         ".*Platform",
         ".*Level",
         ".*Capability",
+        ".*ErrorCode",
         ".*Flag",
         ".*Selector",
         ".*Transformation",
+        ".*Location",
     ] {
         builder = builder.allowlist_type(pattern);
     }
