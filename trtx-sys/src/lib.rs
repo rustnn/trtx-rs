@@ -87,6 +87,10 @@ use autocxx::subclass::*;
 
 #[subclass]
 #[derive(Default)]
+/// Subclasses [nvinfer1::IProgressMonitor]
+///
+/// Construct a object with a dyn [ProgressMonitor] to implement
+/// [nvinfer1::IProgressMonitor] from Rust
 pub struct ProgressMonitorHolder {
     inner: Option<Box<dyn ProgressMonitor>>,
 }
@@ -124,6 +128,7 @@ impl nvinfer1::IProgressMonitor_methods for ProgressMonitorHolder {
             .as_mut()
             .expect("construction only possible with Some")
             .step_complete(&phase_name.to_string_lossy(), step)
+            .is_continue()
     }
     unsafe fn phaseFinish(&mut self, phaseName: *const ::std::os::raw::c_char) {
         let phase_name = CStr::from_ptr(phaseName);
@@ -382,8 +387,14 @@ impl nvinfer1::Weights {
     }
 }
 
+/// Rust version of the [nvinfer1::IProgressMonitor]
+///
+/// Put into a [ProgressMonitorHolder] to subclass [nvinfer1::IProgressMonitor]
 pub trait ProgressMonitor {
+    /// See [nvinfer::IProgressMonitor::phaseStart]
     fn phase_start(&mut self, phase_name: &str, parent_phase: &str, num_steps: i32);
-    fn step_complete(&mut self, phase_name: &str, step: i32) -> bool;
+    /// See [nvinfer::IProgressMonitor::stepComplete]. Return whether to continue building or cancel
+    fn step_complete(&mut self, phase_name: &str, step: i32) -> std::ops::ControlFlow<()>;
+    /// See [nvinfer::IProgressMonitor::phaseFinish]
     fn phase_finish(&mut self, phase_name: &str);
 }
