@@ -4,8 +4,8 @@ use crate::Error;
 use crate::Result;
 use cxx::UniquePtr;
 use trtx_sys::nvinfer1::{self, IBuilderConfig};
+use trtx_sys::HandleProgress;
 use trtx_sys::ProgressMonitor;
-use trtx_sys::ProgressMonitorHolder;
 use trtx_sys::{
     BuilderFlag, ComputeCapability, DeviceType, EngineCapability, HardwareCompatibilityLevel,
     MemoryPoolType, PreviewFeature, ProfilingVerbosity, RuntimePlatform, TilingOptimizationLevel,
@@ -14,7 +14,7 @@ use trtx_sys::{
 /// Builder configuration (real mode)
 pub struct BuilderConfig {
     pub(crate) inner: UniquePtr<IBuilderConfig>,
-    progress_monitor: Option<ProgressMonitorHolder>,
+    progress_monitor: Option<ProgressMonitor>,
 }
 
 impl BuilderConfig {
@@ -30,8 +30,8 @@ impl BuilderConfig {
     }
 
     /// See [IBuilderConfig::setProgressMonitor]
-    pub fn set_progress_monitor(&mut self, progress_monitor: Box<dyn ProgressMonitor>) {
-        self.progress_monitor = Some(ProgressMonitorHolder::new(progress_monitor));
+    pub fn set_progress_monitor(&mut self, progress_monitor: Box<dyn HandleProgress>) {
+        self.progress_monitor = Some(ProgressMonitor::new(progress_monitor));
         #[cfg(not(feature = "mock"))]
         unsafe {
             self.inner.pin_mut().setProgressMonitor(std::pin::Pin::<

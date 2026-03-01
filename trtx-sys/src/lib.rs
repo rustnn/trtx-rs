@@ -29,6 +29,10 @@
 #![allow(non_snake_case)]
 #![allow(clippy::all)]
 
+mod interfaces;
+pub use crate::interfaces::GpuAllocator;
+pub use crate::interfaces::{HandleProgress, ProgressMonitor};
+
 #[allow(warnings)]
 mod enums {
     include!(concat!(env!("OUT_DIR"), "/enums.rs"));
@@ -80,64 +84,7 @@ better_enum!(UnaryOperation);
 better_enum!(TopKOperation);
 better_enum!(LayerInformationFormat);
 
-use std::ffi::CStr;
-
 use autocxx::prelude::*;
-use autocxx::subclass::*;
-
-#[subclass]
-#[derive(Default)]
-/// Subclasses [nvinfer1::IProgressMonitor]
-///
-/// Construct a object with a dyn [ProgressMonitor] to implement
-/// [nvinfer1::IProgressMonitor] from Rust
-pub struct ProgressMonitorHolder {
-    inner: Option<Box<dyn ProgressMonitor>>,
-}
-
-impl ProgressMonitorHolder {
-    pub fn new(inner: Box<dyn ProgressMonitor>) -> Self {
-        Self {
-            inner: Some(inner),
-            ..Default::default()
-        }
-    }
-}
-
-impl nvinfer1::IProgressMonitor_methods for ProgressMonitorHolder {
-    unsafe fn phaseStart(
-        &mut self,
-        phaseName: *const ::std::os::raw::c_char,
-        parentPhase: *const ::std::os::raw::c_char,
-        nbSteps: i32,
-    ) {
-        let phase_name = CStr::from_ptr(phaseName);
-        let parent_phase = CStr::from_ptr(parentPhase);
-        self.inner
-            .as_mut()
-            .expect("construction only possible with Some")
-            .phase_start(
-                &phase_name.to_string_lossy(),
-                &parent_phase.to_string_lossy(),
-                nbSteps,
-            );
-    }
-    unsafe fn stepComplete(&mut self, phaseName: *const ::std::os::raw::c_char, step: i32) -> bool {
-        let phase_name = CStr::from_ptr(phaseName);
-        self.inner
-            .as_mut()
-            .expect("construction only possible with Some")
-            .step_complete(&phase_name.to_string_lossy(), step)
-            .is_continue()
-    }
-    unsafe fn phaseFinish(&mut self, phaseName: *const ::std::os::raw::c_char) {
-        let phase_name = CStr::from_ptr(phaseName);
-        self.inner
-            .as_mut()
-            .expect("construction only possible with Some")
-            .phase_finish(&phase_name.to_string_lossy());
-    }
-}
 
 include_cpp! {
     #include "NvInfer.h"
@@ -241,7 +188,8 @@ include_cpp! {
     generate_pod!("nvinfer1::Weights")
     generate_pod!("nvinfer1::Permutation")
     generate!("nvinfer1::TensorFormat")
-    subclass!("nvinfer1::IProgressMonitor", ProgressMonitorHolder)
+    subclass!("nvinfer1::IProgressMonitor", ProgressMonitor)
+    subclass!("nvinfer1::IGpuAllocator", GpuAllocator)
     // NOTE: createInferBuilder/Runtime moved to logger_bridge.cpp (autocxx struggles with these)
 
     // ONNX Parser
@@ -385,16 +333,4 @@ impl nvinfer1::Weights {
             count: count_val,
         }
     }
-}
-
-/// Rust version of the [nvinfer1::IProgressMonitor]
-///
-/// Put into a [ProgressMonitorHolder] to subclass [nvinfer1::IProgressMonitor]
-pub trait ProgressMonitor {
-    /// See [nvinfer::IProgressMonitor::phaseStart]
-    fn phase_start(&mut self, phase_name: &str, parent_phase: &str, num_steps: i32);
-    /// See [nvinfer::IProgressMonitor::stepComplete]. Return whether to continue building or cancel
-    fn step_complete(&mut self, phase_name: &str, step: i32) -> std::ops::ControlFlow<()>;
-    /// See [nvinfer::IProgressMonitor::phaseFinish]
-    fn phase_finish(&mut self, phase_name: &str);
 }
