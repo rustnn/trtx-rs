@@ -34,6 +34,21 @@ impl LogHandler for StderrLogger {
     }
 }
 
+#[derive(Debug)]
+pub struct LogCrateLogger;
+
+impl LogHandler for LogCrateLogger {
+    fn log(&self, severity: Severity, message: &str) {
+        match severity {
+            Severity::InternalError => log::error!(target: "trtx::tensorrt", "{message}"),
+            Severity::Error => log::error!(target: "trtx::tensorrt", "{message}"),
+            Severity::Warning => log::warn!(target: "trtx::tensorrt", "{message}"),
+            Severity::Info => log::info!(target: "trtx::tensorrt", "{message}"),
+            Severity::Verbose => log::debug!(target: "trtx::tensorrt", "{message}"),
+        }
+    }
+}
+
 #[cfg(feature = "mock")]
 pub use crate::mock::logger::Logger;
 #[cfg(not(feature = "mock"))]

@@ -35,6 +35,10 @@ impl Logger {
         Self::new(crate::logger::StderrLogger)
     }
 
+    pub fn log_crate() -> Result<Self> {
+        Self::new(crate::logger::LogCrateLogger)
+    }
+
     pub(crate) fn as_logger_ptr(&self) -> *mut c_void {
         unsafe { trtx_sys::get_logger_interface(self.bridge) }
     }

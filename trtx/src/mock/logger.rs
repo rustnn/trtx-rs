@@ -30,6 +30,10 @@ impl Logger {
         Self::new(crate::logger::StderrLogger)
     }
 
+    pub fn log_crate() -> Result<Self> {
+        Self::new(crate::logger::LogCrateLogger)
+    }
+
     pub(crate) fn as_ptr(&self) -> *mut trtx_sys::TrtxLogger {
         self.inner
     }
