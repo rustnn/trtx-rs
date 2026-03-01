@@ -4,6 +4,8 @@ use crate::Error;
 use crate::Result;
 use cxx::UniquePtr;
 use trtx_sys::nvinfer1::{self, IBuilderConfig};
+use trtx_sys::ProgressMonitor;
+use trtx_sys::ProgressMonitorHolder;
 use trtx_sys::{
     BuilderFlag, ComputeCapability, DeviceType, EngineCapability, HardwareCompatibilityLevel,
     MemoryPoolType, PreviewFeature, ProfilingVerbosity, RuntimePlatform, TilingOptimizationLevel,
@@ -12,6 +14,7 @@ use trtx_sys::{
 /// Builder configuration (real mode)
 pub struct BuilderConfig {
     pub(crate) inner: UniquePtr<IBuilderConfig>,
+    progress_monitor: Option<ProgressMonitorHolder>,
 }
 
 impl BuilderConfig {
@@ -22,8 +25,23 @@ impl BuilderConfig {
         }
         Ok(Self {
             inner: unsafe { UniquePtr::from_raw(builder_config) },
+            progress_monitor: None,
         })
     }
+
+    /// See [IBuilderConfig::setProgressMonitor]
+    pub fn set_progress_monitor(&mut self, progress_monitor: Box<dyn ProgressMonitor>) {
+        self.progress_monitor = Some(ProgressMonitorHolder::new(progress_monitor));
+        #[cfg(not(feature = "mock"))]
+        unsafe {
+            self.inner.pin_mut().setProgressMonitor(std::pin::Pin::<
+                &mut trtx_sys::nvinfer1::IProgressMonitor,
+            >::into_inner_unchecked(
+                self.progress_monitor.as_mut().unwrap().pin_mut(),
+            ))
+        };
+    }
+
     /// See [IBuilderConfig::setMemoryPoolLimit]
     pub fn set_memory_pool_limit(&mut self, pool: MemoryPoolType, size: usize) {
         #[cfg(not(feature = "mock"))]
@@ -356,4 +374,12 @@ impl BuilderConfig {
             ComputeCapability::kNONE
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_progress_monitor() {}
 }

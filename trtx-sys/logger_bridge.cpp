@@ -207,6 +207,22 @@ const char *parser_error_desc(void *error) {
   }
 }
 
+void* network_add_concatenation(void* network, void** inputs, int32_t nb_inputs) {
+    if (!network || !inputs || nb_inputs <= 0) return nullptr;
+    try {
+        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
+        std::vector<nvinfer1::ITensor*> tensors;
+        tensors.reserve(nb_inputs);
+        for (int32_t i = 0; i < nb_inputs; ++i) {
+            tensors.push_back(static_cast<nvinfer1::ITensor*>(inputs[i]));
+        }
+        auto* layer = inetwork->addConcatenation(tensors.data(), nb_inputs);
+        return layer; // Return layer, not output tensor
+    } catch (...) {
+        return nullptr;
+    }
+}
+
 uint32_t get_tensorrt_version() { return NV_TENSORRT_VERSION; }
 
 } // extern "C"

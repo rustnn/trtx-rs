@@ -82,7 +82,63 @@ better_enum!(LayerInformationFormat);
 
 // Real mode uses autocxx
 pub mod real_bindings {
+    use std::ffi::CStr;
+
     use autocxx::prelude::*;
+    use autocxx::subclass::*;
+
+    #[subclass]
+    #[derive(Default)]
+    pub struct ProgressMonitorHolder {
+        inner: Option<Box<dyn ProgressMonitor>>,
+    }
+
+    impl ProgressMonitorHolder {
+        pub fn new(inner: Box<dyn ProgressMonitor>) -> Self {
+            Self {
+                inner: Some(inner),
+                ..Default::default()
+            }
+        }
+    }
+
+    impl nvinfer1::IProgressMonitor_methods for ProgressMonitorHolder {
+        unsafe fn phaseStart(
+            &mut self,
+            phaseName: *const ::std::os::raw::c_char,
+            parentPhase: *const ::std::os::raw::c_char,
+            nbSteps: i32,
+        ) {
+            let phase_name = CStr::from_ptr(phaseName);
+            let parent_phase = CStr::from_ptr(parentPhase);
+            self.inner
+                .as_mut()
+                .expect("construction only possible with Some")
+                .phase_start(
+                    &phase_name.to_string_lossy(),
+                    &parent_phase.to_string_lossy(),
+                    nbSteps,
+                );
+        }
+        unsafe fn stepComplete(
+            &mut self,
+            phaseName: *const ::std::os::raw::c_char,
+            step: i32,
+        ) -> bool {
+            let phase_name = CStr::from_ptr(phaseName);
+            self.inner
+                .as_mut()
+                .expect("construction only possible with Some")
+                .step_complete(&phase_name.to_string_lossy(), step)
+        }
+        unsafe fn phaseFinish(&mut self, phaseName: *const ::std::os::raw::c_char) {
+            let phase_name = CStr::from_ptr(phaseName);
+            self.inner
+                .as_mut()
+                .expect("construction only possible with Some")
+                .phase_finish(&phase_name.to_string_lossy());
+        }
+    }
 
     include_cpp! {
         #include "NvInfer.h"
@@ -186,7 +242,7 @@ pub mod real_bindings {
         generate_pod!("nvinfer1::Weights")
         generate_pod!("nvinfer1::Permutation")
         generate!("nvinfer1::TensorFormat")
-
+        subclass!("nvinfer1::IProgressMonitor", ProgressMonitorHolder)
         // NOTE: createInferBuilder/Runtime moved to logger_bridge.cpp (autocxx struggles with these)
 
         // ONNX Parser
@@ -220,123 +276,12 @@ pub mod real_bindings {
             network: *mut std::ffi::c_void,
             logger: *mut std::ffi::c_void,
         ) -> *mut std::ffi::c_void; // Returns IParser*
-
-        // Builder methods
-        pub fn builder_create_network_v2(
-            builder: *mut std::ffi::c_void,
-            flags: u32,
-        ) -> *mut std::ffi::c_void;
-
-        pub fn builder_create_config(builder: *mut std::ffi::c_void) -> *mut std::ffi::c_void;
-
-        pub fn builder_build_serialized_network(
-            builder: *mut std::ffi::c_void,
-            network: *mut std::ffi::c_void,
-            config: *mut std::ffi::c_void,
-            out_size: *mut usize,
-        ) -> *mut std::ffi::c_void;
-
-        pub fn builder_config_set_memory_pool_limit(
-            config: *mut std::ffi::c_void,
-            pool_type: i32,
-            limit: usize,
-        );
-
-        // Network methods
-        // network_add_input - REMOVED - Using direct autocxx
-        // network_add_convolution - REMOVED - Using direct autocxx
-        // network_add_constant - REMOVED - Using direct autocxx
-        // network_add_scale - REMOVED - Using direct autocxx
-
-        pub fn network_mark_output(
-            network: *mut std::ffi::c_void,
-            tensor: *mut std::ffi::c_void,
-        ) -> bool;
-
-        pub fn network_get_nb_inputs(network: *mut std::ffi::c_void) -> i32;
-        pub fn network_get_nb_outputs(network: *mut std::ffi::c_void) -> i32;
-        pub fn network_get_input(
-            network: *mut std::ffi::c_void,
-            index: i32,
-        ) -> *mut std::ffi::c_void;
-        pub fn network_get_output(
-            network: *mut std::ffi::c_void,
-            index: i32,
-        ) -> *mut std::ffi::c_void;
-
-        // network_add_activation - REMOVED - Using direct autocxx
-
-        // network_add_pooling - REMOVED - Using direct autocxx
-
-        // network_add_elementwise - REMOVED - Using direct autocxx
-
-        // network_add_shuffle - REMOVED - Using direct autocxx
-
+                                    //
         pub fn network_add_concatenation(
             network: *mut std::ffi::c_void,
             inputs: *mut *mut std::ffi::c_void,
             nb_inputs: i32,
         ) -> *mut std::ffi::c_void;
-
-        // network_add_reduce - REMOVED - Using direct autocxx
-
-        // network_add_slice - REMOVED - Using direct autocxx
-
-        // network_add_resize - REMOVED - Using direct autocxx
-
-        // network_add_topk - REMOVED - Using direct autocxx
-
-        // network_add_gather - REMOVED - Using direct autocxx
-
-        // network_add_select - REMOVED - Using direct autocxx
-
-        pub fn network_add_assertion(
-            network: *mut std::ffi::c_void,
-            condition: *mut std::ffi::c_void,
-            message: *const std::os::raw::c_char,
-        ) -> *mut std::ffi::c_void;
-
-        pub fn network_add_loop(network: *mut std::ffi::c_void) -> *mut std::ffi::c_void;
-
-        pub fn network_add_if_conditional(network: *mut std::ffi::c_void) -> *mut std::ffi::c_void;
-
-        // Tensor methods
-        pub fn tensor_get_name(tensor: *mut std::ffi::c_void) -> *const std::os::raw::c_char;
-        pub fn tensor_set_name(tensor: *mut std::ffi::c_void, name: *const std::os::raw::c_char);
-        pub fn tensor_get_dimensions(
-            tensor: *mut std::ffi::c_void,
-            dims: *mut i32,
-            nb_dims: *mut i32,
-        ) -> *mut std::ffi::c_void;
-        pub fn tensor_get_type(tensor: *mut std::ffi::c_void) -> i32;
-
-        // Runtime methods
-        pub fn runtime_deserialize_cuda_engine(
-            runtime: *mut std::ffi::c_void,
-            data: *const std::ffi::c_void,
-            size: usize,
-        ) -> *mut std::ffi::c_void;
-
-        // Engine methods
-        pub fn engine_get_nb_io_tensors(engine: *mut std::ffi::c_void) -> i32;
-        pub fn engine_get_tensor_name(
-            engine: *mut std::ffi::c_void,
-            index: i32,
-        ) -> *const std::os::raw::c_char;
-        pub fn engine_create_execution_context(
-            engine: *mut std::ffi::c_void,
-        ) -> *mut std::ffi::c_void;
-
-        // ExecutionContext methods
-        pub fn context_set_tensor_address(
-            context: *mut std::ffi::c_void,
-            name: *const std::os::raw::c_char,
-            data: *mut std::ffi::c_void,
-        ) -> bool;
-        pub fn context_enqueue_v3(
-            context: *mut std::ffi::c_void,
-            stream: *mut std::ffi::c_void,
-        ) -> bool;
 
         // Parser methods
         pub fn parser_parse(
@@ -349,15 +294,6 @@ pub mod real_bindings {
             -> *mut std::ffi::c_void;
         pub fn parser_error_desc(error: *mut std::ffi::c_void) -> *const std::os::raw::c_char;
 
-        // Destruction methods
-        pub fn delete_builder(builder: *mut std::ffi::c_void);
-        pub fn delete_network(network: *mut std::ffi::c_void);
-        pub fn delete_config(config: *mut std::ffi::c_void);
-        pub fn delete_runtime(runtime: *mut std::ffi::c_void);
-        pub fn delete_engine(engine: *mut std::ffi::c_void);
-        pub fn delete_engine_inspector(inspector: *mut std::ffi::c_void);
-        pub fn delete_context(context: *mut std::ffi::c_void);
-        pub fn delete_parser(parser: *mut std::ffi::c_void);
     }
 
     // Opaque type for logger bridge
@@ -429,6 +365,8 @@ pub mod real_bindings {
     // Re-export Weights
     pub use nvinfer1::Weights;
 
+    use crate::ProgressMonitor;
+
     /// Helper methods for Weights construction
     impl nvinfer1::Weights {
         /// Create a Weights with FLOAT data type
@@ -454,5 +392,25 @@ pub mod real_bindings {
         }
     }
 }
+
+pub trait ProgressMonitor {
+    fn phase_start(&mut self, phase_name: &str, parent_phase: &str, num_steps: i32);
+    fn step_complete(&mut self, phase_name: &str, step: i32) -> bool;
+    fn phase_finish(&mut self, phase_name: &str);
+}
+
+//#[subclass]
+//#[derive(Default)]
+//pub struct ProgressMonitorHolder;
+//{
+////inner: Box<dyn ProgressMonitor>,
+//}
+
+//impl ProgressMonitorHolder {
+////fn new(inner: Box<dyn ProgressMonitor>) -> Self {
+////Self { inner }
+////}
+//}
+//impl IProgressMonitor_methods for ProgressMonitorHolder {}
 
 pub use real_bindings::*;
