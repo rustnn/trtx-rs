@@ -12,7 +12,7 @@ pub struct HostMemory<'builder> {
 
 impl<'builder> HostMemory<'builder> {
     /// assumes ownership of ref
-    pub(crate) unsafe fn from_raw_ref(ptr: *mut nvinfer1::IHostMemory) -> Self {
+    pub(crate) unsafe fn from_raw(ptr: *mut nvinfer1::IHostMemory) -> Self {
         unsafe {
             HostMemory {
                 inner: UniquePtr::from_raw(ptr),

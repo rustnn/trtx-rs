@@ -7,6 +7,11 @@ use trtx_sys::LayerType;
 /// Result type for TensorRT-RTX operations
 pub type Result<T> = std::result::Result<T, Error>;
 
+#[derive(Debug, Eq, PartialEq)]
+pub enum PropertySetAttempt {
+    SerializationFlag,
+}
+
 /// Errors that can occur when using TensorRT-RTX
 #[derive(Debug, Error)]
 pub enum Error {
@@ -63,6 +68,9 @@ pub enum Error {
 
     #[error("Failed to create BuilderConfig")]
     BuilderConfigCreationFailed,
+
+    #[error("Failed to set property: {0:?}")]
+    FailedToSetProperty(PropertySetAttempt),
 }
 
 impl<T> From<std::sync::PoisonError<T>> for Error {

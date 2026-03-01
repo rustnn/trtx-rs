@@ -101,6 +101,6 @@ impl<'builder> Builder<'builder> {
         }
         .ok_or_else(|| Error::Runtime("Failed to build serialized network".to_string()))?;
 
-        Ok(unsafe { HostMemory::from_raw_ref(serialized_engine) })
+        Ok(unsafe { HostMemory::from_raw(serialized_engine) })
     }
 }

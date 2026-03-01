@@ -1,8 +1,55 @@
 use std::{ffi::CStr, marker::PhantomData};
 
-use crate::{real::engine_inspector::EngineInspector, Error, ExecutionContext, Result};
+use crate::error::PropertySetAttempt;
+use crate::{
+    real::{engine_inspector::EngineInspector, host_memory::HostMemory},
+    Error, ExecutionContext, Result,
+};
 use autocxx::cxx::UniquePtr;
-use trtx_sys::nvinfer1::{self, DataType, ICudaEngine, TensorIOMode};
+use trtx_sys::{
+    nvinfer1::{self, DataType, ICudaEngine, TensorIOMode},
+    SerializationFlag,
+};
+
+pub struct SerializationConfig<'cuda_engine> {
+    inner: UniquePtr<nvinfer1::ISerializationConfig>,
+    _runtime: PhantomData<&'cuda_engine nvinfer1::ICudaEngine>,
+}
+impl SerializationConfig<'_> {
+    pub fn get_flag(&self, flag: SerializationFlag) -> bool {
+        self.inner.getFlag(flag.into())
+    }
+    pub fn get_flags(&self) -> u32 {
+        self.inner.getFlags()
+    }
+    pub fn set_flag(&mut self, flag: SerializationFlag) -> Result<()> {
+        if self.inner.pin_mut().setFlag(flag.into()) {
+            Ok(())
+        } else {
+            Err(Error::FailedToSetProperty(
+                PropertySetAttempt::SerializationFlag,
+            ))
+        }
+    }
+    pub fn set_flags(&mut self, flags: u32) -> Result<()> {
+        if self.inner.pin_mut().setFlags(flags) {
+            Ok(())
+        } else {
+            Err(Error::FailedToSetProperty(
+                PropertySetAttempt::SerializationFlag,
+            ))
+        }
+    }
+    pub fn clear_flag(&mut self, flag: SerializationFlag) -> Result<()> {
+        if self.inner.pin_mut().clearFlag(flag.into()) {
+            Ok(())
+        } else {
+            Err(Error::FailedToSetProperty(
+                PropertySetAttempt::SerializationFlag,
+            ))
+        }
+    }
+}
 
 pub struct CudaEngine<'runtime> {
     inner: UniquePtr<ICudaEngine>,
@@ -249,5 +296,40 @@ impl<'engine> CudaEngine<'engine> {
         }
         #[cfg(feature = "mock")]
         Ok(unsafe { ExecutionContext::from_ptr(std::ptr::null_mut())? })
+    }
+
+    pub fn create_serialization_config(&mut self) -> Result<SerializationConfig<'engine>> {
+        let config = unsafe {
+            self.inner
+                .pin_mut()
+                .createSerializationConfig()
+                .as_mut()
+                .ok_or_else(|| Error::Runtime("SerializationConfig creation failed".to_string()))?
+        };
+        Ok(SerializationConfig {
+            inner: unsafe { UniquePtr::from_raw(config) },
+            _runtime: Default::default(),
+        })
+    }
+
+    // TODO: highlevel type for ISerializationConfig
+    /// See [nvinfer1::ICudaEngine::serializeWithConfig]
+    pub fn serialize_with_config(
+        &'_ self,
+        config: &mut SerializationConfig,
+    ) -> Result<HostMemory<'engine>> {
+        if !cfg!(feature = "mock") {
+            let host_mem = unsafe {
+                self.inner
+                    .serializeWithConfig(config.inner.pin_mut())
+                    .as_mut()
+                    .ok_or_else(|| {
+                        Error::Runtime("Failed to serialize ICudaEngine with config".to_string())
+                    })?
+            };
+            Ok(unsafe { HostMemory::from_raw(host_mem) })
+        } else {
+            Ok(unsafe { HostMemory::from_raw(std::ptr::null_mut()) })
+        }
     }
 }
