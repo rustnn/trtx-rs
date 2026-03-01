@@ -108,19 +108,23 @@ impl ResizeLayer<'_> {
             .setOutputDimensions(&dims_obj);
     }
     pub fn set_resize_mode(&mut self, mode: trtx_sys::ResizeMode) {
-        self.inner.lock().unwrap().as_mut().setResizeMode(mode);
+        self.inner
+            .lock()
+            .unwrap()
+            .as_mut()
+            .setResizeMode(mode.into());
     }
 }
 
 impl GatherLayer<'_> {
-    pub fn set_gather_mode(&mut self, mode: trtx_sys::nvinfer1::GatherMode) {
-        self.inner.lock().unwrap().as_mut().setMode(mode);
+    pub fn set_gather_mode(&mut self, mode: trtx_sys::GatherMode) {
+        self.inner.lock().unwrap().as_mut().setMode(mode.into());
     }
 }
 
 impl ScatterLayer<'_> {
-    pub fn set_scatter_mode(&mut self, mode: trtx_sys::nvinfer1::ScatterMode) {
-        self.inner.lock().unwrap().as_mut().setMode(mode);
+    pub fn set_scatter_mode(&mut self, mode: trtx_sys::ScatterMode) {
+        self.inner.lock().unwrap().as_mut().setMode(mode.into());
     }
     pub fn set_axis(&mut self, axis: i32) {
         self.inner.lock().unwrap().as_mut().setAxis(axis);
