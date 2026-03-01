@@ -375,11 +375,3 @@ impl BuilderConfig {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_progress_monitor() {}
-}
