@@ -1,4 +1,4 @@
-use crate::{enums::ErrorCode, ffi, DataType, Dims64, TensorLocation};
+use crate::{enums::ErrorCode, ffi, DataType, Dims64, Severity, TensorLocation};
 use ::autocxx::subclass::*;
 use std::{
     ffi::{c_char, CStr},
@@ -286,4 +286,39 @@ pub trait ProcessDebugTensor: Send + Sync {
         name: &str,
         stream: *mut ffi::CUstream_st,
     ) -> bool;
+}
+
+#[subclass]
+#[derive(Default)]
+pub struct Logger {
+    inner: Option<Box<dyn HandleLog>>,
+}
+
+impl Logger {
+    pub fn new(inner: Box<dyn HandleLog>) -> Self {
+        Self {
+            inner: Some(inner),
+            ..Default::default()
+        }
+    }
+}
+
+impl nvinfer1::ILogger_methods for Logger {
+    unsafe fn log(&mut self, severity: i32, message: *const i8) {
+        let message = CStr::from_ptr(message);
+        self.inner.as_mut().unwrap().log(
+            match severity {
+                0 => Severity::kINTERNAL_ERROR,
+                1 => Severity::kERROR,
+                2 => Severity::kWARNING,
+                3 => Severity::kINFO,
+                4 | _ => Severity::kVERBOSE,
+            },
+            &message.to_string_lossy(),
+        )
+    }
+}
+
+pub trait HandleLog: Send + Sync {
+    unsafe fn log(&mut self, severity: Severity, message: &str);
 }

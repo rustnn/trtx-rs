@@ -70,7 +70,7 @@ public:
   RustLoggerImpl(RustLogCallback callback, void *user_data)
       : callback_(callback), user_data_(user_data) {}
 
-  void log(Severity severity, const char *msg) noexcept override {
+  void log(int32_t severity, const char *msg) noexcept override {
     if (callback_) {
       callback_(user_data_, static_cast<int32_t>(severity), msg);
     }

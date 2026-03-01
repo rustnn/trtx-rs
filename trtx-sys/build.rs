@@ -38,6 +38,10 @@ fn prepare_transformed_headers(trt_dir: &Path, out_dir: &Path) -> PathBuf {
                     "bool reportError(int32_t val",
                 )
                 .replace("noexcept", "")
+                .replace(
+                    "void log(Severity severity, AsciiChar const* msg)",
+                    "void log(int32_t severity, char const* msg)",
+                )
                 .replace("//!", "///")
                 .replace(r"\returns", " - Returns ");
             let replaced = doxy_regex.replace_all(&replaced, "");
@@ -113,6 +117,7 @@ fn generate_enum_bindings(crate_root: &str, out_path: &Path) {
     let mut output = bindings.to_string();
     output = output.replace("extern \"C\"", "extern \"system\"");
     output = output.replace("nvinfer1_", "");
+    output = output.replace("ILogger_", "");
 
     let out_file = out_path.join("enums.rs");
     let mut f = File::create(&out_file).expect("Failed to create enums.rs");

@@ -33,6 +33,7 @@ mod interfaces;
 pub use crate::interfaces::{AllocateGpu, GpuAllocator};
 pub use crate::interfaces::{DebugListener, ProcessDebugTensor};
 pub use crate::interfaces::{ErrorRecorder, RecordError};
+pub use crate::interfaces::{HandleLog, Logger};
 pub use crate::interfaces::{HandleProgress, ProgressMonitor};
 
 #[allow(warnings)]
@@ -55,6 +56,7 @@ macro_rules! better_enum {
         }
     };
 }
+use crate::enums::Severity;
 
 use std::mem::transmute;
 better_enum!(LayerType);
@@ -191,15 +193,17 @@ include_cpp! {
     // generate!("nvinfer1::RNNGateType")
     generate_pod!("nvinfer1::Weights")
     generate_pod!("nvinfer1::Permutation")
-    generate!("nvinfer1::TensorFormat")
+
+    generate!("nvinfer1::ErrorCode")
+
     subclass!("nvinfer1::IProgressMonitor", ProgressMonitor)
     subclass!("nvinfer1::IGpuAllocator", GpuAllocator)
     subclass!("nvinfer1::IErrorRecorder", ErrorRecorder)
     subclass!("nvinfer1::IDebugListener", DebugListener)
+    subclass!("nvinfer1::ILogger", Logger)
     // NOTE: createInferBuilder/Runtime moved to logger_bridge.cpp (autocxx struggles with these)
 
     // ONNX Parser
-    //generate_pod!("nvinfer1::ErrorCode")
     generate!("nvonnxparser::IParser")
     // NOTE: createParser also moved to logger_bridge.cpp
 
