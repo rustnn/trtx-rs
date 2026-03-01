@@ -10,6 +10,9 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, Eq, PartialEq)]
 pub enum PropertySetAttempt {
     SerializationFlag,
+    OptimizationProfileSetDimensions,
+    OptimizationProfileSetExtraMemoryTarget,
+    OptimizationProfileSetShapeValues,
 }
 
 /// Errors that can occur when using TensorRT-RTX

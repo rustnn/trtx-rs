@@ -1,19 +1,15 @@
 //! Real TensorRT builder implementation
-use std::marker::PhantomData;
 
 use crate::error::{Error, Result};
 use crate::logger::Logger;
 use crate::network::NetworkDefinition;
 use crate::real::host_memory::HostMemory;
+use crate::real::optimization_profile::OptimizationProfile;
 use autocxx::cxx::memory::UniquePtr;
-use trtx_sys::nvinfer1::{self, IBuilder};
+use std::marker::PhantomData;
+use trtx_sys::nvinfer1::IBuilder;
 
 pub use super::builder_config::BuilderConfig;
-
-pub struct OptimizationProfile<'builder> {
-    inner: UniquePtr<nvinfer1::IOptimizationProfile>,
-    _builder: PhantomData<&'builder nvinfer1::IBuilder>,
-}
 
 /// Builder (real mode)
 pub struct Builder<'a> {
@@ -118,12 +114,9 @@ impl<'builder> Builder<'builder> {
                 .createOptimizationProfile()
                 .as_mut()
                 .ok_or_else(|| {
-                    Error::Runtime("Failed to create optimization profile").to_string()
+                    Error::Runtime("Failed to create optimization profile".to_string())
                 })?
         };
-        Ok(OptimizationProfile {
-            inner: unsafe { UniquePtr::from_raw(profile) },
-            _builder: Default::default(),
-        })
+        Ok(unsafe { OptimizationProfile::from_raw(profile) })
     }
 }

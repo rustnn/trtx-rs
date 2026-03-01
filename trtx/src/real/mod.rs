@@ -10,4 +10,5 @@ pub mod host_memory;
 pub mod logger;
 pub mod network;
 pub mod onnx_parser;
+pub mod optimization_profile;
 pub mod runtime;

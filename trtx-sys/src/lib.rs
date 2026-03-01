@@ -96,7 +96,6 @@ use autocxx::prelude::*;
 include_cpp! {
     #include "NvInfer.h"
     #include "NvInferRuntime.h"
-    #include "NvInferRuntimeBase.h"
     #include "NvOnnxParser.h"
 
     safety!(unsafe_ffi)
