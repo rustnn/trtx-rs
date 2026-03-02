@@ -8,6 +8,8 @@ use trtx_sys::DataType;
 pub struct HostMemory<'builder> {
     pub(crate) inner: UniquePtr<nvinfer1::IHostMemory>,
     _builder: PhantomData<&'builder nvinfer1::IBuilder>,
+    #[cfg(feature = "mock")]
+    mock_data: Vec<u8>,
 }
 
 impl<'builder> HostMemory<'builder> {
@@ -17,15 +19,25 @@ impl<'builder> HostMemory<'builder> {
             HostMemory {
                 inner: UniquePtr::from_raw(ptr),
                 _builder: Default::default(),
+                #[cfg(feature = "mock")]
+                mock_data: Default::default(),
             }
         }
     }
 
     pub fn data_type(&self) -> DataType {
+        #[cfg(feature = "mock")]
         self.inner.type_().into()
     }
 }
 
+#[cfg(feature = "mock")]
+impl<'memory> AsRef<[u8]> for HostMemory<'memory> {
+    fn as_ref(&self) -> &[u8] {
+        &self.mock_data
+    }
+}
+#[cfg(not(feature = "mock"))]
 impl<'memory> AsRef<[u8]> for HostMemory<'memory> {
     fn as_ref(&self) -> &'memory [u8] {
         unsafe { slice::from_raw_parts(self.inner.data() as *const u8, self.inner.size()) }

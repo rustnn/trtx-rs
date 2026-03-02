@@ -281,7 +281,7 @@ pub struct NetworkDefinition<'builder> {
 }
 
 impl<'builder> NetworkDefinition<'builder> {
-    pub(crate) fn from_ptr(ptr: &'builder mut INetworkDefinition) -> Self {
+    pub(crate) fn from_ptr(ptr: *mut INetworkDefinition) -> Self {
         Self {
             inner: unsafe { UniquePtr::from_raw(ptr) },
             _builder: Default::default(),

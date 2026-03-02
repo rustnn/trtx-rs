@@ -71,13 +71,14 @@ impl<'builder> Builder<'builder> {
     }
 
     pub fn create_network(&'_ mut self, flags: u32) -> Result<NetworkDefinition<'builder>> {
-        if self.inner.is_null() {
-            return Err(Error::Runtime("Invalid builder".to_string()));
+        if cfg!(feature = "mock") {
+            Ok(NetworkDefinition::from_ptr(std::ptr::null_mut()))
+        } else {
+            let network_ptr = self.inner.pin_mut().createNetworkV2(flags);
+            let network = unsafe { network_ptr.as_mut() }
+                .ok_or_else(|| Error::Runtime("Failed to create network".to_string()))?;
+            Ok(NetworkDefinition::from_ptr(network))
         }
-        let network_ptr = self.inner.pin_mut().createNetworkV2(flags);
-        let network = unsafe { network_ptr.as_mut() }
-            .ok_or_else(|| Error::Runtime("Failed to create network".to_string()))?;
-        Ok(NetworkDefinition::from_ptr(network))
     }
 
     pub fn create_config(&'_ mut self) -> Result<BuilderConfig> {
@@ -96,15 +97,19 @@ impl<'builder> Builder<'builder> {
     where
         'output: 'config_borrow + 'builder,
     {
-        let serialized_engine = unsafe {
-            self.inner
-                .pin_mut()
-                .buildSerializedNetwork(network.inner.pin_mut(), config.inner.pin_mut())
-                .as_mut()
-        }
-        .ok_or_else(|| Error::Runtime("Failed to build serialized network".to_string()))?;
+        if cfg!(feature = "mock") {
+            Ok(unsafe { HostMemory::from_raw(std::ptr::null_mut()) })
+        } else {
+            let serialized_engine = unsafe {
+                self.inner
+                    .pin_mut()
+                    .buildSerializedNetwork(network.inner.pin_mut(), config.inner.pin_mut())
+                    .as_mut()
+            }
+            .ok_or_else(|| Error::Runtime("Failed to build serialized network".to_string()))?;
 
-        Ok(unsafe { HostMemory::from_raw(serialized_engine) })
+            Ok(unsafe { HostMemory::from_raw(serialized_engine) })
+        }
     }
 
     pub fn creata_optimization_profile(&mut self) -> Result<OptimizationProfile<'builder>> {

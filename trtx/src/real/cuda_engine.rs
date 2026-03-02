@@ -57,7 +57,7 @@ pub struct CudaEngine<'runtime> {
 }
 
 impl<'engine> CudaEngine<'engine> {
-    pub(crate) fn from_ptr(ptr: &'engine mut ICudaEngine) -> Self {
+    pub(crate) unsafe fn from_ptr(ptr: *mut ICudaEngine) -> Self {
         Self {
             inner: unsafe { UniquePtr::from_raw(ptr) },
             _runtime: Default::default(),
@@ -65,15 +65,23 @@ impl<'engine> CudaEngine<'engine> {
     }
 
     pub fn get_nb_io_tensors(&self) -> Result<i32> {
-        Ok(self.inner.getNbIOTensors())
+        if cfg!(feature = "mock") {
+            Ok(0)
+        } else {
+            Ok(self.inner.getNbIOTensors())
+        }
     }
 
     pub fn get_tensor_name(&self, index: i32) -> Result<String> {
-        let name_ptr = self.inner.getIOTensorName(index);
-        if name_ptr.is_null() {
-            return Err(Error::InvalidArgument("Invalid tensor index".to_string()));
+        if cfg!(feature = "mock") {
+            Ok("mock".to_string())
+        } else {
+            let name_ptr = self.inner.getIOTensorName(index);
+            if name_ptr.is_null() {
+                return Err(Error::InvalidArgument("Invalid tensor index".to_string()));
+            }
+            Ok(unsafe { CStr::from_ptr(name_ptr) }.to_str()?.to_string())
         }
-        Ok(unsafe { CStr::from_ptr(name_ptr) }.to_str()?.to_string())
     }
 
     pub fn get_tensor_shape(&self, name: &str) -> Result<Vec<i64>> {

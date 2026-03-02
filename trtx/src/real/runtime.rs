@@ -136,14 +136,18 @@ impl<'runtime> Runtime<'runtime> {
     }
 
     pub fn deserialize_cuda_engine(&'_ mut self, data: &[u8]) -> Result<CudaEngine<'runtime>> {
-        unsafe {
-            let engine = self.inner.pin_mut().deserializeCudaEngine(
-                data.as_ref().as_ptr() as *const autocxx::c_void,
-                data.len(),
-            );
-            Ok(CudaEngine::from_ptr(engine.as_mut().ok_or_else(|| {
-                Error::Runtime("Failed to deserialize engine".to_string())
-            })?))
+        if cfg!(feature = "mock") {
+            Ok(unsafe { CudaEngine::from_ptr(std::ptr::null_mut()) })
+        } else {
+            unsafe {
+                let engine = self.inner.pin_mut().deserializeCudaEngine(
+                    data.as_ref().as_ptr() as *const autocxx::c_void,
+                    data.len(),
+                );
+                Ok(CudaEngine::from_ptr(engine.as_mut().ok_or_else(|| {
+                    Error::Runtime("Failed to deserialize engine".to_string())
+                })?))
+            }
         }
     }
 }
