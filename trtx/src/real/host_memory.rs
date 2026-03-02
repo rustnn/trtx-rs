@@ -26,8 +26,11 @@ impl<'builder> HostMemory<'builder> {
     }
 
     pub fn data_type(&self) -> DataType {
-        #[cfg(feature = "mock")]
-        self.inner.type_().into()
+        if cfg!(feature = "mock") {
+            DataType::kINT8
+        } else {
+            self.inner.type_().into()
+        }
     }
 }
 

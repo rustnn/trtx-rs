@@ -320,7 +320,6 @@ impl<'engine> CudaEngine<'engine> {
         })
     }
 
-    // TODO: highlevel type for ISerializationConfig
     /// See [nvinfer1::ICudaEngine::serializeWithConfig]
     pub fn serialize_with_config(
         &'_ self,
