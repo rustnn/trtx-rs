@@ -3,7 +3,6 @@
 
 use cxx::UniquePtr;
 use std::marker::PhantomData;
-use std::mem::transmute;
 use std::pin::Pin;
 use std::sync::Mutex;
 use trtx_sys::nvinfer1::{IConcatenationLayer, INetworkDefinition, ITensor};
@@ -11,7 +10,6 @@ use trtx_sys::{DataType, LayerType, MatrixOperation, ScaleMode, TopKOperation};
 
 use crate::error::{Error, Result};
 use crate::network::*;
-use trtx_sys::nvinfer1::ILayer;
 
 // Those are actually not ILayers in C++ but just ICopy
 
@@ -171,6 +169,44 @@ impl DeconvolutionLayer<'_> {
 impl ConcatenationLayer<'_> {
     pub fn set_axis(&self, axis: i32) {
         self.inner.lock().unwrap().as_mut().setAxis(axis);
+    }
+}
+impl NormalizationLayer<'_> {
+    pub fn set_epsilon(&self, eps: f32) {
+        self.inner.lock().unwrap().as_mut().setEpsilon(eps);
+    }
+    pub fn get_epsilon(&self) -> f32 {
+        self.inner.lock().unwrap().as_ref().getEpsilon()
+    }
+    pub fn set_axes(&self, axes: u32) {
+        self.inner.lock().unwrap().as_mut().setAxes(axes);
+    }
+    pub fn get_axes(&self) -> u32 {
+        self.inner.lock().unwrap().as_ref().getAxes()
+    }
+    pub fn set_num_groups(&self, groups: i64) {
+        self.inner.lock().unwrap().as_mut().setNbGroups(groups);
+    }
+    pub fn get_num_groups(&self) -> i64 {
+        self.inner.lock().unwrap().as_ref().getNbGroups()
+    }
+    pub fn set_compute_precision(&self, data_type: DataType) {
+        self.inner
+            .lock()
+            .unwrap()
+            .as_mut()
+            .setComputePrecision(data_type.into());
+    }
+    pub fn get_compute_precision(&self) -> DataType {
+        self.inner
+            .lock()
+            .unwrap()
+            .as_ref()
+            .getComputePrecision()
+            .into()
+    }
+    pub fn is_v2(&self) -> bool {
+        self.inner.lock().unwrap().as_ref().isV2()
     }
 }
 
@@ -1031,12 +1067,61 @@ impl<'builder> NetworkDefinition<'builder> {
         Ok(IfConditional {
             _inner: unsafe {
                 Pin::new_unchecked(
-                    if_ptr
-                        .as_mut()
-                        .ok_or(Error::Runtime("Failed to add if conditional".to_string()))?,
+                    if_ptr.as_mut().ok_or_else(|| {
+                        Error::Runtime("Failed to add if conditional".to_string())
+                    })?,
                 )
             }
             .into(),
+        })
+    }
+
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addNormalization`].
+    pub fn add_normalization(
+        &mut self,
+        input: &Tensor,
+        scale: &Tensor,
+        bias: &Tensor,
+        axes_mask: u32,
+    ) -> Result<NormalizationLayer<'_>> {
+        let ptr = self.inner.pin_mut().addNormalization(
+            input.inner.lock()?.as_mut(),
+            scale.inner.lock()?.as_mut(),
+            bias.inner.lock()?.as_mut(),
+            axes_mask,
+        );
+        Ok(NormalizationLayer {
+            inner: unsafe {
+                Pin::new_unchecked(
+                    ptr.as_mut()
+                        .ok_or(Error::LayerCreationFailed(LayerType::kNORMALIZATION))?,
+                )
+                .into()
+            },
+        })
+    }
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addNormalizationV2`].
+    pub fn add_normalization_v2(
+        &mut self,
+        input: &Tensor,
+        scale: &Tensor,
+        bias: &Tensor,
+        axes_mask: u32,
+    ) -> Result<NormalizationLayer<'_>> {
+        let ptr = self.inner.pin_mut().addNormalizationV2(
+            input.inner.lock()?.as_mut(),
+            scale.inner.lock()?.as_mut(),
+            bias.inner.lock()?.as_mut(),
+            axes_mask,
+        );
+        Ok(NormalizationLayer {
+            inner: unsafe {
+                Pin::new_unchecked(
+                    ptr.as_mut()
+                        .ok_or(Error::LayerCreationFailed(LayerType::kNORMALIZATION))?,
+                )
+                .into()
+            },
         })
     }
 }

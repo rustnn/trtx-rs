@@ -29,7 +29,7 @@
 #![allow(non_snake_case)]
 #![allow(clippy::all)]
 
-mod interfaces;
+pub mod interfaces;
 pub use crate::interfaces::{AllocateGpu, GpuAllocator};
 pub use crate::interfaces::{DebugListener, ProcessDebugTensor};
 pub use crate::interfaces::{ErrorRecorder, RecordError};
@@ -145,6 +145,9 @@ include_cpp! {
     generate!("nvinfer1::ICumulativeLayer")
     generate!("nvinfer1::ILoop")
     generate!("nvinfer1::IIfConditional")
+    generate!("nvinfer1::INormalizationLayer")
+    generate!("nvinfer1::ISqueezeLayer")
+    generate!("nvinfer1::IUnsqueezeLayer")
     // NOTE: IRNNv2Layer is deprecated (TRT_DEPRECATED) and autocxx cannot generate bindings for it
     // RNN operations (lstm, lstmCell, gru, gruCell) remain deferred until we can work around this
     // generate!("nvinfer1::IRNNv2Layer")

@@ -2,18 +2,20 @@
 //!
 //! Types and implementations. Real/mock impls live in real/ and mock/ folders.
 
+use std::mem::transmute;
 use std::pin::Pin;
 use std::sync::Mutex;
 
 use trtx_sys::nvinfer1::{
     self, IActivationLayer, ICastLayer, IConcatenationLayer, IConstantLayer, IConvolutionLayer,
     ICumulativeLayer, IDeconvolutionLayer, IDequantizeLayer, IElementWiseLayer, IGatherLayer,
-    IIdentityLayer, IMatrixMultiplyLayer, INormalizationLayer, IPaddingLayer, IPoolingLayer,
-    IQuantizeLayer, IReduceLayer, IResizeLayer, IScaleLayer, IScatterLayer, ISelectLayer,
-    IShuffleLayer, ISliceLayer, ISoftMaxLayer, ITopKLayer, IUnaryLayer,
+    IIdentityLayer, ILayer, IMatrixMultiplyLayer, INormalizationLayer, IPaddingLayer,
+    IPoolingLayer, IQuantizeLayer, IReduceLayer, IResizeLayer, IScaleLayer, IScatterLayer,
+    ISelectLayer, IShuffleLayer, ISliceLayer, ISoftMaxLayer, ISqueezeLayer, ITopKLayer,
+    IUnaryLayer, IUnsqueezeLayer,
 };
 
-use crate::error::Result;
+use crate::error::{Error, Result};
 pub use crate::real::network::NetworkDefinition;
 
 /// Kernel and optional bias weights for convolution and deconvolution layers.
@@ -52,15 +54,14 @@ macro_rules! define_network_layer {
         }
 
         impl<'network> $name<'network> {
+            #[allow(dead_code)]
             pub(crate) fn from_ptr(ptr: &'network mut $iface) -> Self {
                 Self {
                     inner: unsafe { Mutex::new(Pin::new_unchecked(ptr)) },
                 }
             }
         }
-    };
 
-    ($name:ident, $trt_type:path) => {
         impl Layer for $name<'_> {
             fn get_output(&self, index: i32) -> Result<Tensor<'_>> {
                 let mut lock = self.inner.lock().unwrap();
@@ -79,7 +80,7 @@ macro_rules! define_network_layer {
                 let name_cstr = std::ffi::CString::new(name)?;
                 let lock = self.inner.get_mut()?;
                 unsafe {
-                    transmute::<&mut Pin<&mut $trt_type>, &mut Pin<&mut ILayer>>(lock)
+                    transmute::<&mut Pin<&mut $iface>, &mut Pin<&mut ILayer>>(lock)
                         .as_mut()
                         .setName(name_cstr.as_ptr())
                 };
@@ -114,6 +115,8 @@ define_network_layer!(UnaryLayer, IUnaryLayer);
 define_network_layer!(IdentityLayer, IIdentityLayer);
 define_network_layer!(PaddingLayer, IPaddingLayer);
 define_network_layer!(CastLayer, ICastLayer);
+define_network_layer!(SqueezeLayer, ISqueezeLayer);
+define_network_layer!(UnsqueezeLayer, IUnsqueezeLayer);
 define_network_layer!(NormalizationLayer, INormalizationLayer);
 
 // Those are not actual ILayer in TRT
