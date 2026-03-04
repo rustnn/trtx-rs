@@ -13,66 +13,6 @@ use crate::error::{Error, Result};
 use crate::network::*;
 use trtx_sys::nvinfer1::ILayer;
 
-/// Macro to implement Layer trait for real TensorRT types
-macro_rules! impl_layer_real {
-    ($name:ident, $trt_type:path) => {
-        impl Layer for $name<'_> {
-            fn get_output(&self, index: i32) -> Result<Tensor<'_>> {
-                let mut lock = self.inner.lock().unwrap();
-                let ptr = unsafe { lock.as_mut().get_unchecked_mut() }
-                    .as_ref()
-                    .getOutput(index);
-                let tensor = unsafe { ptr.as_mut() }
-                    .ok_or(Error::Runtime("Failed to get output".to_string()))?;
-
-                Ok(Tensor {
-                    inner: unsafe { Mutex::new(Pin::new_unchecked(tensor)) },
-                })
-            }
-
-            fn set_layer_name(&mut self, name: &str) -> Result<()> {
-                let name_cstr = std::ffi::CString::new(name)?;
-                let lock = self.inner.get_mut()?;
-                unsafe {
-                    transmute::<&mut Pin<&mut $trt_type>, &mut Pin<&mut ILayer>>(lock)
-                        .as_mut()
-                        .setName(name_cstr.as_ptr())
-                };
-                Ok(())
-            }
-        }
-    };
-}
-
-impl_layer_real!(ShuffleLayer, trtx_sys::nvinfer1::IShuffleLayer);
-impl_layer_real!(ActivationLayer, trtx_sys::nvinfer1::IActivationLayer);
-impl_layer_real!(ElementWiseLayer, trtx_sys::nvinfer1::IElementWiseLayer);
-impl_layer_real!(ResizeLayer, trtx_sys::nvinfer1::IResizeLayer);
-impl_layer_real!(TopKLayer, trtx_sys::nvinfer1::ITopKLayer);
-impl_layer_real!(GatherLayer, trtx_sys::nvinfer1::IGatherLayer);
-impl_layer_real!(ScatterLayer, trtx_sys::nvinfer1::IScatterLayer);
-impl_layer_real!(SelectLayer, trtx_sys::nvinfer1::ISelectLayer);
-impl_layer_real!(
-    MatrixMultiplyLayer,
-    trtx_sys::nvinfer1::IMatrixMultiplyLayer
-);
-impl_layer_real!(SoftMaxLayer, trtx_sys::nvinfer1::ISoftMaxLayer);
-impl_layer_real!(ReduceLayer, trtx_sys::nvinfer1::IReduceLayer);
-impl_layer_real!(CumulativeLayer, trtx_sys::nvinfer1::ICumulativeLayer);
-impl_layer_real!(PoolingLayer, trtx_sys::nvinfer1::IPoolingLayer);
-impl_layer_real!(ConvolutionLayer, trtx_sys::nvinfer1::IConvolutionLayer);
-impl_layer_real!(DeconvolutionLayer, trtx_sys::nvinfer1::IDeconvolutionLayer);
-impl_layer_real!(QuantizeLayer, trtx_sys::nvinfer1::IQuantizeLayer);
-impl_layer_real!(DequantizeLayer, trtx_sys::nvinfer1::IDequantizeLayer);
-impl_layer_real!(ConstantLayer, trtx_sys::nvinfer1::IConstantLayer);
-impl_layer_real!(ConcatenationLayer, trtx_sys::nvinfer1::IConcatenationLayer);
-impl_layer_real!(ScaleLayer, trtx_sys::nvinfer1::IScaleLayer);
-impl_layer_real!(SliceLayer, trtx_sys::nvinfer1::ISliceLayer);
-impl_layer_real!(UnaryLayer, trtx_sys::nvinfer1::IUnaryLayer);
-impl_layer_real!(IdentityLayer, trtx_sys::nvinfer1::IIdentityLayer);
-impl_layer_real!(PaddingLayer, trtx_sys::nvinfer1::IPaddingLayer);
-impl_layer_real!(CastLayer, trtx_sys::nvinfer1::ICastLayer);
-
 // Those are actually not ILayers in C++ but just ICopy
 
 impl ShuffleLayer<'_> {

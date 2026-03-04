@@ -8,9 +8,9 @@ use std::sync::Mutex;
 use trtx_sys::nvinfer1::{
     self, IActivationLayer, ICastLayer, IConcatenationLayer, IConstantLayer, IConvolutionLayer,
     ICumulativeLayer, IDeconvolutionLayer, IDequantizeLayer, IElementWiseLayer, IGatherLayer,
-    IIdentityLayer, IMatrixMultiplyLayer, IPaddingLayer, IPoolingLayer, IQuantizeLayer,
-    IReduceLayer, IResizeLayer, IScaleLayer, IScatterLayer, ISelectLayer, IShuffleLayer,
-    ISliceLayer, ISoftMaxLayer, ITopKLayer, IUnaryLayer,
+    IIdentityLayer, IMatrixMultiplyLayer, INormalizationLayer, IPaddingLayer, IPoolingLayer,
+    IQuantizeLayer, IReduceLayer, IResizeLayer, IScaleLayer, IScatterLayer, ISelectLayer,
+    IShuffleLayer, ISliceLayer, ISoftMaxLayer, ITopKLayer, IUnaryLayer,
 };
 
 use crate::error::Result;
@@ -59,6 +59,34 @@ macro_rules! define_network_layer {
             }
         }
     };
+
+    ($name:ident, $trt_type:path) => {
+        impl Layer for $name<'_> {
+            fn get_output(&self, index: i32) -> Result<Tensor<'_>> {
+                let mut lock = self.inner.lock().unwrap();
+                let ptr = unsafe { lock.as_mut().get_unchecked_mut() }
+                    .as_ref()
+                    .getOutput(index);
+                let tensor = unsafe { ptr.as_mut() }
+                    .ok_or(Error::Runtime("Failed to get output".to_string()))?;
+
+                Ok(Tensor {
+                    inner: unsafe { Mutex::new(Pin::new_unchecked(tensor)) },
+                })
+            }
+
+            fn set_layer_name(&mut self, name: &str) -> Result<()> {
+                let name_cstr = std::ffi::CString::new(name)?;
+                let lock = self.inner.get_mut()?;
+                unsafe {
+                    transmute::<&mut Pin<&mut $trt_type>, &mut Pin<&mut ILayer>>(lock)
+                        .as_mut()
+                        .setName(name_cstr.as_ptr())
+                };
+                Ok(())
+            }
+        }
+    };
 }
 
 define_network_layer!(ShuffleLayer, IShuffleLayer);
@@ -86,6 +114,7 @@ define_network_layer!(UnaryLayer, IUnaryLayer);
 define_network_layer!(IdentityLayer, IIdentityLayer);
 define_network_layer!(PaddingLayer, IPaddingLayer);
 define_network_layer!(CastLayer, ICastLayer);
+define_network_layer!(NormalizationLayer, INormalizationLayer);
 
 // Those are not actual ILayer in TRT
 pub struct Loop<'network> {
