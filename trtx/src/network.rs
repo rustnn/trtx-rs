@@ -2,18 +2,20 @@
 //!
 //! Types and implementations. Real/mock impls live in real/ and mock/ folders.
 
-use std::mem::transmute;
+use std::ffi::{CStr, CString};
 use std::pin::Pin;
 use std::sync::Mutex;
+use trtx_sys::TrtLayer;
 
-use trtx_sys::nvinfer1::{
-    self, IActivationLayer, ICastLayer, IConcatenationLayer, IConstantLayer, IConvolutionLayer,
-    ICumulativeLayer, IDeconvolutionLayer, IDequantizeLayer, IElementWiseLayer, IGatherLayer,
-    IIdentityLayer, ILayer, IMatrixMultiplyLayer, INormalizationLayer, IPaddingLayer,
-    IPoolingLayer, IQuantizeLayer, IReduceLayer, IResizeLayer, IScaleLayer, IScatterLayer,
-    ISelectLayer, IShuffleLayer, ISliceLayer, ISoftMaxLayer, ISqueezeLayer, ITopKLayer,
-    IUnaryLayer, IUnsqueezeLayer,
-};
+use trtx_sys::{nvinfer1, LayerType};
+
+macro_rules! check_network {
+    ($network:ident, $this:ident) => {
+        if $network.inner.as_ptr() != $this.network {
+            panic!("Layer was created from different network")
+        }
+    };
+}
 
 use crate::error::{Error, Result};
 pub use crate::real::network::NetworkDefinition;
@@ -29,95 +31,127 @@ pub struct ConvWeights<'a> {
 
 /// Tensor handle (opaque pointer)
 pub struct Tensor<'network> {
-    pub(crate) inner: Mutex<Pin<&'network mut nvinfer1::ITensor>>,
+    pub(crate) inner: Pin<&'network mut nvinfer1::ITensor>,
+    pub(crate) network: *const nvinfer1::INetworkDefinition,
 }
-impl Tensor<'_> {}
-
-/// Base trait for all layer types
-pub trait Layer {
-    /// Get the output tensor at the specified index
-    fn get_output(&self, index: i32) -> Result<Tensor<'_>>;
-
-    fn set_layer_name(&mut self, name: &str) -> Result<()>;
-}
-
-/// Macro to define layer struct
-macro_rules! define_network_layer {
-    ($name:ident, $iface:ident) => {
-        pub struct $name<'network> {
-            pub(crate) inner: Mutex<Pin<&'network mut $iface>>,
+impl Tensor<'_> {
+    pub(crate) unsafe fn new(
+        network: *const nvinfer1::INetworkDefinition,
+        ptr: *mut nvinfer1::ITensor,
+    ) -> Result<Self> {
+        unsafe {
+            let ptr = ptr.as_mut().ok_or(Error::GetTensorFailed)?;
+            Ok(Self {
+                inner: Pin::new_unchecked(ptr),
+                network,
+            })
         }
-        impl Drop for $name<'_> {
-            fn drop(&mut self) {
-                unsafe { std::ptr::drop_in_place(self.inner.get_mut().unwrap()) }
-            }
-        }
-
-        impl<'network> $name<'network> {
-            #[allow(dead_code)]
-            pub(crate) fn from_ptr(ptr: &'network mut $iface) -> Self {
-                Self {
-                    inner: unsafe { Mutex::new(Pin::new_unchecked(ptr)) },
-                }
-            }
-        }
-
-        impl Layer for $name<'_> {
-            fn get_output(&self, index: i32) -> Result<Tensor<'_>> {
-                let mut lock = self.inner.lock().unwrap();
-                let ptr = unsafe { lock.as_mut().get_unchecked_mut() }
-                    .as_ref()
-                    .getOutput(index);
-                let tensor = unsafe { ptr.as_mut() }
-                    .ok_or(Error::Runtime("Failed to get output".to_string()))?;
-
-                Ok(Tensor {
-                    inner: unsafe { Mutex::new(Pin::new_unchecked(tensor)) },
-                })
-            }
-
-            fn set_layer_name(&mut self, name: &str) -> Result<()> {
-                let name_cstr = std::ffi::CString::new(name)?;
-                let lock = self.inner.get_mut()?;
-                unsafe {
-                    transmute::<&mut Pin<&mut $iface>, &mut Pin<&mut ILayer>>(lock)
-                        .as_mut()
-                        .setName(name_cstr.as_ptr())
-                };
-                Ok(())
-            }
-        }
-    };
+    }
 }
 
-define_network_layer!(ShuffleLayer, IShuffleLayer);
-define_network_layer!(ActivationLayer, IActivationLayer);
-define_network_layer!(ElementWiseLayer, IElementWiseLayer);
-define_network_layer!(ResizeLayer, IResizeLayer);
-define_network_layer!(TopKLayer, ITopKLayer);
-define_network_layer!(GatherLayer, IGatherLayer);
-define_network_layer!(ScatterLayer, IScatterLayer);
-define_network_layer!(SelectLayer, ISelectLayer);
-define_network_layer!(MatrixMultiplyLayer, IMatrixMultiplyLayer);
-define_network_layer!(SoftMaxLayer, ISoftMaxLayer);
-define_network_layer!(ReduceLayer, IReduceLayer);
-define_network_layer!(CumulativeLayer, ICumulativeLayer);
-define_network_layer!(PoolingLayer, IPoolingLayer);
-define_network_layer!(ConvolutionLayer, IConvolutionLayer);
-define_network_layer!(DeconvolutionLayer, IDeconvolutionLayer);
-define_network_layer!(QuantizeLayer, IQuantizeLayer);
-define_network_layer!(DequantizeLayer, IDequantizeLayer);
-define_network_layer!(ConstantLayer, IConstantLayer);
-define_network_layer!(ConcatenationLayer, IConcatenationLayer);
-define_network_layer!(ScaleLayer, IScaleLayer);
-define_network_layer!(SliceLayer, ISliceLayer);
-define_network_layer!(UnaryLayer, IUnaryLayer);
-define_network_layer!(IdentityLayer, IIdentityLayer);
-define_network_layer!(PaddingLayer, IPaddingLayer);
-define_network_layer!(CastLayer, ICastLayer);
-define_network_layer!(SqueezeLayer, ISqueezeLayer);
-define_network_layer!(UnsqueezeLayer, IUnsqueezeLayer);
-define_network_layer!(NormalizationLayer, INormalizationLayer);
+pub struct Layer<'network, Inner: TrtLayer> {
+    pub(crate) inner: Pin<&'network mut Inner>,
+    pub(crate) network: *const nvinfer1::INetworkDefinition,
+}
+
+impl<'network, Inner: TrtLayer> Layer<'network, Inner> {
+    pub(crate) fn new(
+        network: *const nvinfer1::INetworkDefinition,
+        ptr: *mut Inner,
+    ) -> Result<Self> {
+        unsafe {
+            let ptr = ptr
+                .as_mut()
+                .ok_or(Error::LayerCreationFailed(Inner::TYPE))?;
+            Ok(Self {
+                inner: Pin::new_unchecked(ptr),
+                network,
+            })
+        }
+    }
+    pub const fn layer_type(&self) -> LayerType {
+        Inner::TYPE
+    }
+
+    /// See [nvinfer1::ILayer::getOutput]
+    pub fn get_output(&self, network: &NetworkDefinition, index: i32) -> Result<Tensor<'network>> {
+        check_network!(network, self);
+        let tensor = self.inner.as_layer().getOutput(index);
+        unsafe { Tensor::new(self.network, tensor) }
+    }
+
+    /// See [nvinfer1::ILayer::setName]
+    fn set_name(&mut self, name: &str) -> Result<()> {
+        //assert!(network, self.network);
+        let name = CString::new(name)?;
+        unsafe {
+            self.inner
+                .as_mut()
+                .get_unchecked_mut()
+                .as_layer_pin_mut()
+                .setName(name.as_ptr())
+        };
+        Ok(())
+    }
+
+    /// See [nvinfer1::ILayer::getName]
+    fn get_name(&self) -> String {
+        //assert!(network, self.network);
+        let name = self.inner.as_layer().getName();
+        // must clone since layer may change name at any time! Cow from to_string_lossy() only
+        // possible if name immutable
+        if name.is_null() {
+            "(unamed)".to_string()
+        } else {
+            unsafe { CStr::from_ptr(name).to_string_lossy().to_string() }
+        }
+    }
+}
+
+// Type aliases for every layer (Layer<_, I*Layer> where I*Layer: TrtLayer)
+pub type ActivationLayer<'layer> = Layer<'layer, nvinfer1::IActivationLayer>;
+pub type AssertionLayer<'layer> = Layer<'layer, nvinfer1::IAssertionLayer>;
+pub type CastLayer<'layer> = Layer<'layer, nvinfer1::ICastLayer>;
+pub type ConcatenationLayer<'layer> = Layer<'layer, nvinfer1::IConcatenationLayer>;
+pub type ConstantLayer<'layer> = Layer<'layer, nvinfer1::IConstantLayer>;
+pub type ConvolutionLayer<'layer> = Layer<'layer, nvinfer1::IConvolutionLayer>;
+pub type CumulativeLayer<'layer> = Layer<'layer, nvinfer1::ICumulativeLayer>;
+pub type DeconvolutionLayer<'layer> = Layer<'layer, nvinfer1::IDeconvolutionLayer>;
+pub type DequantizeLayer<'layer> = Layer<'layer, nvinfer1::IDequantizeLayer>;
+pub type DynamicQuantizeLayer<'layer> = Layer<'layer, nvinfer1::IDynamicQuantizeLayer>;
+pub type ElementWiseLayer<'layer> = Layer<'layer, nvinfer1::IElementWiseLayer>;
+pub type EinsumLayer<'layer> = Layer<'layer, nvinfer1::IEinsumLayer>;
+pub type FillLayer<'layer> = Layer<'layer, nvinfer1::IFillLayer>;
+pub type GatherLayer<'layer> = Layer<'layer, nvinfer1::IGatherLayer>;
+pub type GridSampleLayer<'layer> = Layer<'layer, nvinfer1::IGridSampleLayer>;
+pub type IdentityLayer<'layer> = Layer<'layer, nvinfer1::IIdentityLayer>;
+pub type MatrixMultiplyLayer<'layer> = Layer<'layer, nvinfer1::IMatrixMultiplyLayer>;
+pub type NMSLayer<'layer> = Layer<'layer, nvinfer1::INMSLayer>;
+pub type NonZeroLayer<'layer> = Layer<'layer, nvinfer1::INonZeroLayer>;
+pub type NormalizationLayer<'layer> = Layer<'layer, nvinfer1::INormalizationLayer>;
+pub type PaddingLayer<'layer> = Layer<'layer, nvinfer1::IPaddingLayer>;
+pub type ParametricReLULayer<'layer> = Layer<'layer, nvinfer1::IParametricReLULayer>;
+pub type PoolingLayer<'layer> = Layer<'layer, nvinfer1::IPoolingLayer>;
+pub type QuantizeLayer<'layer> = Layer<'layer, nvinfer1::IQuantizeLayer>;
+pub type RaggedSoftMaxLayer<'layer> = Layer<'layer, nvinfer1::IRaggedSoftMaxLayer>;
+pub type ReduceLayer<'layer> = Layer<'layer, nvinfer1::IReduceLayer>;
+pub type ResizeLayer<'layer> = Layer<'layer, nvinfer1::IResizeLayer>;
+pub type RotaryEmbeddingLayer<'layer> = Layer<'layer, nvinfer1::IRotaryEmbeddingLayer>;
+pub type ScaleLayer<'layer> = Layer<'layer, nvinfer1::IScaleLayer>;
+pub type ScatterLayer<'layer> = Layer<'layer, nvinfer1::IScatterLayer>;
+pub type SelectLayer<'layer> = Layer<'layer, nvinfer1::ISelectLayer>;
+pub type ShapeLayer<'layer> = Layer<'layer, nvinfer1::IShapeLayer>;
+pub type ShuffleLayer<'layer> = Layer<'layer, nvinfer1::IShuffleLayer>;
+pub type SliceLayer<'layer> = Layer<'layer, nvinfer1::ISliceLayer>;
+pub type SoftMaxLayer<'layer> = Layer<'layer, nvinfer1::ISoftMaxLayer>;
+pub type SqueezeLayer<'layer> = Layer<'layer, nvinfer1::ISqueezeLayer>;
+pub type TopKLayer<'layer> = Layer<'layer, nvinfer1::ITopKLayer>;
+pub type UnaryLayer<'layer> = Layer<'layer, nvinfer1::IUnaryLayer>;
+pub type UnsqueezeLayer<'layer> = Layer<'layer, nvinfer1::IUnsqueezeLayer>;
+pub type ReverseSequenceLayer<'layer> = Layer<'layer, nvinfer1::IReverseSequenceLayer>;
+pub type KVCacheUpdateLayer<'layer> = Layer<'layer, nvinfer1::IKVCacheUpdateLayer>;
+pub type LrnLayer<'layer> = Layer<'layer, nvinfer1::ILRNLayer>;
+pub type OneHotLayer<'layer> = Layer<'layer, nvinfer1::IOneHotLayer>;
 
 // Those are not actual ILayer in TRT
 pub struct Loop<'network> {

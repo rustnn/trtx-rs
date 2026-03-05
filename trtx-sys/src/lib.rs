@@ -57,8 +57,10 @@ macro_rules! better_enum {
     };
 }
 use crate::enums::Severity;
+use crate::nvinfer1::ILayer;
 
 use std::mem::transmute;
+use std::pin::Pin;
 better_enum!(LayerType);
 better_enum!(ActivationType);
 better_enum!(DataType);
@@ -148,6 +150,31 @@ include_cpp! {
     generate!("nvinfer1::INormalizationLayer")
     generate!("nvinfer1::ISqueezeLayer")
     generate!("nvinfer1::IUnsqueezeLayer")
+    generate!("nvinfer1::ILRNLayer")
+    generate!("nvinfer1::IShapeLayer")
+    generate!("nvinfer1::IParametricReLULayer")
+    generate!("nvinfer1::IFillLayer")
+    generate!("nvinfer1::IEinsumLayer")
+    generate!("nvinfer1::IOneHotLayer")
+    generate!("nvinfer1::INonZeroLayer")
+    generate!("nvinfer1::IGridSampleLayer")
+    generate!("nvinfer1::INMSLayer")
+    generate!("nvinfer1::IReverseSequenceLayer")
+    generate!("nvinfer1::IDynamicQuantizeLayer")
+    generate!("nvinfer1::IRotaryEmbeddingLayer")
+    generate!("nvinfer1::IKVCacheUpdateLayer")
+    generate!("nvinfer1::IRaggedSoftMaxLayer")
+    generate!("nvinfer1::ILoopBoundaryLayer")
+    generate!("nvinfer1::IRecurrenceLayer")
+    generate!("nvinfer1::ILoopOutputLayer")
+    generate!("nvinfer1::ITripLimitLayer")
+    generate!("nvinfer1::IIteratorLayer")
+    generate!("nvinfer1::IConditionLayer")
+    generate!("nvinfer1::IIfConditionalOutputLayer")
+    generate!("nvinfer1::IIfConditionalInputLayer")
+    generate!("nvinfer1::IAttentionBoundaryLayer")
+    generate!("nvinfer1::IAttentionInputLayer")
+    generate!("nvinfer1::IAttentionOutputLayer")
     // NOTE: IRNNv2Layer is deprecated (TRT_DEPRECATED) and autocxx cannot generate bindings for it
     // RNN operations (lstm, lstmCell, gru, gruCell) remain deferred until we can work around this
     // generate!("nvinfer1::IRNNv2Layer")
@@ -201,6 +228,7 @@ include_cpp! {
     generate_pod!("nvinfer1::Permutation")
 
     generate!("nvinfer1::ErrorCode")
+    generate!("nvinfer1::LayerType")
     generate!("nvinfer1::SerializationFlags")
     generate!("nvinfer1::SerializationFlag")
     generate!("nvinfer1::OptProfileSelector")
@@ -216,6 +244,191 @@ include_cpp! {
     generate!("nvonnxparser::IParser")
     // NOTE: createParser also moved to logger_bridge.cpp
 
+}
+
+pub trait TrtLayer: AsRef<nvinfer1::ILayer> {
+    const TYPE: LayerType;
+    fn as_layer(&self) -> &nvinfer1::ILayer {
+        self.as_ref()
+    }
+    fn as_layer_pin_mut(&mut self) -> Pin<&mut nvinfer1::ILayer> {
+        unsafe {
+            Pin::new_unchecked(
+                (self as *mut Self as *mut nvinfer1::ILayer)
+                    .as_mut()
+                    .unwrap(),
+            )
+        }
+    }
+}
+
+impl TrtLayer for nvinfer1::IActivationLayer {
+    const TYPE: LayerType = LayerType::kACTIVATION;
+}
+impl TrtLayer for nvinfer1::IConvolutionLayer {
+    const TYPE: LayerType = LayerType::kCONVOLUTION;
+}
+impl TrtLayer for nvinfer1::ICastLayer {
+    const TYPE: LayerType = LayerType::kCAST;
+}
+impl TrtLayer for nvinfer1::IPoolingLayer {
+    const TYPE: LayerType = LayerType::kPOOLING;
+}
+impl TrtLayer for nvinfer1::ILRNLayer {
+    const TYPE: LayerType = LayerType::kLRN;
+}
+impl TrtLayer for nvinfer1::IScaleLayer {
+    const TYPE: LayerType = LayerType::kSCALE;
+}
+impl TrtLayer for nvinfer1::ISoftMaxLayer {
+    const TYPE: LayerType = LayerType::kSOFTMAX;
+}
+impl TrtLayer for nvinfer1::IDeconvolutionLayer {
+    const TYPE: LayerType = LayerType::kDECONVOLUTION;
+}
+impl TrtLayer for nvinfer1::IConcatenationLayer {
+    const TYPE: LayerType = LayerType::kCONCATENATION;
+}
+impl TrtLayer for nvinfer1::IElementWiseLayer {
+    const TYPE: LayerType = LayerType::kELEMENTWISE;
+}
+impl TrtLayer for nvinfer1::IUnaryLayer {
+    const TYPE: LayerType = LayerType::kUNARY;
+}
+impl TrtLayer for nvinfer1::IPaddingLayer {
+    const TYPE: LayerType = LayerType::kPADDING;
+}
+impl TrtLayer for nvinfer1::IShuffleLayer {
+    const TYPE: LayerType = LayerType::kSHUFFLE;
+}
+impl TrtLayer for nvinfer1::IReduceLayer {
+    const TYPE: LayerType = LayerType::kREDUCE;
+}
+impl TrtLayer for nvinfer1::ITopKLayer {
+    const TYPE: LayerType = LayerType::kTOPK;
+}
+impl TrtLayer for nvinfer1::IGatherLayer {
+    const TYPE: LayerType = LayerType::kGATHER;
+}
+impl TrtLayer for nvinfer1::IMatrixMultiplyLayer {
+    const TYPE: LayerType = LayerType::kMATRIX_MULTIPLY;
+}
+impl TrtLayer for nvinfer1::IRaggedSoftMaxLayer {
+    const TYPE: LayerType = LayerType::kRAGGED_SOFTMAX;
+}
+impl TrtLayer for nvinfer1::IConstantLayer {
+    const TYPE: LayerType = LayerType::kCONSTANT;
+}
+impl TrtLayer for nvinfer1::IIdentityLayer {
+    const TYPE: LayerType = LayerType::kIDENTITY;
+}
+impl TrtLayer for nvinfer1::ISliceLayer {
+    const TYPE: LayerType = LayerType::kSLICE;
+}
+impl TrtLayer for nvinfer1::IShapeLayer {
+    const TYPE: LayerType = LayerType::kSHAPE;
+}
+impl TrtLayer for nvinfer1::IParametricReLULayer {
+    const TYPE: LayerType = LayerType::kPARAMETRIC_RELU;
+}
+impl TrtLayer for nvinfer1::IResizeLayer {
+    const TYPE: LayerType = LayerType::kRESIZE;
+}
+impl TrtLayer for nvinfer1::ISelectLayer {
+    const TYPE: LayerType = LayerType::kSELECT;
+}
+impl TrtLayer for nvinfer1::IFillLayer {
+    const TYPE: LayerType = LayerType::kFILL;
+}
+impl TrtLayer for nvinfer1::IQuantizeLayer {
+    const TYPE: LayerType = LayerType::kQUANTIZE;
+}
+impl TrtLayer for nvinfer1::IDequantizeLayer {
+    const TYPE: LayerType = LayerType::kDEQUANTIZE;
+}
+impl TrtLayer for nvinfer1::IScatterLayer {
+    const TYPE: LayerType = LayerType::kSCATTER;
+}
+impl TrtLayer for nvinfer1::IEinsumLayer {
+    const TYPE: LayerType = LayerType::kEINSUM;
+}
+impl TrtLayer for nvinfer1::IAssertionLayer {
+    const TYPE: LayerType = LayerType::kASSERTION;
+}
+impl TrtLayer for nvinfer1::IOneHotLayer {
+    const TYPE: LayerType = LayerType::kONE_HOT;
+}
+impl TrtLayer for nvinfer1::INonZeroLayer {
+    const TYPE: LayerType = LayerType::kNON_ZERO;
+}
+impl TrtLayer for nvinfer1::IGridSampleLayer {
+    const TYPE: LayerType = LayerType::kGRID_SAMPLE;
+}
+impl TrtLayer for nvinfer1::INMSLayer {
+    const TYPE: LayerType = LayerType::kNMS;
+}
+impl TrtLayer for nvinfer1::IReverseSequenceLayer {
+    const TYPE: LayerType = LayerType::kREVERSE_SEQUENCE;
+}
+impl TrtLayer for nvinfer1::INormalizationLayer {
+    const TYPE: LayerType = LayerType::kNORMALIZATION;
+}
+impl TrtLayer for nvinfer1::ISqueezeLayer {
+    const TYPE: LayerType = LayerType::kSQUEEZE;
+}
+impl TrtLayer for nvinfer1::IUnsqueezeLayer {
+    const TYPE: LayerType = LayerType::kUNSQUEEZE;
+}
+impl TrtLayer for nvinfer1::ICumulativeLayer {
+    const TYPE: LayerType = LayerType::kCUMULATIVE;
+}
+impl TrtLayer for nvinfer1::IDynamicQuantizeLayer {
+    const TYPE: LayerType = LayerType::kDYNAMIC_QUANTIZE;
+}
+impl TrtLayer for nvinfer1::IRotaryEmbeddingLayer {
+    const TYPE: LayerType = LayerType::kROTARY_EMBEDDING;
+}
+impl TrtLayer for nvinfer1::IKVCacheUpdateLayer {
+    const TYPE: LayerType = LayerType::kKVCACHE_UPDATE;
+}
+
+// not ILayer as per Trt, but supports setName, getOutput
+pub trait TrtLayerLike {
+    const TYPE: LayerType;
+}
+
+impl TrtLayerLike for nvinfer1::IAttentionInputLayer {
+    const TYPE: LayerType = LayerType::kATTENTION_INPUT;
+}
+impl TrtLayerLike for nvinfer1::IAttentionOutputLayer {
+    const TYPE: LayerType = LayerType::kATTENTION_OUTPUT;
+}
+impl TrtLayerLike for nvinfer1::ILoopBoundaryLayer {
+    const TYPE: LayerType = LayerType::kTRIP_LIMIT; // base for loop boundary; subclasses have specific types
+}
+impl TrtLayerLike for nvinfer1::IRecurrenceLayer {
+    const TYPE: LayerType = LayerType::kRECURRENCE;
+}
+impl TrtLayerLike for nvinfer1::ILoopOutputLayer {
+    const TYPE: LayerType = LayerType::kLOOP_OUTPUT;
+}
+impl TrtLayerLike for nvinfer1::ITripLimitLayer {
+    const TYPE: LayerType = LayerType::kTRIP_LIMIT;
+}
+impl TrtLayerLike for nvinfer1::IIteratorLayer {
+    const TYPE: LayerType = LayerType::kITERATOR;
+}
+impl TrtLayerLike for nvinfer1::IConditionLayer {
+    const TYPE: LayerType = LayerType::kCONDITION;
+}
+impl TrtLayerLike for nvinfer1::IIfConditionalOutputLayer {
+    const TYPE: LayerType = LayerType::kCONDITIONAL_OUTPUT;
+}
+impl TrtLayerLike for nvinfer1::IIfConditionalInputLayer {
+    const TYPE: LayerType = LayerType::kCONDITIONAL_INPUT;
+}
+impl TrtLayerLike for nvinfer1::IAttentionBoundaryLayer {
+    const TYPE: LayerType = LayerType::kATTENTION_INPUT; // base; subclasses override conceptually
 }
 
 // Logger bridge C functions

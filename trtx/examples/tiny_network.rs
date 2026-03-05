@@ -12,7 +12,6 @@
 use trtx::builder::MemoryPoolType;
 use trtx::cuda::{synchronize, DeviceBuffer};
 use trtx::error::Result;
-use trtx::network::Layer; // Import Layer trait for get_output method
 use trtx::{ActivationType, Builder, DataType, Logger, Runtime};
 
 fn main() -> Result<()> {
@@ -182,8 +181,9 @@ fn build_tiny_network(logger: &Logger) -> Result<Vec<u8>> {
     println!("   Input tensor dims: {:?}", input.dimensions()?);
 
     println!("   Adding ReLU activation layer...");
-    let activation_layer = network.add_activation(&input, ActivationType::kRELU)?;
-    let output = activation_layer.get_output(0)?;
+    let mut input = input;
+    let activation_layer = network.add_activation(&mut input, ActivationType::kRELU)?;
+    let output = activation_layer.get_output(&network, 0)?;
 
     println!("   Setting output tensor name...");
     let mut output_named = output;
@@ -191,7 +191,7 @@ fn build_tiny_network(logger: &Logger) -> Result<Vec<u8>> {
     println!("   Output tensor name: {:?}", output_named.name()?);
 
     println!("   Marking output tensor...");
-    network.mark_output(&output_named);
+    network.mark_output(&mut output_named);
 
     println!("   Network has {} inputs", network.get_nb_inputs());
     println!("   Network has {} outputs", network.get_nb_outputs());
