@@ -1,8 +1,10 @@
 use crate::{enums::ErrorCode, ffi, DataType, Dims64, Severity, TensorLocation};
 use ::autocxx::subclass::*;
 use std::{
+    cell::RefCell,
     ffi::{c_char, CStr},
     ptr::null_mut,
+    rc::Rc,
 };
 
 use crate::nvinfer1;
@@ -12,7 +14,7 @@ use crate::nvinfer1;
 /// Put into a [ProgressMonitor] to subclass [nvinfer1::IProgressMonitor]
 pub trait HandleProgress: Send + Sync {
     /// See [nvinfer::IProgressMonitor::phaseStart]
-    fn phase_start(&mut self, phase_name: &str, parent_phase: &str, num_steps: i32);
+    fn phase_start(&mut self, phase_name: &str, parent_phase: Option<&str>, num_steps: i32);
     /// See [nvinfer::IProgressMonitor::stepComplete]. Return whether to continue building or cancel
     fn step_complete(&mut self, phase_name: &str, step: i32) -> std::ops::ControlFlow<()>;
     /// See [nvinfer::IProgressMonitor::phaseFinish]
@@ -30,11 +32,10 @@ pub struct ProgressMonitor {
 }
 
 impl ProgressMonitor {
-    pub fn new(inner: Box<dyn HandleProgress>) -> Self {
-        Self {
-            inner: Some(inner),
-            ..Default::default()
-        }
+    pub fn new(inner: Box<dyn HandleProgress>) -> Rc<RefCell<Self>> {
+        let rtn = Self::default_rust_owned();
+        rtn.borrow_mut().inner = Some(inner);
+        rtn
     }
 }
 
@@ -46,13 +47,17 @@ impl nvinfer1::IProgressMonitor_methods for ProgressMonitor {
         nbSteps: i32,
     ) {
         let phase_name = CStr::from_ptr(phaseName);
-        let parent_phase = CStr::from_ptr(parentPhase);
+        let parent_phase = if parentPhase.is_null() {
+            None
+        } else {
+            Some(CStr::from_ptr(phaseName).to_string_lossy())
+        };
         self.inner
             .as_mut()
             .expect("construction only possible with Some")
             .phase_start(
                 &phase_name.to_string_lossy(),
-                &parent_phase.to_string_lossy(),
+                parent_phase.as_ref().map(|v| v.as_ref()),
                 nbSteps,
             );
     }

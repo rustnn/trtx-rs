@@ -87,7 +87,7 @@ impl<'network, Inner: TrtLayer> Layer<'network, Inner> {
     }
 
     /// See [nvinfer1::ILayer::setName]
-    pub fn set_name(&mut self, network: &mut NetworkDefinition, name: &str) -> Result<()> {
+    pub fn set_name(&mut self, network: &'_ mut NetworkDefinition, name: &str) -> Result<()> {
         check_network!(network, self);
         let name = CString::new(name)?;
         unsafe {
@@ -604,7 +604,7 @@ impl<'network> NetworkDefinition<'network> {
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addIdentity`].
-    pub fn add_identity(&mut self, input: &mut Tensor) -> Result<IdentityLayer<'_>> {
+    pub fn add_identity(&mut self, input: &'_ mut Tensor) -> Result<IdentityLayer<'network>> {
         crate::check_network!(self, input);
         let layer_ptr = self.inner.pin_mut().addIdentity(input.inner.as_mut());
 

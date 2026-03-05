@@ -1,5 +1,8 @@
 //! Real TensorRT builder config implementation
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use crate::error::PropertySetAttempt;
 use crate::Error;
 use crate::Result;
@@ -15,7 +18,7 @@ use trtx_sys::{
 /// Builder configuration (real mode)
 pub struct BuilderConfig {
     pub(crate) inner: UniquePtr<IBuilderConfig>,
-    progress_monitor: Option<ProgressMonitor>,
+    progress_monitor: Option<Rc<RefCell<ProgressMonitor>>>,
 }
 
 impl BuilderConfig {
@@ -35,11 +38,14 @@ impl BuilderConfig {
         self.progress_monitor = Some(ProgressMonitor::new(progress_monitor));
         #[cfg(not(feature = "mock"))]
         unsafe {
-            self.inner.pin_mut().setProgressMonitor(std::pin::Pin::<
-                &mut trtx_sys::nvinfer1::IProgressMonitor,
-            >::into_inner_unchecked(
-                self.progress_monitor.as_mut().unwrap().pin_mut(),
-            ))
+            self.inner.pin_mut().setProgressMonitor(
+                self.progress_monitor
+                    .as_mut()
+                    .unwrap()
+                    .borrow_mut()
+                    .pin_mut()
+                    .get_unchecked_mut(),
+            )
         };
     }
 
@@ -416,5 +422,111 @@ impl BuilderConfig {
         } else {
             ComputeCapability::kNONE
         }
+    }
+}
+
+#[cfg(test)]
+#[cfg(not(feature = "mock"))]
+mod tests {
+    use crate::builder::MemoryPoolType;
+    use crate::{Builder, DataType, Logger, NetworkDefinition};
+    use std::ops::ControlFlow;
+    use std::sync::atomic::{AtomicU32, Ordering};
+    use trtx_sys::HandleProgress;
+
+    const NUM_LAYERS: usize = 40;
+
+    /// Progress monitor that writes to stdout and cancels the build after a few steps.
+    struct StdoutProgressMonitor {
+        step_count: AtomicU32,
+        cancel_after: u32,
+    }
+
+    impl StdoutProgressMonitor {
+        fn new(cancel_after: u32) -> Self {
+            Self {
+                step_count: AtomicU32::new(0),
+                cancel_after,
+            }
+        }
+    }
+
+    impl HandleProgress for StdoutProgressMonitor {
+        fn phase_start(&mut self, phase_name: &str, parent_phase: Option<&str>, num_steps: i32) {
+            println!(
+                "[progress] phase_start phase={:?} parent={:?} num_steps={}",
+                phase_name, parent_phase, num_steps
+            );
+        }
+
+        fn step_complete(&mut self, phase_name: &str, step: i32) -> ControlFlow<()> {
+            let n = self.step_count.fetch_add(1, Ordering::SeqCst);
+            println!(
+                "[progress] step_complete phase={:?} step={}",
+                phase_name, step
+            );
+            if n + 1 >= self.cancel_after {
+                println!("[progress] cancel requested after {} steps", n + 1);
+                ControlFlow::Break(())
+            } else {
+                ControlFlow::Continue(())
+            }
+        }
+
+        fn phase_finish(&mut self, phase_name: &str) {
+            println!("[progress] phase_finish phase={:?}", phase_name);
+        }
+    }
+
+    /// Build a network with many repeated identity layers, each named.
+    fn build_heavy_network(logger: &Logger) -> crate::Result<(Builder<'_>, NetworkDefinition<'_>)> {
+        let mut builder = Builder::new(logger)?;
+        let mut network = builder.create_network(0)?;
+
+        let mut tensor = network.add_input("input", DataType::kFLOAT, &[1, 4])?;
+        for i in 0..NUM_LAYERS {
+            let mut layer = network.add_identity(&mut tensor)?;
+            layer.set_name(&mut network, &format!("layer_{}", i))?;
+            tensor = layer.get_output(&network, 0)?;
+        }
+        tensor.set_name(&mut network, "output")?;
+        network.mark_output(&mut tensor);
+
+        Ok((builder, network))
+    }
+
+    #[test]
+    fn set_progress_monitor_cancel_build() {
+        let logger = Logger::stderr().expect("logger");
+        let (mut builder, mut network) = build_heavy_network(&logger).expect("build network");
+
+        let mut config = builder.create_config().expect("config");
+        config.set_memory_pool_limit(MemoryPoolType::kWORKSPACE, 1 << 24);
+
+        let monitor = StdoutProgressMonitor::new(3);
+        config.set_progress_monitor(Box::new(monitor));
+
+        let result = builder.build_serialized_network(&mut network, &mut config);
+
+        assert!(
+            result.is_err(),
+            "build should fail (cancelled by progress monitor)"
+        );
+    }
+
+    #[test]
+    fn set_progress_monitor_progress_to_stdout() {
+        let logger = Logger::stderr().expect("logger");
+        let (mut builder, mut network) = build_heavy_network(&logger).expect("build network");
+
+        let mut config = builder.create_config().expect("config");
+        config.set_memory_pool_limit(MemoryPoolType::kWORKSPACE, 1 << 24);
+
+        let monitor = StdoutProgressMonitor::new(10000);
+        config.set_progress_monitor(Box::new(monitor));
+
+        let result = builder.build_serialized_network(&mut network, &mut config);
+
+        assert!(result.is_ok(), "build should succeed when not cancelling");
     }
 }
