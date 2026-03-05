@@ -95,6 +95,7 @@ better_enum!(OptProfileSelector);
 better_enum!(AttentionNormalizationOp);
 better_enum!(SeekPosition);
 better_enum!(WeightsRole);
+pub use enums::ErrorCode;
 
 use autocxx::prelude::*;
 

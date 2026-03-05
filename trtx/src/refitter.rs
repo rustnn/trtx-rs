@@ -1,19 +1,16 @@
-use std::cell::RefCell;
 use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
-use std::rc::Rc;
-use trtx_sys::RecordError;
 
 use crate::{
     error::{Error, Result},
     CudaEngine, Logger,
 };
 use autocxx::cxx::UniquePtr;
-use trtx_sys::{nvinfer1, ErrorRecorder};
+use trtx_sys::nvinfer1;
 
 pub struct Refitter<'logger, 'engine> {
     inner: UniquePtr<nvinfer1::IRefitter>,
-    error_recorder: Option<Rc<RefCell<ErrorRecorder>>>,
+    //error_recorder: Option<Rc<RefCell<ErrorRecorder>>>,
     _logger: PhantomData<&'logger Logger>,
     _engine: PhantomData<&'engine CudaEngine<'engine>>,
 }
@@ -62,7 +59,7 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
             }
             Ok(Self {
                 inner: unsafe { UniquePtr::from_raw(refitter) },
-                error_recorder: None,
+                //error_recorder: None,
                 _engine: Default::default(),
                 _logger: Default::default(),
             })
@@ -70,6 +67,7 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
         #[cfg(feature = "mock")]
         Ok(Refitter {
             inner: UniquePtr::null(),
+            error_recorder: None,
             _engine: Default::default(),
             _logger: Default::default(),
         })
@@ -163,21 +161,21 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
         Ok(out)
     }
 
-    /// See [nvinfer1::IRefitter::setErrorRecorder]
-    pub fn set_error_recorder(&mut self, error_recorder: Rc<RefCell<ErrorRecorder>>) {
-        self.error_recorder = Some(error_recorder);
-        #[cfg(not(feature = "mock"))]
-        unsafe {
-            self.inner.pin_mut().setErrorRecorder(
-                self.error_recorder
-                    .as_mut()
-                    .unwrap()
-                    .borrow_mut()
-                    .pin_mut()
-                    .get_unchecked_mut(),
-            )
-        };
-    }
+    ///// See [nvinfer1::IRefitter::setErrorRecorder]
+    //pub fn set_error_recorder(&mut self, error_recorder: Rc<RefCell<ErrorRecorder>>) {
+    //self.error_recorder = Some(error_recorder);
+    //#[cfg(not(feature = "mock"))]
+    //unsafe {
+    //self.inner.pin_mut().setErrorRecorder(
+    //self.error_recorder
+    //.as_mut()
+    //.unwrap()
+    //.take()
+    //.pin_mut()
+    //.get_unchecked_mut(),
+    //)
+    //};
+    //}
 
     /// Get the assigned error recorder, or null if none.
     pub fn get_error_recorder(&self) -> *mut nvinfer1::IErrorRecorder {
@@ -212,14 +210,12 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
             )
         };
         let count = count.max(0) as usize;
-        let mut out = Vec::with_capacity(count);
-        for i in 0..count.min(names.len()) {
-            let ptr = names[i];
-            if ptr.is_null() {
-                break;
-            }
-            out.push(unsafe { CStr::from_ptr(ptr) }.to_str()?.to_string());
-        }
+        let out = names
+            .iter()
+            .take(count.min(names.len()))
+            .take_while(|n| !n.is_null())
+            .map(|n| unsafe { CStr::from_ptr(*n).to_string_lossy().to_string() })
+            .collect();
         Ok(out)
     }
 
@@ -235,14 +231,12 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
             )
         };
         let count = count.max(0) as usize;
-        let mut out = Vec::with_capacity(count);
-        for i in 0..count.min(names.len()) {
-            let ptr = names[i];
-            if ptr.is_null() {
-                break;
-            }
-            out.push(unsafe { CStr::from_ptr(ptr) }.to_str()?.to_string());
-        }
+        let out = names
+            .iter()
+            .take(count.min(names.len()))
+            .take_while(|n| !n.is_null())
+            .map(|n| unsafe { CStr::from_ptr(*n).to_string_lossy().to_string() })
+            .collect();
         Ok(out)
     }
 
@@ -322,6 +316,10 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
     }
 
     /// Enqueue weights refitting on the given CUDA stream.
+    ///
+    /// # Safety
+    ///
+    /// `cuda_stream` must be a valid CUDA stream
     pub unsafe fn refit_cuda_engine_async(
         &mut self,
         cuda_stream: *mut std::ffi::c_void,
@@ -349,11 +347,58 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
 #[cfg(test)]
 #[cfg(not(feature = "mock"))]
 mod tests {
+    use std::sync::atomic::{AtomicI32, Ordering};
+    use std::sync::{Arc, Mutex};
     use trtx_sys::BuilderFlag;
+    use trtx_sys::{ErrorCode, ErrorRecorder, RecordError};
 
     use super::*;
     use crate::builder::MemoryPoolType;
     use crate::{Builder, DataType, Logger, Runtime};
+
+    /// Error recorder that collects reported errors into a shared `Vec<(ErrorCode, String)>`.
+    struct VecErrorRecorder {
+        messages: Arc<Mutex<Vec<(ErrorCode, String)>>>,
+        ref_count: AtomicI32,
+    }
+
+    impl VecErrorRecorder {
+        fn new(messages: Arc<Mutex<Vec<(ErrorCode, String)>>>) -> Self {
+            Self {
+                messages,
+                ref_count: AtomicI32::new(0),
+            }
+        }
+    }
+
+    impl RecordError for VecErrorRecorder {
+        fn nb_errors(&self) -> i32 {
+            self.messages.lock().unwrap().len() as i32
+        }
+        fn error_code(&self, error_idx: i32) -> ErrorCode {
+            self.messages.lock().unwrap()[error_idx as usize].0
+        }
+        fn error_desc(&self, _error_idx: i32) -> &CStr {
+            static EMPTY: &[u8] = b"\0";
+            unsafe { CStr::from_bytes_with_nul_unchecked(EMPTY) }
+        }
+        fn has_overflowed(&self) -> bool {
+            false
+        }
+        fn clear(&mut self) {
+            self.messages.lock().unwrap().clear();
+        }
+        unsafe fn report_error(&mut self, val: ErrorCode, desc: &str) -> bool {
+            self.messages.lock().unwrap().push((val, desc.to_string()));
+            true
+        }
+        fn inc_ref_count(&mut self) -> i32 {
+            self.ref_count.fetch_add(1, Ordering::SeqCst) + 1
+        }
+        fn dec_ref_count(&mut self) -> i32 {
+            self.ref_count.fetch_sub(1, Ordering::SeqCst) - 1
+        }
+    }
 
     /// Build a minimal network with one refittable constant layer: constant [1,4] -> output.
     fn build_constant_network(logger: &Logger) -> Result<Vec<u8>> {
@@ -423,4 +468,39 @@ mod tests {
 
         refitter.refit_cuda_engine().expect("refit_cuda_engine");
     }
+
+    ////#[test]
+    ////fn refitter_error_recorder_collects_invalid_weight_error() {
+    ////let logger = Logger::stderr().expect("logger");
+    ////let engine_data = build_constant_network(&logger).expect("build network");
+    ////assert!(!engine_data.is_empty());
+
+    ////let mut runtime = Runtime::new(&logger).expect("runtime");
+    ////let engine = runtime
+    ////.deserialize_cuda_engine(&engine_data)
+    ////.expect("deserialize engine");
+
+    ////let mut refitter = Refitter::new(&engine, &logger).expect("refitter");
+
+    ////let weight_name = refitter.get_all_weights(64).expect("get_all_weights")[0].clone();
+
+    ////let errors: Arc<Mutex<Vec<(ErrorCode, String)>>> = Arc::new(Mutex::new(Vec::new()));
+    ////let recorder = ErrorRecorder::new(Box::new(VecErrorRecorder::new(Arc::clone(&errors))));
+    //////refitter.set_error_recorder(recorder);
+
+    ////let wrong_weights = nvinfer1::Weights {
+    ////type_: nvinfer1::DataType::kFLOAT,
+    ////values: [1.0f32].as_ptr() as *const std::ffi::c_void,
+    ////count: 1,
+    ////};
+    ////let _ = refitter.set_named_weights(&weight_name, wrong_weights);
+
+    ////refitter.get_named_weights("nonexistent_weight_name");
+
+    ////let collected = errors.lock().unwrap();
+    ////assert!(
+    ////!collected.is_empty(),
+    ////"error recorder should have collected at least one error (invalid weight or nonexistent name)"
+    ////);
+    ////}
 }

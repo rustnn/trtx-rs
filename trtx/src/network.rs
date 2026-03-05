@@ -1,15 +1,13 @@
 //! Network definition for building TensorRT engines
 
 use cxx::UniquePtr;
-use std::cell::RefCell;
 use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 use std::pin::Pin;
-use std::rc::Rc;
 use trtx_sys::nvinfer1::{IConcatenationLayer, INetworkDefinition, ITensor};
-use trtx_sys::{nvinfer1, LayerType, RecordError};
+use trtx_sys::TrtLayer;
+use trtx_sys::{nvinfer1, LayerType};
 use trtx_sys::{DataType, MatrixOperation, ScaleMode, TopKOperation};
-use trtx_sys::{ErrorRecorder, TrtLayer};
 
 /// Panics if the layer or tensor was created from a different network.
 #[macro_export]
@@ -472,7 +470,7 @@ impl Tensor<'_> {
 pub struct NetworkDefinition<'builder> {
     //pub(crate) inner: Mutex<Pin<&'builder mut INetworkDefinition>>,
     pub(crate) inner: UniquePtr<INetworkDefinition>,
-    error_recorder: Option<Rc<RefCell<ErrorRecorder>>>,
+    //error_recorder: Option<Rc<RefCell<ErrorRecorder>>>,
     _builder: PhantomData<&'builder trtx_sys::nvinfer1::IBuilder>,
 }
 
@@ -480,7 +478,7 @@ impl<'network> NetworkDefinition<'network> {
     pub(crate) fn from_ptr(ptr: *mut INetworkDefinition) -> Self {
         Self {
             inner: unsafe { UniquePtr::from_raw(ptr) },
-            error_recorder: None,
+            //error_recorder: None,
             _builder: Default::default(),
         }
     }
@@ -1437,7 +1435,7 @@ impl<'builder> NetworkDefinition<'builder> {
         scale: &'_ mut Tensor,
         bias: &'_ mut Tensor,
         axes_mask: crate::Axes,
-    ) -> Result<NormalizationLayer<'_>> {
+    ) -> Result<NormalizationLayer<'builder>> {
         crate::check_network!(self, input);
         crate::check_network!(self, scale);
         crate::check_network!(self, bias);
@@ -1457,7 +1455,7 @@ impl<'builder> NetworkDefinition<'builder> {
         scale: &'_ mut Tensor,
         bias: &'_ mut Tensor,
         axes_mask: crate::Axes,
-    ) -> Result<NormalizationLayer<'_>> {
+    ) -> Result<NormalizationLayer<'builder>> {
         crate::check_network!(self, input);
         crate::check_network!(self, scale);
         crate::check_network!(self, bias);
@@ -1471,19 +1469,19 @@ impl<'builder> NetworkDefinition<'builder> {
         NormalizationLayer::new(self.inner.as_ptr(), ptr)
     }
 
-    /// Set [nvinfer1::INetworkDefinition::setErrorRecorder]
-    pub fn set_error_recorder(&mut self, error_recorder: Rc<RefCell<ErrorRecorder>>) {
-        self.error_recorder = Some(error_recorder);
-        #[cfg(not(feature = "mock"))]
-        unsafe {
-            self.inner.pin_mut().setErrorRecorder(
-                self.error_recorder
-                    .as_mut()
-                    .unwrap()
-                    .borrow_mut()
-                    .pin_mut()
-                    .get_unchecked_mut(),
-            )
-        };
-    }
+    ///// Set [nvinfer1::INetworkDefinition::setErrorRecorder]
+    //pub fn set_error_recorder(&mut self, error_recorder: Rc<RefCell<ErrorRecorder>>) {
+    //self.error_recorder = Some(error_recorder);
+    //#[cfg(not(feature = "mock"))]
+    //unsafe {
+    //self.inner.pin_mut().setErrorRecorder(
+    //self.error_recorder
+    //.as_mut()
+    //.unwrap()
+    //.borrow_mut()
+    //.pin_mut()
+    //.get_unchecked_mut(),
+    //)
+    //};
+    //}
 }

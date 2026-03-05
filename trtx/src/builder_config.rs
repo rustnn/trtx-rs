@@ -8,7 +8,6 @@ use crate::Error;
 use crate::Result;
 use cxx::UniquePtr;
 use trtx_sys::nvinfer1::{self, IBuilderConfig};
-use trtx_sys::HandleProgress;
 use trtx_sys::ProgressMonitor;
 use trtx_sys::{
     BuilderFlag, ComputeCapability, DeviceType, EngineCapability, HardwareCompatibilityLevel,
@@ -34,7 +33,8 @@ impl BuilderConfig {
     }
 
     /// See [IBuilderConfig::setProgressMonitor]
-    pub fn set_progress_monitor(&mut self, progress_monitor: Rc<RefCell<ProgressMonitor>>) {
+    /// TODO: can't use this yet: autocxx currently doesn't allow threaded subclasses
+    pub unsafe fn set_progress_monitor(&mut self, progress_monitor: Rc<RefCell<ProgressMonitor>>) {
         self.progress_monitor = Some(progress_monitor);
         #[cfg(not(feature = "mock"))]
         unsafe {
