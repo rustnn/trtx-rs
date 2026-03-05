@@ -35,6 +35,7 @@ pub use crate::interfaces::{DebugListener, ProcessDebugTensor};
 pub use crate::interfaces::{ErrorRecorder, RecordError};
 pub use crate::interfaces::{HandleLog, Logger};
 pub use crate::interfaces::{HandleProgress, ProgressMonitor};
+pub use crate::interfaces::{ReadStreamV2, StreamReaderV2};
 
 #[allow(warnings)]
 mod enums {
@@ -92,6 +93,7 @@ better_enum!(TensorLocation);
 better_enum!(SerializationFlag);
 better_enum!(OptProfileSelector);
 better_enum!(AttentionNormalizationOp);
+better_enum!(SeekPosition);
 
 use autocxx::prelude::*;
 
@@ -111,6 +113,7 @@ include_cpp! {
     generate!("nvinfer1::IVersionedInterface")
     generate!("nvinfer1::IProgressMonitor")
     generate!("nvinfer1::IStreamWriter")
+    generate!("nvinfer1::IStreamReaderV2")
     generate!("nvinfer1::IErrorRecorder")
     generate!("nvinfer1::IProfiler")
     generate!("nvinfer1::IGpuAllocator")
@@ -242,6 +245,7 @@ include_cpp! {
     subclass!("nvinfer1::IErrorRecorder", ErrorRecorder)
     subclass!("nvinfer1::IDebugListener", DebugListener)
     subclass!("nvinfer1::ILogger", Logger)
+    subclass!("nvinfer1::IStreamReaderV2", StreamReaderV2)
     // NOTE: createInferBuilder/Runtime moved to logger_bridge.cpp (autocxx struggles with these)
 
     // ONNX Parser

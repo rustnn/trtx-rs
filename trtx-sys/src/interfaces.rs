@@ -322,3 +322,45 @@ impl nvinfer1::ILogger_methods for Logger {
 pub trait HandleLog: Send + Sync {
     unsafe fn log(&mut self, severity: Severity, message: &str);
 }
+
+#[subclass]
+#[derive(Default)]
+pub struct StreamReaderV2 {
+    inner: Option<Box<dyn ReadStreamV2>>,
+}
+
+impl StreamReaderV2 {
+    pub fn new(inner: Box<dyn ReadStreamV2>) -> Self {
+        Self {
+            inner: Some(inner),
+            ..Default::default()
+        }
+    }
+}
+
+impl nvinfer1::IStreamReaderV2_methods for StreamReaderV2 {
+    unsafe fn read(
+        &mut self,
+        destination: *mut autocxx::c_void,
+        nbBytes: i64,
+        stream: *mut crate::ffi::CUstream_st,
+    ) -> i64 {
+        self.inner
+            .as_mut()
+            .unwrap()
+            .read(destination, nbBytes, stream)
+    }
+    fn seek(&mut self, offset: i64, where_: nvinfer1::SeekPosition) -> bool {
+        self.inner.as_mut().unwrap().seek(offset, where_.into())
+    }
+}
+
+pub trait ReadStreamV2: Send + Sync {
+    unsafe fn read(
+        &mut self,
+        destination: *mut autocxx::c_void,
+        nbBytes: i64,
+        stream: *mut crate::ffi::CUstream_st,
+    ) -> i64;
+    fn seek(&mut self, offset: i64, where_: crate::SeekPosition) -> bool;
+}
