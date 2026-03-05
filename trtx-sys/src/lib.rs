@@ -245,10 +245,16 @@ include_cpp! {
 
 }
 
-pub trait TrtLayer: AsRef<nvinfer1::ILayer> {
+pub trait TrtLayer {
     const TYPE: LayerType;
     fn as_layer(&self) -> &nvinfer1::ILayer {
-        self.as_ref()
+        // can't use safe `as_ref() -> &nvinfer1::ILayer` because only implemented for direct
+        // subclasses of ILayer
+        unsafe {
+            (self as *const Self as *const nvinfer1::ILayer)
+                .as_ref()
+                .unwrap()
+        }
     }
     fn as_layer_pin_mut(&mut self) -> Pin<&mut nvinfer1::ILayer> {
         unsafe {
@@ -391,43 +397,40 @@ impl TrtLayer for nvinfer1::IKVCacheUpdateLayer {
     const TYPE: LayerType = LayerType::kKVCACHE_UPDATE;
 }
 
-// not ILayer as per Trt, but supports setName, getOutput
-pub trait TrtLayerLike {
-    const TYPE: LayerType;
-}
+// indirect subclasses of ILayer e.g. via ILoopBoundaryLayer, IAttentionBoundaryLayer, IIfConditionalBoundaryLayer
 
-impl TrtLayerLike for nvinfer1::IAttentionInputLayer {
+impl TrtLayer for nvinfer1::IAttentionInputLayer {
     const TYPE: LayerType = LayerType::kATTENTION_INPUT;
 }
-impl TrtLayerLike for nvinfer1::IAttentionOutputLayer {
+impl TrtLayer for nvinfer1::IAttentionOutputLayer {
     const TYPE: LayerType = LayerType::kATTENTION_OUTPUT;
 }
-impl TrtLayerLike for nvinfer1::ILoopBoundaryLayer {
-    const TYPE: LayerType = LayerType::kTRIP_LIMIT; // base for loop boundary; subclasses have specific types
-}
-impl TrtLayerLike for nvinfer1::IRecurrenceLayer {
-    const TYPE: LayerType = LayerType::kRECURRENCE;
-}
-impl TrtLayerLike for nvinfer1::ILoopOutputLayer {
-    const TYPE: LayerType = LayerType::kLOOP_OUTPUT;
-}
-impl TrtLayerLike for nvinfer1::ITripLimitLayer {
+impl TrtLayer for nvinfer1::ILoopBoundaryLayer {
     const TYPE: LayerType = LayerType::kTRIP_LIMIT;
 }
-impl TrtLayerLike for nvinfer1::IIteratorLayer {
+impl TrtLayer for nvinfer1::ILoopOutputLayer {
+    const TYPE: LayerType = LayerType::kLOOP_OUTPUT;
+}
+impl TrtLayer for nvinfer1::IRecurrenceLayer {
+    const TYPE: LayerType = LayerType::kRECURRENCE;
+}
+impl TrtLayer for nvinfer1::ITripLimitLayer {
+    const TYPE: LayerType = LayerType::kTRIP_LIMIT;
+}
+impl TrtLayer for nvinfer1::IIteratorLayer {
     const TYPE: LayerType = LayerType::kITERATOR;
 }
-impl TrtLayerLike for nvinfer1::IConditionLayer {
+impl TrtLayer for nvinfer1::IConditionLayer {
     const TYPE: LayerType = LayerType::kCONDITION;
 }
-impl TrtLayerLike for nvinfer1::IIfConditionalOutputLayer {
+impl TrtLayer for nvinfer1::IIfConditionalOutputLayer {
     const TYPE: LayerType = LayerType::kCONDITIONAL_OUTPUT;
 }
-impl TrtLayerLike for nvinfer1::IIfConditionalInputLayer {
+impl TrtLayer for nvinfer1::IIfConditionalInputLayer {
     const TYPE: LayerType = LayerType::kCONDITIONAL_INPUT;
 }
-impl TrtLayerLike for nvinfer1::IAttentionBoundaryLayer {
-    const TYPE: LayerType = LayerType::kATTENTION_INPUT; // base; subclasses override conceptually
+impl TrtLayer for nvinfer1::IAttentionBoundaryLayer {
+    const TYPE: LayerType = LayerType::kATTENTION_INPUT;
 }
 
 // Logger bridge C functions
