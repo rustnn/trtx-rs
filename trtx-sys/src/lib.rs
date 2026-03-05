@@ -91,6 +91,7 @@ better_enum!(LayerInformationFormat);
 better_enum!(TensorLocation);
 better_enum!(SerializationFlag);
 better_enum!(OptProfileSelector);
+better_enum!(AttentionNormalizationOp);
 
 use autocxx::prelude::*;
 
@@ -174,6 +175,7 @@ include_cpp! {
     generate!("nvinfer1::IAttentionBoundaryLayer")
     generate!("nvinfer1::IAttentionInputLayer")
     generate!("nvinfer1::IAttentionOutputLayer")
+    generate!("nvinfer1::IAttention")
     // NOTE: IRNNv2Layer is deprecated (TRT_DEPRECATED) and autocxx cannot generate bindings for it
     // RNN operations (lstm, lstmCell, gru, gruCell) remain deferred until we can work around this
     // generate!("nvinfer1::IRNNv2Layer")
@@ -227,6 +229,7 @@ include_cpp! {
     generate_pod!("nvinfer1::Permutation")
     generate_pod!("nvinfer1::TripLimit")
     generate_pod!("nvinfer1::LoopOutput")
+    generate_pod!("nvinfer1::AttentionNormalizationOp")
 
     generate!("nvinfer1::ErrorCode")
     generate!("nvinfer1::LayerType")

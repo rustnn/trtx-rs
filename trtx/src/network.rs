@@ -4,7 +4,6 @@
 
 use std::ffi::{CStr, CString};
 use std::pin::Pin;
-use std::sync::Mutex;
 use trtx_sys::TrtLayer;
 
 use trtx_sys::{nvinfer1, LayerType};
@@ -168,10 +167,21 @@ pub type ConditionLayer<'layer> = Layer<'layer, nvinfer1::IConditionLayer>;
 pub type IfConditionalOutputLayer<'layer> = Layer<'layer, nvinfer1::IIfConditionalOutputLayer>;
 pub type IfConditionalInputLayer<'layer> = Layer<'layer, nvinfer1::IIfConditionalInputLayer>;
 
-// Those are not actual ILayer in TRT
-pub struct Loop<'network> {
-    pub(crate) _inner: Mutex<Pin<&'network mut nvinfer1::ILoop>>,
+/// Attention block (query, key, value → output). Created by [`NetworkDefinition::add_attention`].
+/// Input/output layers are managed internally by TensorRT.
+pub struct Attention<'network> {
+    pub(crate) inner: Pin<&'network mut nvinfer1::IAttention>,
+    pub(crate) network: *const nvinfer1::INetworkDefinition,
 }
+
+/// Loop construct for recurrent subgraphs. Created by [`NetworkDefinition::add_loop`].
+pub struct Loop<'network> {
+    pub(crate) inner: Pin<&'network mut nvinfer1::ILoop>,
+    pub(crate) network: *const nvinfer1::INetworkDefinition,
+}
+
+/// If-conditional construct. Created by [`NetworkDefinition::add_if_conditional`].
 pub struct IfConditional<'network> {
-    pub(crate) _inner: Mutex<Pin<&'network mut nvinfer1::IIfConditional>>,
+    pub(crate) inner: Pin<&'network mut nvinfer1::IIfConditional>,
+    pub(crate) network: *const nvinfer1::INetworkDefinition,
 }
