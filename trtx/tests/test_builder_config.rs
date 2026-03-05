@@ -53,7 +53,7 @@ mod tests {
 
         // Test tactic sources (kEDGE_MASK_CONVOLUTIONS = 3)
         let sources = 1u32 << 3;
-        assert!(config.set_tactic_sources(sources));
+        config.set_tactic_sources(sources).unwrap();
         #[cfg(not(feature = "mock"))]
         assert_eq!(config.get_tactic_sources(), sources);
 
@@ -98,7 +98,9 @@ mod tests {
         assert_eq!(config.get_max_nb_tactics(), 10);
 
         // Test tiling optimization level
-        assert!(config.set_tiling_optimization_level(TilingOptimizationLevel::kFAST));
+        config
+            .set_tiling_optimization_level(TilingOptimizationLevel::kFAST)
+            .unwrap();
         #[cfg(not(feature = "mock"))]
         assert_eq!(
             config.get_tiling_optimization_level(),
@@ -106,15 +108,17 @@ mod tests {
         );
 
         // Test L2 limit for tiling
-        assert!(config.set_l2_limit_for_tiling(1024));
+        config.set_l2_limit_for_tiling(1024).unwrap();
         #[cfg(not(feature = "mock"))]
         assert_eq!(config.get_l2_limit_for_tiling(), 1024);
 
         // Test compute capabilities
-        assert!(config.set_nb_compute_capabilities(1));
+        config.set_nb_compute_capabilities(1).unwrap();
         #[cfg(not(feature = "mock"))]
         assert_eq!(config.get_nb_compute_capabilities(), 1);
-        assert!(config.set_compute_capability(ComputeCapability::kCURRENT, 0));
+        config
+            .set_compute_capability(ComputeCapability::kCURRENT, 0)
+            .unwrap();
         #[cfg(not(feature = "mock"))]
         assert_eq!(
             config.get_compute_capability(0),

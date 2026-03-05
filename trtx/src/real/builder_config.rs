@@ -1,5 +1,6 @@
 //! Real TensorRT builder config implementation
 
+use crate::error::PropertySetAttempt;
 use crate::Error;
 use crate::Result;
 use cxx::UniquePtr;
@@ -177,11 +178,17 @@ impl BuilderConfig {
     }
 
     /// See [IBuilderConfig::setTacticSources]
-    pub fn set_tactic_sources(&mut self, sources: u32) -> bool {
+    pub fn set_tactic_sources(&mut self, sources: u32) -> crate::Result<()> {
         if cfg!(not(feature = "mock")) {
-            self.inner.pin_mut().setTacticSources(sources)
+            if self.inner.pin_mut().setTacticSources(sources) {
+                Ok(())
+            } else {
+                Err(crate::Error::FailedToSetProperty(
+                    PropertySetAttempt::BuilderConfigTacticSources,
+                ))
+            }
         } else {
-            true
+            Ok(())
         }
     }
 
@@ -294,13 +301,24 @@ impl BuilderConfig {
     }
 
     /// See [IBuilderConfig::setTilingOptimizationLevel]
-    pub fn set_tiling_optimization_level(&mut self, level: TilingOptimizationLevel) -> bool {
+    pub fn set_tiling_optimization_level(
+        &mut self,
+        level: TilingOptimizationLevel,
+    ) -> crate::Result<()> {
         if cfg!(not(feature = "mock")) {
-            self.inner
+            if self
+                .inner
                 .pin_mut()
                 .setTilingOptimizationLevel(level.into())
+            {
+                Ok(())
+            } else {
+                Err(crate::Error::FailedToSetProperty(
+                    PropertySetAttempt::BuilderConfigTilingOptimizationLevel,
+                ))
+            }
         } else {
-            true
+            Ok(())
         }
     }
 
@@ -314,11 +332,17 @@ impl BuilderConfig {
     }
 
     /// See [IBuilderConfig::setL2LimitForTiling]
-    pub fn set_l2_limit_for_tiling(&mut self, size: i64) -> bool {
+    pub fn set_l2_limit_for_tiling(&mut self, size: i64) -> crate::Result<()> {
         if cfg!(not(feature = "mock")) {
-            self.inner.pin_mut().setL2LimitForTiling(size)
+            if self.inner.pin_mut().setL2LimitForTiling(size) {
+                Ok(())
+            } else {
+                Err(crate::Error::FailedToSetProperty(
+                    PropertySetAttempt::BuilderConfigL2LimitForTiling,
+                ))
+            }
         } else {
-            true
+            Ok(())
         }
     }
 
@@ -332,13 +356,24 @@ impl BuilderConfig {
     }
 
     /// See [IBuilderConfig::setNbComputeCapabilities]
-    pub fn set_nb_compute_capabilities(&mut self, max_nb_compute_capabilities: i32) -> bool {
+    pub fn set_nb_compute_capabilities(
+        &mut self,
+        max_nb_compute_capabilities: i32,
+    ) -> crate::Result<()> {
         if cfg!(not(feature = "mock")) {
-            self.inner
+            if self
+                .inner
                 .pin_mut()
                 .setNbComputeCapabilities(max_nb_compute_capabilities)
+            {
+                Ok(())
+            } else {
+                Err(crate::Error::FailedToSetProperty(
+                    PropertySetAttempt::BuilderConfigNbComputeCapabilities,
+                ))
+            }
         } else {
-            true
+            Ok(())
         }
     }
 
@@ -356,13 +391,21 @@ impl BuilderConfig {
         &mut self,
         compute_capability: ComputeCapability,
         index: i32,
-    ) -> bool {
+    ) -> crate::Result<()> {
         if cfg!(not(feature = "mock")) {
-            self.inner
+            if self
+                .inner
                 .pin_mut()
                 .setComputeCapability(compute_capability.into(), index)
+            {
+                Ok(())
+            } else {
+                Err(crate::Error::FailedToSetProperty(
+                    PropertySetAttempt::BuilderConfigComputeCapability,
+                ))
+            }
         } else {
-            true
+            Ok(())
         }
     }
 

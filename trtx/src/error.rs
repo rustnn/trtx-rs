@@ -13,6 +13,11 @@ pub enum PropertySetAttempt {
     OptimizationProfileSetDimensions,
     OptimizationProfileSetExtraMemoryTarget,
     OptimizationProfileSetShapeValues,
+    BuilderConfigTacticSources,
+    BuilderConfigTilingOptimizationLevel,
+    BuilderConfigL2LimitForTiling,
+    BuilderConfigNbComputeCapabilities,
+    BuilderConfigComputeCapability,
 }
 
 /// Errors that can occur when using TensorRT-RTX
