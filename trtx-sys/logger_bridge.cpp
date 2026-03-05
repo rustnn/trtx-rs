@@ -54,6 +54,7 @@
  */
 
 #include "logger_bridge.hpp"
+#include <NvInferRuntime.h>
 #include <NvOnnxParser.h>
 #include <cstdint>
 #include <cstring>
@@ -146,18 +147,67 @@ void *create_infer_runtime(void *logger) {
   }
 }
 void *create_infer_refitter(void *engine, void *logger) {
-  if (!enigne) {
-    return nullptr;
-  }
-  if (!logger) {
+  if (!engine || !logger) {
     return nullptr;
   }
   try {
+    auto *iengine = static_cast<nvinfer1::ICudaEngine *>(engine);
     auto *ilogger = static_cast<nvinfer1::ILogger *>(logger);
-    auto *iengine = static_cast<nvinfer1::ICudaEngine *>(builder);
     return nvinfer1::createInferRefitter(*iengine, *ilogger);
   } catch (...) {
     return nullptr;
+  }
+}
+
+// Refitter methods that use char const** (pointer-to-pointer); autocxx cannot bind these.
+int32_t trtx_refitter_get_missing(void *refitter, int32_t size,
+                                  char const **layer_names,
+                                  int32_t *roles) {
+  if (!refitter || !layer_names || !roles)
+    return 0;
+  try {
+    auto *ir = static_cast<nvinfer1::IRefitter *>(refitter);
+    return ir->getMissing(size, layer_names,
+                          reinterpret_cast<nvinfer1::WeightsRole *>(roles));
+  } catch (...) {
+    return 0;
+  }
+}
+
+int32_t trtx_refitter_get_all(void *refitter, int32_t size,
+                              char const **layer_names, int32_t *roles) {
+  if (!refitter || !layer_names || !roles)
+    return 0;
+  try {
+    auto *ir = static_cast<nvinfer1::IRefitter *>(refitter);
+    return ir->getAll(size, layer_names,
+                      reinterpret_cast<nvinfer1::WeightsRole *>(roles));
+  } catch (...) {
+    return 0;
+  }
+}
+
+int32_t trtx_refitter_get_missing_weights(void *refitter, int32_t size,
+                                          char const **weights_names) {
+  if (!refitter || !weights_names)
+    return 0;
+  try {
+    auto *ir = static_cast<nvinfer1::IRefitter *>(refitter);
+    return ir->getMissingWeights(size, weights_names);
+  } catch (...) {
+    return 0;
+  }
+}
+
+int32_t trtx_refitter_get_all_weights(void *refitter, int32_t size,
+                                      char const **weights_names) {
+  if (!refitter || !weights_names)
+    return 0;
+  try {
+    auto *ir = static_cast<nvinfer1::IRefitter *>(refitter);
+    return ir->getAllWeights(size, weights_names);
+  } catch (...) {
+    return 0;
   }
 }
 #endif

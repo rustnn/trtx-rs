@@ -466,9 +466,35 @@ extern "C" {
 
     #[cfg(feature = "link_tensorrt_rtx")]
     pub fn create_infer_refitter(
-        cuda_engine: *mut *mut std::ffi::c_void,
+        cuda_engine: *mut std::ffi::c_void,
         logger: *mut std::ffi::c_void,
     ) -> *mut std::ffi::c_void; // Returns IRefitter*
+
+    pub fn trtx_refitter_get_missing(
+        refitter: *mut std::ffi::c_void,
+        size: i32,
+        layer_names: *mut *const std::os::raw::c_char,
+        roles: *mut i32,
+    ) -> i32;
+
+    pub fn trtx_refitter_get_all(
+        refitter: *mut std::ffi::c_void,
+        size: i32,
+        layer_names: *mut *const std::os::raw::c_char,
+        roles: *mut i32,
+    ) -> i32;
+
+    pub fn trtx_refitter_get_missing_weights(
+        refitter: *mut std::ffi::c_void,
+        size: i32,
+        weights_names: *mut *const std::os::raw::c_char,
+    ) -> i32;
+
+    pub fn trtx_refitter_get_all_weights(
+        refitter: *mut std::ffi::c_void,
+        size: i32,
+        weights_names: *mut *const std::os::raw::c_char,
+    ) -> i32;
 
     // ONNX Parser factory function
     #[cfg(feature = "link_tensorrt_onnxparser")]
