@@ -158,6 +158,23 @@ void *create_infer_refitter(void *engine, void *logger) {
     return nullptr;
   }
 }
+#endif
+
+#ifdef TRTX_LINK_TENSORRT_ONNXPARSER
+// ONNX Parser factory function
+void *create_onnx_parser(void *network, void *logger) {
+  if (!network || !logger) {
+    return nullptr;
+  }
+  try {
+    auto *inetwork = static_cast<nvinfer1::INetworkDefinition *>(network);
+    auto *ilogger = static_cast<nvinfer1::ILogger *>(logger);
+    return nvonnxparser::createParser(*inetwork, *ilogger);
+  } catch (...) {
+    return nullptr;
+  }
+}
+#endif
 
 // Refitter methods that use char const** (pointer-to-pointer); autocxx cannot bind these.
 int32_t trtx_refitter_get_missing(void *refitter, int32_t size,
@@ -210,23 +227,6 @@ int32_t trtx_refitter_get_all_weights(void *refitter, int32_t size,
     return 0;
   }
 }
-#endif
-
-#ifdef TRTX_LINK_TENSORRT_ONNXPARSER
-// ONNX Parser factory function
-void *create_onnx_parser(void *network, void *logger) {
-  if (!network || !logger) {
-    return nullptr;
-  }
-  try {
-    auto *inetwork = static_cast<nvinfer1::INetworkDefinition *>(network);
-    auto *ilogger = static_cast<nvinfer1::ILogger *>(logger);
-    return nvonnxparser::createParser(*inetwork, *ilogger);
-  } catch (...) {
-    return nullptr;
-  }
-}
-#endif
 
 bool parser_parse(void *parser, const void *data, size_t size) {
   if (!parser || !data)

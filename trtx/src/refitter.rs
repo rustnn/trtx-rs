@@ -340,3 +340,85 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
         unsafe { self.inner.getWeightsPrototype(name_cstr.as_ptr()) }
     }
 }
+
+#[cfg(test)]
+#[cfg(not(feature = "mock"))]
+mod tests {
+    use trtx_sys::BuilderFlag;
+
+    use super::*;
+    use crate::builder::MemoryPoolType;
+    use crate::{Builder, DataType, Logger, Runtime};
+
+    /// Build a minimal network with one refittable constant layer: constant [1,4] -> output.
+    fn build_constant_network(logger: &Logger) -> Result<Vec<u8>> {
+        let mut builder = Builder::new(logger)?;
+        let mut network = builder.create_network(0)?;
+
+        // Single constant layer with 4 floats, named for refitter lookup
+        let dims = [1, 4];
+        let initial: [f32; 4] = [1.0, 2.0, 3.0, 4.0];
+        let weights_bytes: &[u8] = unsafe {
+            std::slice::from_raw_parts(
+                initial.as_ptr() as *const u8,
+                initial.len() * std::mem::size_of::<f32>(),
+            )
+        };
+        let mut const_layer = network.add_constant(&dims, weights_bytes, DataType::kFLOAT)?;
+        const_layer.set_name(&mut network, "refit_const")?;
+
+        let mut output = const_layer.get_output(&network, 0)?;
+        output.set_name(&mut network, "output")?;
+        network.mark_output(&mut output);
+
+        let mut config = builder.create_config()?;
+        config.set_memory_pool_limit(MemoryPoolType::kWORKSPACE, 1 << 24);
+        config.set_flag(BuilderFlag::kREFIT);
+        let unstripped_engine_data = builder.build_serialized_network(&mut network, &mut config)?;
+        config.set_flag(BuilderFlag::kSTRIP_PLAN);
+        let engine_data = builder.build_serialized_network(&mut network, &mut config)?;
+        assert!(engine_data.len() < unstripped_engine_data.len());
+        Ok(engine_data.to_vec())
+    }
+
+    #[test]
+    fn refitter_from_constant_network() {
+        #[cfg(feature = "dlopen_tensorrt_rtx")]
+        let _ = crate::dynamically_load_tensorrt(None::<String>);
+
+        let logger = Logger::stderr().expect("logger");
+        let engine_data = build_constant_network(&logger).expect("build network");
+        assert!(!engine_data.is_empty());
+
+        let mut runtime = Runtime::new(&logger).expect("runtime");
+        let engine = runtime
+            .deserialize_cuda_engine(&engine_data)
+            .expect("deserialize engine");
+
+        let mut refitter = Refitter::new(&engine, &logger).expect("refitter");
+
+        // Discover refittable weights
+        let all = refitter.get_all_weights(64).expect("get_all_weights");
+        assert!(
+            !all.is_empty(),
+            "engine should have at least one refittable weight (constant layer)"
+        );
+        let weight_name = &all[0];
+
+        // Prototype: type and count (values pointer is null)
+        let proto = refitter.get_weights_prototype(weight_name);
+        assert!(proto.count >= 0 || proto.count == -1);
+        // Refit with same shape: 4 floats
+        let new_vals: [f32; 4] = [10.0, 20.0, 30.0, 40.0];
+        let new_weights = nvinfer1::Weights {
+            type_: nvinfer1::DataType::kFLOAT,
+            values: new_vals.as_ptr() as *const std::ffi::c_void,
+            count: 4,
+        };
+        refitter
+            .set_named_weights(weight_name, new_weights)
+            .expect("set_named_weights");
+
+        refitter.refit_cuda_engine().expect("refit_cuda_engine");
+    }
+}
