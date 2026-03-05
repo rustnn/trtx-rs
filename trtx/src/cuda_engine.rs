@@ -51,7 +51,7 @@ impl SerializationConfig<'_> {
 }
 
 pub struct CudaEngine<'runtime> {
-    inner: UniquePtr<ICudaEngine>,
+    pub(crate) inner: UniquePtr<ICudaEngine>,
     _runtime: PhantomData<&'runtime nvinfer1::IRuntime>,
 }
 

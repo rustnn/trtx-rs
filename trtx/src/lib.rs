@@ -122,6 +122,7 @@ pub mod network;
 #[cfg(feature = "onnxparser")]
 pub mod onnx_parser;
 pub mod optimization_profile;
+pub mod refitter;
 pub mod runtime;
 
 // Re-export commonly used types
@@ -138,6 +139,7 @@ pub use logger::{LogHandler, Logger, Severity, StderrLogger};
 pub use network::{ConvWeights, NetworkDefinition, Tensor};
 #[cfg(feature = "onnxparser")]
 pub use onnx_parser::OnnxParser;
+pub use refitter::Refitter;
 pub use runtime::{CudaEngine, EngineInspector, ExecutionContext, Runtime};
 
 #[cfg(feature = "dlopen_tensorrt_rtx")]

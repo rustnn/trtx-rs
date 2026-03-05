@@ -94,6 +94,7 @@ better_enum!(SerializationFlag);
 better_enum!(OptProfileSelector);
 better_enum!(AttentionNormalizationOp);
 better_enum!(SeekPosition);
+better_enum!(WeightsRole);
 
 use autocxx::prelude::*;
 
@@ -120,6 +121,7 @@ include_cpp! {
     generate!("nvinfer1::IDebugListener")
     generate!("nvinfer1::ISerializationConfig")
     generate!("nvinfer1::IOptimizationProfile")
+    generate!("nvinfer1::IRefitter")
 
     // Derived layer types - for inheritance support
     generate!("nvinfer1::IActivationLayer")
@@ -233,6 +235,7 @@ include_cpp! {
     generate_pod!("nvinfer1::TripLimit")
     generate_pod!("nvinfer1::LoopOutput")
     generate_pod!("nvinfer1::AttentionNormalizationOp")
+    generate_pod!("nvinfer1::WeightsRole")
 
     generate!("nvinfer1::ErrorCode")
     generate!("nvinfer1::LayerType")
@@ -460,6 +463,12 @@ extern "C" {
 
     #[cfg(feature = "link_tensorrt_rtx")]
     pub fn create_infer_runtime(logger: *mut std::ffi::c_void) -> *mut std::ffi::c_void; // Returns IRuntime*
+
+    #[cfg(feature = "link_tensorrt_rtx")]
+    pub fn create_infer_refitter(
+        cuda_engine: *mut *mut std::ffi::c_void,
+        logger: *mut std::ffi::c_void,
+    ) -> *mut std::ffi::c_void; // Returns IRefitter*
 
     // ONNX Parser factory function
     #[cfg(feature = "link_tensorrt_onnxparser")]
