@@ -1,10 +1,9 @@
 use std::{ffi::CStr, marker::PhantomData};
 
+use crate::engine_inspector::EngineInspector;
 use crate::error::PropertySetAttempt;
-use crate::{
-    real::{engine_inspector::EngineInspector, host_memory::HostMemory},
-    Error, ExecutionContext, Result,
-};
+use crate::host_memory::HostMemory;
+use crate::{Error, ExecutionContext, Result};
 use autocxx::cxx::UniquePtr;
 use trtx_sys::{
     nvinfer1::{self, DataType, ICudaEngine, TensorIOMode},
@@ -258,7 +257,7 @@ impl<'engine> CudaEngine<'engine> {
     pub fn create_engine_inspector(&self) -> Result<EngineInspector<'_>> {
         #[cfg(not(feature = "mock"))]
         {
-            use crate::real::engine_inspector::EngineInspector;
+            use crate::engine_inspector::EngineInspector;
 
             let inspector = self.inner.createEngineInspector();
             let inspector = unsafe {

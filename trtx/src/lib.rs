@@ -107,18 +107,21 @@
 #![cfg_attr(feature = "mock", allow(unused))]
 #![cfg_attr(feature = "mock", allow(unused_variables))]
 
-mod real;
-
 pub mod autocxx_helpers;
 pub mod axes;
 pub mod builder;
+pub mod builder_config;
 pub mod cuda;
+pub mod cuda_engine;
+pub mod engine_inspector;
 pub mod error;
 pub mod executor;
+pub mod host_memory;
 pub mod logger;
 pub mod network;
 #[cfg(feature = "onnxparser")]
 pub mod onnx_parser;
+pub mod optimization_profile;
 pub mod runtime;
 
 // Re-export commonly used types
