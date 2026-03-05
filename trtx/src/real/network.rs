@@ -208,13 +208,13 @@ impl NormalizationLayer<'_> {
         crate::check_network!(network, self);
         self.inner.as_ref().getEpsilon()
     }
-    pub fn set_axes(&mut self, network: &mut NetworkDefinition, axes: u32) {
+    pub fn set_axes(&mut self, network: &mut NetworkDefinition, axes: crate::Axes) {
         crate::check_network!(network, self);
-        self.inner.as_mut().setAxes(axes);
+        self.inner.as_mut().setAxes(axes.to_bits());
     }
-    pub fn get_axes(&self, network: &NetworkDefinition) -> u32 {
+    pub fn get_axes(&self, network: &NetworkDefinition) -> crate::Axes {
         crate::check_network!(network, self);
-        self.inner.as_ref().getAxes()
+        crate::Axes::from_bits(self.inner.as_ref().getAxes())
     }
     pub fn set_num_groups(&mut self, network: &mut NetworkDefinition, groups: i64) {
         crate::check_network!(network, self);
@@ -708,11 +708,15 @@ impl<'network> NetworkDefinition<'network> {
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addSoftMax`].
-    pub fn add_softmax(&mut self, input: &mut Tensor, axes: u32) -> Result<SoftMaxLayer<'_>> {
+    pub fn add_softmax(
+        &mut self,
+        input: &mut Tensor,
+        axes: crate::Axes,
+    ) -> Result<SoftMaxLayer<'_>> {
         crate::check_network!(self, input);
         let layer_ptr = self.inner.pin_mut().addSoftMax(input.inner.as_mut());
         let mut rtn = SoftMaxLayer::new(self.inner.as_ptr(), layer_ptr)?;
-        rtn.inner.as_mut().setAxes(axes);
+        rtn.inner.as_mut().setAxes(axes.to_bits());
         Ok(rtn)
     }
 
@@ -771,14 +775,15 @@ impl<'network> NetworkDefinition<'network> {
         &mut self,
         input: &mut Tensor,
         op: trtx_sys::nvinfer1::ReduceOperation,
-        axes: u32,
+        axes: crate::Axes,
         keep_dims: bool,
     ) -> Result<ReduceLayer<'_>> {
         crate::check_network!(self, input);
-        let layer_ptr = self
-            .inner
-            .pin_mut()
-            .addReduce(input.inner.as_mut(), op, axes, keep_dims);
+        let axes_bits = axes.to_bits();
+        let layer_ptr =
+            self.inner
+                .pin_mut()
+                .addReduce(input.inner.as_mut(), op, axes_bits, keep_dims);
         ReduceLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
@@ -854,13 +859,14 @@ impl<'network> NetworkDefinition<'network> {
         input: &mut Tensor,
         op: TopKOperation,
         k: i32,
-        axes: u32,
+        axes: crate::Axes,
     ) -> Result<TopKLayer<'_>> {
         crate::check_network!(self, input);
+        let axes_bits = axes.to_bits();
         let layer_ptr = self
             .inner
             .pin_mut()
-            .addTopK(input.inner.as_mut(), op.into(), k, axes);
+            .addTopK(input.inner.as_mut(), op.into(), k, axes_bits);
         TopKLayer::new(self.inner.as_ptr(), layer_ptr)
     }
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addResize`].
@@ -1243,16 +1249,17 @@ impl<'builder> NetworkDefinition<'builder> {
         input: &mut Tensor,
         scale: &mut Tensor,
         bias: &mut Tensor,
-        axes_mask: u32,
+        axes_mask: crate::Axes,
     ) -> Result<NormalizationLayer<'_>> {
         crate::check_network!(self, input);
         crate::check_network!(self, scale);
         crate::check_network!(self, bias);
+        let axes_bits = axes_mask.to_bits();
         let ptr = self.inner.pin_mut().addNormalization(
             input.inner.as_mut(),
             scale.inner.as_mut(),
             bias.inner.as_mut(),
-            axes_mask,
+            axes_bits,
         );
         NormalizationLayer::new(self.inner.as_ptr(), ptr)
     }
@@ -1262,16 +1269,17 @@ impl<'builder> NetworkDefinition<'builder> {
         input: &mut Tensor,
         scale: &mut Tensor,
         bias: &mut Tensor,
-        axes_mask: u32,
+        axes_mask: crate::Axes,
     ) -> Result<NormalizationLayer<'_>> {
         crate::check_network!(self, input);
         crate::check_network!(self, scale);
         crate::check_network!(self, bias);
+        let axes_bits = axes_mask.to_bits();
         let ptr = self.inner.pin_mut().addNormalizationV2(
             input.inner.as_mut(),
             scale.inner.as_mut(),
             bias.inner.as_mut(),
-            axes_mask,
+            axes_bits,
         );
         NormalizationLayer::new(self.inner.as_ptr(), ptr)
     }

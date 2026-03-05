@@ -110,6 +110,7 @@
 mod real;
 
 pub mod autocxx_helpers;
+pub mod axes;
 pub mod builder;
 pub mod cuda;
 pub mod error;
@@ -121,6 +122,7 @@ pub mod onnx_parser;
 pub mod runtime;
 
 // Re-export commonly used types
+pub use axes::Axes;
 pub use builder::{Builder, BuilderConfig};
 pub use cuda::{get_default_stream, synchronize, DeviceBuffer};
 pub use error::{Error, Result};
