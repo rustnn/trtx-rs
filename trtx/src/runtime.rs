@@ -3,7 +3,7 @@
 use std::marker::PhantomData;
 
 use cxx::UniquePtr;
-use trtx_sys::nvinfer1;
+use trtx_sys::{nvinfer1, StreamReaderV2};
 
 pub use crate::cuda_engine::CudaEngine;
 pub use crate::engine_inspector::EngineInspector;
@@ -144,6 +144,24 @@ impl<'runtime> Runtime<'runtime> {
                     data.as_ref().as_ptr() as *const autocxx::c_void,
                     data.len(),
                 );
+                Ok(CudaEngine::from_ptr(engine.as_mut().ok_or_else(|| {
+                    Error::Runtime("Failed to deserialize engine".to_string())
+                })?))
+            }
+        }
+    }
+    pub fn deserialize_cuda_engine_v2(
+        &'_ mut self,
+        stream_reader: &'runtime mut StreamReaderV2,
+    ) -> Result<CudaEngine<'runtime>> {
+        if cfg!(feature = "mock") {
+            Ok(unsafe { CudaEngine::from_ptr(std::ptr::null_mut()) })
+        } else {
+            unsafe {
+                let engine = self
+                    .inner
+                    .pin_mut()
+                    .deserializeCudaEngine1(stream_reader.pin_mut());
                 Ok(CudaEngine::from_ptr(engine.as_mut().ok_or_else(|| {
                     Error::Runtime("Failed to deserialize engine".to_string())
                 })?))
