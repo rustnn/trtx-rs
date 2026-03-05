@@ -34,8 +34,8 @@ impl BuilderConfig {
     }
 
     /// See [IBuilderConfig::setProgressMonitor]
-    pub fn set_progress_monitor(&mut self, progress_monitor: Box<dyn HandleProgress>) {
-        self.progress_monitor = Some(ProgressMonitor::new(progress_monitor));
+    pub fn set_progress_monitor(&mut self, progress_monitor: Rc<RefCell<ProgressMonitor>>) {
+        self.progress_monitor = Some(progress_monitor);
         #[cfg(not(feature = "mock"))]
         unsafe {
             self.inner.pin_mut().setProgressMonitor(
@@ -432,7 +432,7 @@ mod tests {
     use crate::{Builder, DataType, Logger, NetworkDefinition};
     use std::ops::ControlFlow;
     use std::sync::atomic::{AtomicU32, Ordering};
-    use trtx_sys::HandleProgress;
+    use trtx_sys::{HandleProgress, ProgressMonitor};
 
     const NUM_LAYERS: usize = 40;
 
@@ -504,7 +504,7 @@ mod tests {
         config.set_memory_pool_limit(MemoryPoolType::kWORKSPACE, 1 << 24);
 
         let monitor = StdoutProgressMonitor::new(3);
-        config.set_progress_monitor(Box::new(monitor));
+        config.set_progress_monitor(ProgressMonitor::new(Box::new(monitor)));
 
         let result = builder.build_serialized_network(&mut network, &mut config);
 
@@ -523,7 +523,7 @@ mod tests {
         config.set_memory_pool_limit(MemoryPoolType::kWORKSPACE, 1 << 24);
 
         let monitor = StdoutProgressMonitor::new(10000);
-        config.set_progress_monitor(Box::new(monitor));
+        config.set_progress_monitor(ProgressMonitor::new(Box::new(monitor)));
 
         let result = builder.build_serialized_network(&mut network, &mut config);
 

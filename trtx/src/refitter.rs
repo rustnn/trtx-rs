@@ -164,8 +164,8 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
     }
 
     /// See [nvinfer1::IRefitter::setErrorRecorder]
-    pub fn set_error_recorder(&mut self, error_recorder: Box<dyn RecordError>) {
-        self.error_recorder = Some(ErrorRecorder::new(error_recorder));
+    pub fn set_error_recorder(&mut self, error_recorder: Rc<RefCell<ErrorRecorder>>) {
+        self.error_recorder = Some(error_recorder);
         #[cfg(not(feature = "mock"))]
         unsafe {
             self.inner.pin_mut().setErrorRecorder(
