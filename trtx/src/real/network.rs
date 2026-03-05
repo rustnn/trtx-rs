@@ -980,7 +980,214 @@ impl<'builder> NetworkDefinition<'builder> {
             .into(),
         })
     }
+}
 
+// --- Loop boundary layers (ILoop::addRecurrence, addTripLimit, addIterator, addLoopOutput) ---
+
+impl Loop<'_> {
+    /// See [`trtx_sys::nvinfer1::ILoop::addRecurrence`].
+    pub fn add_recurrence(
+        &self,
+        network: &mut NetworkDefinition,
+        initial_value: &mut Tensor,
+    ) -> Result<RecurrenceLayer<'_>> {
+        crate::check_network!(network, initial_value);
+        let layer_ptr = self
+            ._inner
+            .lock()
+            .unwrap()
+            .as_mut()
+            .addRecurrence(initial_value.inner.as_mut());
+        RecurrenceLayer::new(network.inner.as_ptr(), layer_ptr)
+    }
+
+    /// See [`trtx_sys::nvinfer1::ILoop::addTripLimit`].
+    pub fn add_trip_limit(
+        &self,
+        network: &mut NetworkDefinition,
+        tensor: &mut Tensor,
+        limit: trtx_sys::nvinfer1::TripLimit,
+    ) -> Result<TripLimitLayer<'_>> {
+        crate::check_network!(network, tensor);
+        let layer_ptr = self
+            ._inner
+            .lock()
+            .unwrap()
+            .as_mut()
+            .addTripLimit(tensor.inner.as_mut(), limit);
+        TripLimitLayer::new(network.inner.as_ptr(), layer_ptr)
+    }
+
+    /// See [`trtx_sys::nvinfer1::ILoop::addIterator`].
+    pub fn add_iterator(
+        &self,
+        network: &mut NetworkDefinition,
+        tensor: &mut Tensor,
+        axis: i32,
+        reverse: bool,
+    ) -> Result<IteratorLayer<'_>> {
+        crate::check_network!(network, tensor);
+        let layer_ptr =
+            self._inner
+                .lock()
+                .unwrap()
+                .as_mut()
+                .addIterator(tensor.inner.as_mut(), axis, reverse);
+        IteratorLayer::new(network.inner.as_ptr(), layer_ptr)
+    }
+
+    /// See [`trtx_sys::nvinfer1::ILoop::addLoopOutput`].
+    pub fn add_loop_output(
+        &self,
+        network: &mut NetworkDefinition,
+        tensor: &mut Tensor,
+        output_kind: trtx_sys::nvinfer1::LoopOutput,
+        axis: i32,
+    ) -> Result<LoopOutputLayer<'_>> {
+        crate::check_network!(network, tensor);
+        let layer_ptr = self._inner.lock().unwrap().as_mut().addLoopOutput(
+            tensor.inner.as_mut(),
+            output_kind,
+            axis,
+        );
+        LoopOutputLayer::new(network.inner.as_ptr(), layer_ptr)
+    }
+}
+
+// --- IfConditional boundary layers (IIfConditional::setCondition, addInput, addOutput) ---
+
+impl IfConditional<'_> {
+    /// See [`trtx_sys::nvinfer1::IIfConditional::setCondition`].
+    pub fn set_condition(
+        &self,
+        network: &mut NetworkDefinition,
+        condition: &mut Tensor,
+    ) -> Result<ConditionLayer<'_>> {
+        crate::check_network!(network, condition);
+        let layer_ptr = self
+            ._inner
+            .lock()
+            .unwrap()
+            .as_mut()
+            .setCondition(condition.inner.as_mut());
+        ConditionLayer::new(network.inner.as_ptr(), layer_ptr)
+    }
+
+    /// See [`trtx_sys::nvinfer1::IIfConditional::addInput`].
+    pub fn add_input(
+        &self,
+        network: &mut NetworkDefinition,
+        input: &mut Tensor,
+    ) -> Result<IfConditionalInputLayer<'_>> {
+        crate::check_network!(network, input);
+        let layer_ptr = self
+            ._inner
+            .lock()
+            .unwrap()
+            .as_mut()
+            .addInput(input.inner.as_mut());
+        IfConditionalInputLayer::new(network.inner.as_ptr(), layer_ptr)
+    }
+
+    /// See [`trtx_sys::nvinfer1::IIfConditional::addOutput`].
+    pub fn add_output(
+        &self,
+        network: &mut NetworkDefinition,
+        true_output: &mut Tensor,
+        false_output: &mut Tensor,
+    ) -> Result<IfConditionalOutputLayer<'_>> {
+        crate::check_network!(network, true_output);
+        crate::check_network!(network, false_output);
+        let layer_ptr = self
+            ._inner
+            .lock()
+            .unwrap()
+            .as_mut()
+            .addOutput(true_output.inner.as_mut(), false_output.inner.as_mut());
+        IfConditionalOutputLayer::new(network.inner.as_ptr(), layer_ptr)
+    }
+}
+
+// --- RecurrenceLayer: set_input(1, tensor) for value from inside loop ---
+
+impl RecurrenceLayer<'_> {
+    /// See [`trtx_sys::nvinfer1::IRecurrenceLayer`]. Input 0 = initial value (set at creation); input 1 = value from previous iteration (from inside loop).
+    pub fn set_input(
+        &mut self,
+        network: &mut NetworkDefinition,
+        index: i32,
+        tensor: &mut Tensor,
+    ) -> Result<()> {
+        crate::check_network!(network, self);
+        crate::check_network!(network, tensor);
+        unsafe {
+            let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ILayer>(
+                self.inner.as_mut().get_unchecked_mut() as *mut _ as *mut _,
+            );
+            layer_pin.as_mut().setInput(index, tensor.inner.as_mut());
+        }
+        Ok(())
+    }
+}
+
+// --- IteratorLayer: set_axis, set_reverse ---
+
+impl IteratorLayer<'_> {
+    /// See [`trtx_sys::nvinfer1::IIteratorLayer::setAxis`].
+    pub fn set_axis(&mut self, network: &mut NetworkDefinition, axis: i32) {
+        crate::check_network!(network, self);
+        self.inner.as_mut().setAxis(axis);
+    }
+    /// See [`trtx_sys::nvinfer1::IIteratorLayer::setReverse`].
+    pub fn set_reverse(&mut self, network: &mut NetworkDefinition, reverse: bool) {
+        crate::check_network!(network, self);
+        self.inner.as_mut().setReverse(reverse);
+    }
+}
+
+// --- LoopOutputLayer: get_loop_output, set_axis (for concatenation), set_input for index 1 ---
+
+impl LoopOutputLayer<'_> {
+    /// See [`trtx_sys::nvinfer1::ILoopOutputLayer::getLoopOutput`].
+    pub fn get_loop_output(&self, network: &NetworkDefinition) -> trtx_sys::nvinfer1::LoopOutput {
+        crate::check_network!(network, self);
+        self.inner.as_ref().getLoopOutput()
+    }
+    /// See [`trtx_sys::nvinfer1::ILoopOutputLayer::setAxis`]. Ignored if output kind is kLAST_VALUE.
+    pub fn set_axis(&mut self, network: &mut NetworkDefinition, axis: i32) {
+        crate::check_network!(network, self);
+        self.inner.as_mut().setAxis(axis);
+    }
+    /// See [`trtx_sys::nvinfer1::ILoopOutputLayer::setInput`]. Index 1 = concatenation length (for kCONCATENATE/kREVERSE).
+    pub fn set_input(
+        &mut self,
+        network: &mut NetworkDefinition,
+        index: i32,
+        tensor: &mut Tensor,
+    ) -> Result<()> {
+        crate::check_network!(network, self);
+        crate::check_network!(network, tensor);
+        unsafe {
+            let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ILayer>(
+                self.inner.as_mut().get_unchecked_mut() as *mut _ as *mut _,
+            );
+            layer_pin.as_mut().setInput(index, tensor.inner.as_mut());
+        }
+        Ok(())
+    }
+}
+
+// --- TripLimitLayer: get_trip_limit (getter only) ---
+
+impl TripLimitLayer<'_> {
+    /// See [`trtx_sys::nvinfer1::ITripLimitLayer::getTripLimit`].
+    pub fn get_trip_limit(&self, network: &NetworkDefinition) -> trtx_sys::nvinfer1::TripLimit {
+        crate::check_network!(network, self);
+        self.inner.as_ref().getTripLimit()
+    }
+}
+
+impl<'builder> NetworkDefinition<'builder> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addNormalization`].
     pub fn add_normalization(
         &mut self,

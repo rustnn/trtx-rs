@@ -155,6 +155,19 @@ pub type KVCacheUpdateLayer<'layer> = Layer<'layer, nvinfer1::IKVCacheUpdateLaye
 pub type LrnLayer<'layer> = Layer<'layer, nvinfer1::ILRNLayer>;
 pub type OneHotLayer<'layer> = Layer<'layer, nvinfer1::IOneHotLayer>;
 
+// Loop and conditional boundary layers (created via Loop / IfConditional / add_attention)
+pub type AttentionInputLayer<'layer> = Layer<'layer, nvinfer1::IAttentionInputLayer>;
+pub type AttentionOutputLayer<'layer> = Layer<'layer, nvinfer1::IAttentionOutputLayer>;
+pub type AttentionBoundaryLayer<'layer> = Layer<'layer, nvinfer1::IAttentionBoundaryLayer>;
+pub type LoopBoundaryLayer<'layer> = Layer<'layer, nvinfer1::ILoopBoundaryLayer>;
+pub type RecurrenceLayer<'layer> = Layer<'layer, nvinfer1::IRecurrenceLayer>;
+pub type LoopOutputLayer<'layer> = Layer<'layer, nvinfer1::ILoopOutputLayer>;
+pub type TripLimitLayer<'layer> = Layer<'layer, nvinfer1::ITripLimitLayer>;
+pub type IteratorLayer<'layer> = Layer<'layer, nvinfer1::IIteratorLayer>;
+pub type ConditionLayer<'layer> = Layer<'layer, nvinfer1::IConditionLayer>;
+pub type IfConditionalOutputLayer<'layer> = Layer<'layer, nvinfer1::IIfConditionalOutputLayer>;
+pub type IfConditionalInputLayer<'layer> = Layer<'layer, nvinfer1::IIfConditionalInputLayer>;
+
 // Those are not actual ILayer in TRT
 pub struct Loop<'network> {
     pub(crate) _inner: Mutex<Pin<&'network mut nvinfer1::ILoop>>,

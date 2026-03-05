@@ -225,6 +225,8 @@ include_cpp! {
     // generate!("nvinfer1::RNNGateType")
     generate_pod!("nvinfer1::Weights")
     generate_pod!("nvinfer1::Permutation")
+    generate_pod!("nvinfer1::TripLimit")
+    generate_pod!("nvinfer1::LoopOutput")
 
     generate!("nvinfer1::ErrorCode")
     generate!("nvinfer1::LayerType")
