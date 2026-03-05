@@ -177,8 +177,8 @@ fn build_tiny_network(logger: &Logger) -> Result<Vec<u8>> {
 
     println!("   Adding input tensor [1, 3, 4, 4]...");
     let input = network.add_input("input", DataType::kFLOAT, &[1, 3, 4, 4])?;
-    println!("   Input tensor name: {:?}", input.name()?);
-    println!("   Input tensor dims: {:?}", input.dimensions()?);
+    println!("   Input tensor name: {:?}", input.name(&network)?);
+    println!("   Input tensor dims: {:?}", input.dimensions(&network)?);
 
     println!("   Adding ReLU activation layer...");
     let mut input = input;
@@ -187,8 +187,8 @@ fn build_tiny_network(logger: &Logger) -> Result<Vec<u8>> {
 
     println!("   Setting output tensor name...");
     let mut output_named = output;
-    output_named.set_name("output")?;
-    println!("   Output tensor name: {:?}", output_named.name()?);
+    output_named.set_name(&mut network, "output")?;
+    println!("   Output tensor name: {:?}", output_named.name(&network)?);
 
     println!("   Marking output tensor...");
     network.mark_output(&mut output_named);

@@ -57,7 +57,6 @@ macro_rules! better_enum {
     };
 }
 use crate::enums::Severity;
-use crate::nvinfer1::ILayer;
 
 use std::mem::transmute;
 use std::pin::Pin;

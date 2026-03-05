@@ -11,14 +11,24 @@ use crate::error::{Error, Result};
 use crate::network::*;
 
 impl ShuffleLayer<'_> {
-    pub fn set_reshape_dimensions(&mut self, dims: &[i32]) -> Result<()> {
+    pub fn set_reshape_dimensions(
+        &mut self,
+        network: &mut NetworkDefinition,
+        dims: &[i32],
+    ) -> Result<()> {
+        crate::check_network!(network, self);
         let dims_i64: Vec<i64> = dims.iter().map(|&d| d as i64).collect();
         let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
         self.inner.as_mut().setReshapeDimensions(&dims_obj);
         Ok(())
     }
 
-    pub fn set_first_transpose(&mut self, order: &[i32]) -> Result<()> {
+    pub fn set_first_transpose(
+        &mut self,
+        network: &mut NetworkDefinition,
+        order: &[i32],
+    ) -> Result<()> {
+        crate::check_network!(network, self);
         let mut order_arr = [0i32; 8];
         let n = order.len().min(8);
         order_arr[..n].copy_from_slice(&order[..n]);
@@ -29,54 +39,74 @@ impl ShuffleLayer<'_> {
 }
 
 impl ResizeLayer<'_> {
-    pub fn set_output_dimensions(&mut self, dims: &[i32]) {
+    pub fn set_output_dimensions(&mut self, network: &mut NetworkDefinition, dims: &[i32]) {
+        crate::check_network!(network, self);
         let dims_i64: Vec<i64> = dims.iter().map(|&d| d as i64).collect();
         let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
         self.inner.as_mut().setOutputDimensions(&dims_obj);
     }
-    pub fn set_resize_mode(&mut self, mode: trtx_sys::ResizeMode) {
+    pub fn set_resize_mode(&mut self, network: &mut NetworkDefinition, mode: trtx_sys::ResizeMode) {
+        crate::check_network!(network, self);
         self.inner.as_mut().setResizeMode(mode.into());
     }
 }
 
 impl GatherLayer<'_> {
-    pub fn set_gather_mode(&mut self, mode: trtx_sys::GatherMode) {
+    pub fn set_gather_mode(&mut self, network: &mut NetworkDefinition, mode: trtx_sys::GatherMode) {
+        crate::check_network!(network, self);
         self.inner.as_mut().setMode(mode.into());
     }
 }
 
 impl ScatterLayer<'_> {
-    pub fn set_scatter_mode(&mut self, mode: trtx_sys::ScatterMode) {
+    pub fn set_scatter_mode(
+        &mut self,
+        network: &mut NetworkDefinition,
+        mode: trtx_sys::ScatterMode,
+    ) {
+        crate::check_network!(network, self);
         self.inner.as_mut().setMode(mode.into());
     }
-    pub fn set_axis(&mut self, axis: i32) {
+    pub fn set_axis(&mut self, network: &mut NetworkDefinition, axis: i32) {
+        crate::check_network!(network, self);
         self.inner.as_mut().setAxis(axis);
     }
 }
 
 impl ConvolutionLayer<'_> {
-    pub fn set_stride(&mut self, stride: &[i32; 2]) {
+    pub fn set_stride(&mut self, network: &mut NetworkDefinition, stride: &[i32; 2]) {
+        crate::check_network!(network, self);
         let dims_i64: Vec<i64> = stride.iter().map(|&s| s as i64).collect();
         let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
         self.inner.as_mut().setStrideNd(&dims_obj);
     }
-    pub fn set_padding(&mut self, padding: &[i32; 2]) {
+    pub fn set_padding(&mut self, network: &mut NetworkDefinition, padding: &[i32; 2]) {
+        crate::check_network!(network, self);
         let dims_i64: Vec<i64> = padding.iter().map(|&p| p as i64).collect();
         let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
         self.inner.as_mut().setPaddingNd(&dims_obj);
     }
-    pub fn set_dilation(&mut self, dilation: &[i32; 2]) {
+    pub fn set_dilation(&mut self, network: &mut NetworkDefinition, dilation: &[i32; 2]) {
+        crate::check_network!(network, self);
         let dims_i64: Vec<i64> = dilation.iter().map(|&d| d as i64).collect();
         let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
         self.inner.as_mut().setDilationNd(&dims_obj);
     }
-    pub fn set_num_groups(&mut self, num_groups: i32) {
+    pub fn set_num_groups(&mut self, network: &mut NetworkDefinition, num_groups: i32) {
+        crate::check_network!(network, self);
         self.inner.as_mut().setNbGroups(num_groups as i64);
     }
 
     /// Set an input tensor by index. Input 0 is the activation; 1 is the kernel tensor; 2 is the bias tensor.
     /// When using input 1 or 2, the layer must have been created with empty weights for that slot.
-    pub fn set_input(&mut self, index: i32, tensor: &mut Tensor) -> Result<()> {
+    pub fn set_input(
+        &mut self,
+        network: &mut NetworkDefinition,
+        index: i32,
+        tensor: &mut Tensor,
+    ) -> Result<()> {
+        crate::check_network!(network, self);
+        crate::check_network!(network, tensor);
         unsafe {
             let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ILayer>(
                 self.inner.as_mut().get_unchecked_mut() as *mut _ as *mut _,
@@ -88,7 +118,8 @@ impl ConvolutionLayer<'_> {
 }
 
 impl DeconvolutionLayer<'_> {
-    pub fn set_stride(&mut self, stride: &[i32; 2]) -> Result<()> {
+    pub fn set_stride(&mut self, network: &mut NetworkDefinition, stride: &[i32; 2]) -> Result<()> {
+        crate::check_network!(network, self);
         let dims_i64: Vec<i64> = stride.iter().map(|&p| p as i64).collect();
         let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
         self.inner.as_mut().setStrideNd(&dims_obj);
@@ -97,7 +128,12 @@ impl DeconvolutionLayer<'_> {
 
     /// Set pre-padding (trim this many elements at the start of each spatial dimension of the output).
     /// Pass [pre_h, pre_w] for 2D deconv; TensorRT applies to the spatial dimensions only.
-    pub fn set_pre_padding(&mut self, padding: &[i32; 2]) -> Result<()> {
+    pub fn set_pre_padding(
+        &mut self,
+        network: &mut NetworkDefinition,
+        padding: &[i32; 2],
+    ) -> Result<()> {
+        crate::check_network!(network, self);
         let dims_i64: Vec<i64> = padding.iter().map(|&p| p as i64).collect();
         let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
         self.inner.as_mut().setPrePadding(&dims_obj);
@@ -105,26 +141,48 @@ impl DeconvolutionLayer<'_> {
     }
     /// Set post-padding (trim this many elements at the end of each spatial dimension of the output).
     /// Pass [post_h, post_w] for 2D deconv; TensorRT applies to the spatial dimensions only.
-    pub fn set_post_padding(&mut self, padding: &[i32; 2]) -> Result<()> {
+    pub fn set_post_padding(
+        &mut self,
+        network: &mut NetworkDefinition,
+        padding: &[i32; 2],
+    ) -> Result<()> {
+        crate::check_network!(network, self);
         let dims_i64: Vec<i64> = padding.iter().map(|&p| p as i64).collect();
         let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
         self.inner.as_mut().setPostPadding(&dims_obj);
         Ok(())
     }
-    pub fn set_dilation(&mut self, dilation: &[i32; 2]) -> Result<()> {
+    pub fn set_dilation(
+        &mut self,
+        network: &mut NetworkDefinition,
+        dilation: &[i32; 2],
+    ) -> Result<()> {
+        crate::check_network!(network, self);
         let dims_i64: Vec<i64> = dilation.iter().map(|&p| p as i64).collect();
         let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
         self.inner.as_mut().setDilationNd(&dims_obj);
         Ok(())
     }
 
-    pub fn set_num_groups(&mut self, num_groups: i32) -> Result<()> {
+    pub fn set_num_groups(
+        &mut self,
+        network: &mut NetworkDefinition,
+        num_groups: i32,
+    ) -> Result<()> {
+        crate::check_network!(network, self);
         self.inner.as_mut().setNbGroups(num_groups as i64);
         Ok(())
     }
     /// Set an input tensor by index. Input 0 is the activation; 1 is the kernel tensor; 2 is the bias tensor.
     /// When using input 1 or 2, the layer must have been created with empty weights for that slot.
-    pub fn set_input(&mut self, index: i32, tensor: &mut Tensor) -> Result<()> {
+    pub fn set_input(
+        &mut self,
+        network: &mut NetworkDefinition,
+        index: i32,
+        tensor: &mut Tensor,
+    ) -> Result<()> {
+        crate::check_network!(network, self);
+        crate::check_network!(network, tensor);
         unsafe {
             let mut layer_pin = crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ILayer>(
                 self.inner.as_mut().get_unchecked_mut() as *mut _ as *mut _,
@@ -136,42 +194,53 @@ impl DeconvolutionLayer<'_> {
 }
 
 impl ConcatenationLayer<'_> {
-    pub fn set_axis(&mut self, axis: i32) {
+    pub fn set_axis(&mut self, network: &mut NetworkDefinition, axis: i32) {
+        crate::check_network!(network, self);
         self.inner.as_mut().setAxis(axis);
     }
 }
 impl NormalizationLayer<'_> {
-    pub fn set_epsilon(&mut self, eps: f32) {
+    pub fn set_epsilon(&mut self, network: &mut NetworkDefinition, eps: f32) {
+        crate::check_network!(network, self);
         self.inner.as_mut().setEpsilon(eps);
     }
-    pub fn get_epsilon(&self) -> f32 {
+    pub fn get_epsilon(&self, network: &NetworkDefinition) -> f32 {
+        crate::check_network!(network, self);
         self.inner.as_ref().getEpsilon()
     }
-    pub fn set_axes(&mut self, axes: u32) {
+    pub fn set_axes(&mut self, network: &mut NetworkDefinition, axes: u32) {
+        crate::check_network!(network, self);
         self.inner.as_mut().setAxes(axes);
     }
-    pub fn get_axes(&self) -> u32 {
+    pub fn get_axes(&self, network: &NetworkDefinition) -> u32 {
+        crate::check_network!(network, self);
         self.inner.as_ref().getAxes()
     }
-    pub fn set_num_groups(&mut self, groups: i64) {
+    pub fn set_num_groups(&mut self, network: &mut NetworkDefinition, groups: i64) {
+        crate::check_network!(network, self);
         self.inner.as_mut().setNbGroups(groups);
     }
-    pub fn get_num_groups(&self) -> i64 {
+    pub fn get_num_groups(&self, network: &NetworkDefinition) -> i64 {
+        crate::check_network!(network, self);
         self.inner.as_ref().getNbGroups()
     }
-    pub fn set_compute_precision(&mut self, data_type: DataType) {
+    pub fn set_compute_precision(&mut self, network: &mut NetworkDefinition, data_type: DataType) {
+        crate::check_network!(network, self);
         self.inner.as_mut().setComputePrecision(data_type.into());
     }
-    pub fn get_compute_precision(&self) -> DataType {
+    pub fn get_compute_precision(&self, network: &NetworkDefinition) -> DataType {
+        crate::check_network!(network, self);
         self.inner.as_ref().getComputePrecision().into()
     }
-    pub fn is_v2(&self) -> bool {
+    pub fn is_v2(&self, network: &NetworkDefinition) -> bool {
+        crate::check_network!(network, self);
         self.inner.as_ref().isV2()
     }
 }
 
 impl Tensor<'_> {
-    pub fn name(&self) -> Result<String> {
+    pub fn name(&self, network: &NetworkDefinition) -> Result<String> {
+        crate::check_network!(network, self);
         let name_ptr = self.inner.as_ref().getName();
         if name_ptr.is_null() {
             return Err(Error::Runtime("Failed to get tensor name".to_string()));
@@ -179,7 +248,8 @@ impl Tensor<'_> {
         unsafe { Ok(std::ffi::CStr::from_ptr(name_ptr).to_str()?.to_string()) }
     }
 
-    pub fn set_name(&mut self, name: &str) -> Result<()> {
+    pub fn set_name(&mut self, network: &mut NetworkDefinition, name: &str) -> Result<()> {
+        crate::check_network!(network, self);
         let name_cstr = std::ffi::CString::new(name)?;
         unsafe {
             self.inner.as_mut().setName(name_cstr.as_ptr());
@@ -187,7 +257,8 @@ impl Tensor<'_> {
         Ok(())
     }
 
-    pub fn dimensions(&self) -> Result<Vec<i32>> {
+    pub fn dimensions(&self, network: &NetworkDefinition) -> Result<Vec<i32>> {
+        crate::check_network!(network, self);
         let result = self.inner.as_ref().getDimensions();
         Ok(result
             .d
@@ -197,13 +268,19 @@ impl Tensor<'_> {
             .collect())
     }
 
-    pub fn get_type(&self) -> DataType {
+    pub fn get_type(&self, network: &NetworkDefinition) -> DataType {
+        crate::check_network!(network, self);
         self.inner.as_ref().getType().into()
     }
 
     /// Set allowed tensor formats (bitmask of TensorFormat). E.g. 1u32 << TensorFormat::kHWC for channels-last.
     /// TensorRT may insert reformat layers when connecting tensors with different formats.
-    pub fn set_allowed_formats(&mut self, formats: u32) -> Result<()> {
+    pub fn set_allowed_formats(
+        &mut self,
+        network: &mut NetworkDefinition,
+        formats: u32,
+    ) -> Result<()> {
+        crate::check_network!(network, self);
         self.inner.as_mut().setAllowedFormats(formats);
         Ok(())
     }
@@ -634,7 +711,7 @@ impl<'builder> NetworkDefinition<'builder> {
         let weight_count = match mode {
             ScaleMode::kUNIFORM => 1i64,
             ScaleMode::kCHANNEL => {
-                let input_dims = input.dimensions()?;
+                let input_dims = input.dimensions(self)?;
                 if input_dims.len() >= 4 {
                     input_dims[1] as i64
                 } else if !input_dims.is_empty() {
@@ -644,7 +721,7 @@ impl<'builder> NetworkDefinition<'builder> {
                 }
             }
             ScaleMode::kELEMENTWISE => {
-                let input_dims = input.dimensions()?;
+                let input_dims = input.dimensions(self)?;
                 input_dims.iter().map(|&d| d as i64).product::<i64>()
             }
         };

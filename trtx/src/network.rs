@@ -9,10 +9,12 @@ use trtx_sys::TrtLayer;
 
 use trtx_sys::{nvinfer1, LayerType};
 
+/// Panics if the layer or tensor was created from a different network.
+#[macro_export]
 macro_rules! check_network {
     ($network:ident, $this:ident) => {
         if $network.inner.as_ptr() != $this.network {
-            panic!("Layer was created from different network")
+            panic!("Layer or tensor was created from different network")
         }
     };
 }
@@ -81,8 +83,8 @@ impl<'network, Inner: TrtLayer> Layer<'network, Inner> {
     }
 
     /// See [nvinfer1::ILayer::setName]
-    fn set_name(&mut self, name: &str) -> Result<()> {
-        //assert!(network, self.network);
+    pub fn set_name(&mut self, network: &mut NetworkDefinition, name: &str) -> Result<()> {
+        check_network!(network, self);
         let name = CString::new(name)?;
         unsafe {
             self.inner
@@ -95,8 +97,8 @@ impl<'network, Inner: TrtLayer> Layer<'network, Inner> {
     }
 
     /// See [nvinfer1::ILayer::getName]
-    fn get_name(&self) -> String {
-        //assert!(network, self.network);
+    pub fn name(&self, network: &NetworkDefinition) -> String {
+        check_network!(network, self);
         let name = self.inner.as_layer().getName();
         // must clone since layer may change name at any time! Cow from to_string_lossy() only
         // possible if name immutable
