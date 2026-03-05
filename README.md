@@ -77,9 +77,8 @@ Mock mode provides stub implementations that allow you to:
 
 The `trtx` crate has the following Cargo features:
 
-- `default`: "real", "dlopen_tensorrt_onnxparser", "dlopen_tensorrt_rtx", "onnxparser", "v_1_3"
+- `default`: "dlopen_tensorrt_onnxparser", "dlopen_tensorrt_rtx", "onnxparser", "v_1_3"
 - `mock`: use this library in mock mode. TensorRT libraries and a Nvidia are no longer necessary for execution
-- `real`: opposite of `mock` mode. TensorRT and Nvidia GPU are required for execution
 - `dlopen_tensorrt_rtx`: enables dynamic loading of the TensorRT library via `trtx::dynamically_load_tensorrt`
 - `dlopen_tensorrt_onnxparser`: enables dynamic loading of the TensorRT ONNX parser library via `trtx::dynamically_load_tensorrt_onnxparser`
 - `links_tensorrt_rtx`: links the TensorRT library, `trtx::dynamically_load_tensorrt` is now optional

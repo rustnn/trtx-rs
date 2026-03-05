@@ -12,7 +12,6 @@
 use trtx::builder::MemoryPoolType;
 use trtx::cuda::{synchronize, DeviceBuffer};
 use trtx::error::Result;
-use trtx::network::Layer; // Import Layer trait for get_output method
 use trtx::{ActivationType, Builder, DataType, Logger, Runtime};
 
 fn main() -> Result<()> {
@@ -34,8 +33,8 @@ fn main() -> Result<()> {
 
     // 3. Create runtime and deserialize engine
     println!("\n3. Creating runtime and loading engine...");
-    let runtime = Runtime::new(&logger)?;
-    let engine = runtime.deserialize_cuda_engine(&engine_data)?;
+    let mut runtime = Runtime::new(&logger)?;
+    let mut engine = runtime.deserialize_cuda_engine(&engine_data)?;
 
     // 4. Inspect engine
     println!("4. Engine information:");
@@ -171,27 +170,28 @@ fn main() -> Result<()> {
 /// Build a tiny network: Input -> ReLU -> Output
 fn build_tiny_network(logger: &Logger) -> Result<Vec<u8>> {
     println!("   Creating builder...");
-    let builder = Builder::new(logger)?;
+    let mut builder = Builder::new(logger)?;
 
     println!("   Creating network with explicit batch...");
     let mut network = builder.create_network(0)?;
 
     println!("   Adding input tensor [1, 3, 4, 4]...");
     let input = network.add_input("input", DataType::kFLOAT, &[1, 3, 4, 4])?;
-    println!("   Input tensor name: {:?}", input.name()?);
-    println!("   Input tensor dims: {:?}", input.dimensions()?);
+    println!("   Input tensor name: {:?}", input.name(&network)?);
+    println!("   Input tensor dims: {:?}", input.dimensions(&network)?);
 
     println!("   Adding ReLU activation layer...");
-    let activation_layer = network.add_activation(&input, ActivationType::kRELU)?;
-    let output = activation_layer.get_output(0)?;
+    let mut input = input;
+    let activation_layer = network.add_activation(&mut input, ActivationType::kRELU)?;
+    let output = activation_layer.get_output(&network, 0)?;
 
     println!("   Setting output tensor name...");
     let mut output_named = output;
-    output_named.set_name("output")?;
-    println!("   Output tensor name: {:?}", output_named.name()?);
+    output_named.set_name(&mut network, "output")?;
+    println!("   Output tensor name: {:?}", output_named.name(&network)?);
 
     println!("   Marking output tensor...");
-    network.mark_output(&output_named)?;
+    network.mark_output(&mut output_named);
 
     println!("   Network has {} inputs", network.get_nb_inputs());
     println!("   Network has {} outputs", network.get_nb_outputs());
