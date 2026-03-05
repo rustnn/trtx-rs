@@ -85,11 +85,10 @@ pub struct GpuAllocator {
 }
 
 impl GpuAllocator {
-    pub fn new(inner: Box<dyn AllocateGpu>) -> Self {
-        Self {
-            inner: Some(inner),
-            ..Default::default()
-        }
+    pub fn new(inner: Box<dyn AllocateGpu>) -> Rc<RefCell<Self>> {
+        let rtn = Self::default_rust_owned();
+        rtn.borrow_mut().inner = Some(inner);
+        rtn
     }
 }
 
@@ -181,11 +180,10 @@ pub struct ErrorRecorder {
 }
 
 impl ErrorRecorder {
-    pub fn new(inner: Box<dyn RecordError>) -> Self {
-        Self {
-            inner: Some(inner),
-            ..Default::default()
-        }
+    pub fn new(inner: Box<dyn RecordError>) -> Rc<RefCell<Self>> {
+        let rtn = Self::default_rust_owned();
+        rtn.borrow_mut().inner = Some(inner);
+        rtn
     }
 }
 
@@ -251,11 +249,10 @@ pub struct DebugListener {
 }
 
 impl DebugListener {
-    pub fn new(inner: Box<dyn ProcessDebugTensor>) -> Self {
-        Self {
-            inner: Some(inner),
-            ..Default::default()
-        }
+    pub fn new(inner: Box<dyn ProcessDebugTensor>) -> Rc<RefCell<Self>> {
+        let rtn = Self::default_rust_owned();
+        rtn.borrow_mut().inner = Some(inner);
+        rtn
     }
 }
 
@@ -300,11 +297,10 @@ pub struct Logger {
 }
 
 impl Logger {
-    pub fn new(inner: Box<dyn HandleLog>) -> Self {
-        Self {
-            inner: Some(inner),
-            ..Default::default()
-        }
+    pub fn new(inner: Box<dyn HandleLog>) -> Rc<RefCell<Self>> {
+        let rtn = Self::default_rust_owned();
+        rtn.borrow_mut().inner = Some(inner);
+        rtn
     }
 }
 
@@ -335,11 +331,10 @@ pub struct StreamReaderV2 {
 }
 
 impl StreamReaderV2 {
-    pub fn new(inner: Box<dyn ReadStreamV2>) -> Self {
-        Self {
-            inner: Some(inner),
-            ..Default::default()
-        }
+    pub fn new(inner: Box<dyn ReadStreamV2>) -> Rc<RefCell<Self>> {
+        let rtn = Self::default_rust_owned();
+        rtn.borrow_mut().inner = Some(inner);
+        rtn
     }
 }
 
