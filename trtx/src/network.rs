@@ -16,6 +16,11 @@ macro_rules! check_network {
             panic!("Layer or tensor was created from different network")
         }
     };
+    ($network:ident, $tensor:expr) => {
+        if $network.inner.as_ptr() != $tensor.network {
+            panic!("Layer or tensor was created from different network")
+        }
+    };
 }
 
 use crate::error::{Error, Result};
