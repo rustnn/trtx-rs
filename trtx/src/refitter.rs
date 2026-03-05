@@ -1,5 +1,8 @@
+use std::cell::RefCell;
 use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
+use std::rc::Rc;
+use trtx_sys::RecordError;
 
 use crate::{
     error::{Error, Result},
@@ -10,7 +13,7 @@ use trtx_sys::{nvinfer1, ErrorRecorder};
 
 pub struct Refitter<'logger, 'engine> {
     inner: UniquePtr<nvinfer1::IRefitter>,
-    error_recorder: Option<ErrorRecorder>,
+    error_recorder: Option<Rc<RefCell<ErrorRecorder>>>,
     _logger: PhantomData<&'logger Logger>,
     _engine: PhantomData<&'engine CudaEngine<'engine>>,
 }
@@ -161,13 +164,15 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
     }
 
     /// See [nvinfer1::IRefitter::setErrorRecorder]
-    pub fn set_error_recorder(&mut self, error_recorder: ErrorRecorder) {
-        self.error_recorder = Some(error_recorder);
+    pub fn set_error_recorder(&mut self, error_recorder: Box<dyn RecordError>) {
+        self.error_recorder = Some(ErrorRecorder::new(error_recorder));
+        #[cfg(not(feature = "mock"))]
         unsafe {
             self.inner.pin_mut().setErrorRecorder(
                 self.error_recorder
                     .as_mut()
                     .unwrap()
+                    .borrow_mut()
                     .pin_mut()
                     .get_unchecked_mut(),
             )
@@ -383,9 +388,6 @@ mod tests {
 
     #[test]
     fn refitter_from_constant_network() {
-        #[cfg(feature = "dlopen_tensorrt_rtx")]
-        let _ = crate::dynamically_load_tensorrt(None::<String>);
-
         let logger = Logger::stderr().expect("logger");
         let engine_data = build_constant_network(&logger).expect("build network");
         assert!(!engine_data.is_empty());

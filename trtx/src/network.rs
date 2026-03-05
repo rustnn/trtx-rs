@@ -1,11 +1,13 @@
 //! Network definition for building TensorRT engines
 
 use cxx::UniquePtr;
+use std::cell::RefCell;
 use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 use std::pin::Pin;
+use std::rc::Rc;
 use trtx_sys::nvinfer1::{IConcatenationLayer, INetworkDefinition, ITensor};
-use trtx_sys::{nvinfer1, LayerType};
+use trtx_sys::{nvinfer1, LayerType, RecordError};
 use trtx_sys::{DataType, MatrixOperation, ScaleMode, TopKOperation};
 use trtx_sys::{ErrorRecorder, TrtLayer};
 
@@ -470,7 +472,7 @@ impl Tensor<'_> {
 pub struct NetworkDefinition<'builder> {
     //pub(crate) inner: Mutex<Pin<&'builder mut INetworkDefinition>>,
     pub(crate) inner: UniquePtr<INetworkDefinition>,
-    error_recorder: Option<ErrorRecorder>,
+    error_recorder: Option<Rc<RefCell<ErrorRecorder>>>,
     _builder: PhantomData<&'builder trtx_sys::nvinfer1::IBuilder>,
 }
 
@@ -1470,16 +1472,18 @@ impl<'builder> NetworkDefinition<'builder> {
     }
 
     /// Set [nvinfer1::INetworkDefinition::setErrorRecorder]
-    pub fn set_error_recorder(&mut self, error_recorder: ErrorRecorder) {
-        self.error_recorder = Some(error_recorder);
+    pub fn set_error_recorder(&mut self, error_recorder: Box<dyn RecordError>) {
+        self.error_recorder = Some(ErrorRecorder::new(error_recorder));
+        #[cfg(not(feature = "mock"))]
         unsafe {
             self.inner.pin_mut().setErrorRecorder(
                 self.error_recorder
                     .as_mut()
                     .unwrap()
+                    .borrow_mut()
                     .pin_mut()
                     .get_unchecked_mut(),
-            );
+            )
         };
     }
 }
