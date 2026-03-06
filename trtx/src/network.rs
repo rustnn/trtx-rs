@@ -687,7 +687,7 @@ impl<'network> NetworkDefinition<'network> {
         input: &'_ mut Tensor,
         nb_output_maps: i32,
         kernel_size: &[i32; 2],
-        weights: &ConvWeights<'_>,
+        weights: &ConvWeights<'network>,
     ) -> Result<ConvolutionLayer<'_>> {
         crate::check_network!(self, input);
         let kernel_dtype = weights.kernel_dtype;
@@ -761,7 +761,7 @@ impl<'network> NetworkDefinition<'network> {
         input: &'_ mut Tensor,
         nb_output_maps: i32,
         kernel_size: &[i32; 2],
-        weights: &ConvWeights<'_>,
+        weights: &ConvWeights<'network>,
     ) -> Result<DeconvolutionLayer<'_>> {
         crate::check_network!(self, input);
         let kernel_dtype = weights.kernel_dtype;
@@ -853,7 +853,7 @@ impl<'network> NetworkDefinition<'network> {
     pub fn add_constant(
         &mut self,
         dims: &[i32],
-        weights: &[u8],
+        weights: &'network [u8],
         data_type: trtx_sys::DataType,
     ) -> Result<ConstantLayer<'network>> {
         let element_count: i64 = dims.iter().map(|&d| d as i64).product();
