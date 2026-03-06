@@ -164,16 +164,16 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
     ///// See [nvinfer1::IRefitter::setErrorRecorder]
     //pub fn set_error_recorder(&mut self, error_recorder: Rc<RefCell<ErrorRecorder>>) {
     //self.error_recorder = Some(error_recorder);
-    //#[cfg(not(feature = "mock"))]
-    //unsafe {
-    //self.inner.pin_mut().setErrorRecorder(
-    //self.error_recorder
+    //let rec = self
+    //.error_recorder
     //.as_mut()
     //.unwrap()
-    //.take()
+    //.borrow_mut()
     //.pin_mut()
-    //.get_unchecked_mut(),
-    //)
+    //.get_unchecked_mut();
+    //#[cfg(not(feature = "mock"))]
+    //unsafe {
+    //self.inner.pin_mut().setErrorRecorder(rec)
     //};
     //}
 
@@ -486,7 +486,7 @@ mod tests {
 
     ////let errors: Arc<Mutex<Vec<(ErrorCode, String)>>> = Arc::new(Mutex::new(Vec::new()));
     ////let recorder = ErrorRecorder::new(Box::new(VecErrorRecorder::new(Arc::clone(&errors))));
-    //////refitter.set_error_recorder(recorder);
+    ////refitter.set_error_recorder(recorder);
 
     ////let wrong_weights = nvinfer1::Weights {
     ////type_: nvinfer1::DataType::kFLOAT,

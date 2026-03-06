@@ -472,6 +472,7 @@ pub struct NetworkDefinition<'builder> {
     pub(crate) inner: UniquePtr<INetworkDefinition>,
     //error_recorder: Option<Rc<RefCell<ErrorRecorder>>>,
     _builder: PhantomData<&'builder trtx_sys::nvinfer1::IBuilder>,
+    small_copied_weights: Vec<Vec<u8>>, // for convenience we hold pointers to scalars here
 }
 
 impl<'network> NetworkDefinition<'network> {
@@ -480,6 +481,7 @@ impl<'network> NetworkDefinition<'network> {
             inner: unsafe { UniquePtr::from_raw(ptr) },
             //error_recorder: None,
             _builder: Default::default(),
+            small_copied_weights: Default::default(),
         }
     }
 
@@ -850,6 +852,52 @@ impl<'network> NetworkDefinition<'network> {
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConstant`].
+    pub fn add_scalar_constant(
+        &mut self,
+        scalar_bytes: &[u8],
+        data_type: trtx_sys::DataType,
+    ) -> Result<ConstantLayer<'network>> {
+        let element_count: i64 = 1;
+        let bytes_per_element = match data_type {
+            DataType::kFLOAT => 4,
+            DataType::kHALF => 2,
+            DataType::kINT8 => 1,
+            DataType::kINT32 => 4,
+            DataType::kUINT8 => 1,
+            DataType::kBOOL => 1,
+            _ => {
+                return Err(Error::Runtime(format!(
+                    "Unsupported data type: {data_type:?}",
+                )))
+            }
+        };
+
+        self.small_copied_weights.push(scalar_bytes.to_vec());
+
+        let expected_bytes = element_count * bytes_per_element;
+        if expected_bytes as usize != scalar_bytes.len() {
+            panic!(
+                "Expected {expected_bytes} but received {:?} bytes",
+                scalar_bytes.len()
+            );
+        }
+        let dims_struct = trtx_sys::Dims::from_slice(&[]);
+        let weights_struct = trtx_sys::nvinfer1::Weights::new_with_type(
+            data_type.into(),
+            self.small_copied_weights
+                .last()
+                .expect("can't be empty")
+                .as_ptr() as *const std::ffi::c_void,
+            element_count,
+        );
+        let layer_ptr = self
+            .inner
+            .pin_mut()
+            .addConstant(&dims_struct, weights_struct);
+        ConstantLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConstant`].
     pub fn add_constant(
         &mut self,
         dims: &[i32],
@@ -872,11 +920,10 @@ impl<'network> NetworkDefinition<'network> {
         };
         let expected_bytes = element_count * bytes_per_element;
         if weights.len() as i64 != expected_bytes {
-            return Err(Error::Runtime(format!(
-                "Weight size mismatch: expected {} bytes, got {} bytes",
-                expected_bytes,
+            panic!(
+                "Weight size mismatch: expected {expected_bytes} bytes, got {} bytes",
                 weights.len()
-            )));
+            );
         }
         let dims_i64: Vec<i64> = dims.iter().map(|&d| d as i64).collect();
         let dims_struct = trtx_sys::Dims::from_slice(&dims_i64);
@@ -983,7 +1030,7 @@ impl<'network> NetworkDefinition<'network> {
     ) -> Result<CumulativeLayer<'network>> {
         crate::check_network!(self, input);
         let axis_bytes = axis.to_le_bytes();
-        let axis_constant = self.add_constant(&[], &axis_bytes, trtx_sys::DataType::kINT32)?;
+        let axis_constant = self.add_scalar_constant(&axis_bytes, trtx_sys::DataType::kINT32)?;
         let mut axis_tensor = axis_constant.get_output(self, 0)?;
         self.add_cumulative_with_axis_tensor(input, &mut axis_tensor, op, exclusive, reverse)
     }
