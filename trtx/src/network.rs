@@ -852,57 +852,22 @@ impl<'network> NetworkDefinition<'network> {
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConstant`].
-    pub fn add_scalar_constant(
-        &mut self,
-        scalar_bytes: &[u8],
-        data_type: trtx_sys::DataType,
-    ) -> Result<ConstantLayer<'network>> {
-        let element_count: i64 = 1;
-        let bytes_per_element = match data_type {
-            DataType::kFLOAT => 4,
-            DataType::kHALF => 2,
-            DataType::kINT8 => 1,
-            DataType::kINT32 => 4,
-            DataType::kUINT8 => 1,
-            DataType::kBOOL => 1,
-            _ => {
-                return Err(Error::Runtime(format!(
-                    "Unsupported data type: {data_type:?}",
-                )))
-            }
-        };
-
-        self.small_copied_weights.push(scalar_bytes.to_vec());
-
-        let expected_bytes = element_count * bytes_per_element;
-        if expected_bytes as usize != scalar_bytes.len() {
-            panic!(
-                "Expected {expected_bytes} but received {:?} bytes",
-                scalar_bytes.len()
-            );
-        }
-        let dims_struct = trtx_sys::Dims::from_slice(&[]);
-        let weights_struct = trtx_sys::nvinfer1::Weights::new_with_type(
-            data_type.into(),
-            self.small_copied_weights
-                .last()
-                .expect("can't be empty")
-                .as_ptr() as *const std::ffi::c_void,
-            element_count,
-        );
-        let layer_ptr = self
-            .inner
-            .pin_mut()
-            .addConstant(&dims_struct, weights_struct);
-        ConstantLayer::new(self.inner.as_ptr(), layer_ptr)
-    }
-
-    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConstant`].
-    pub fn add_constant(
+    /// Same as [`Self::add_constant`] just copying the provided weights for small weights like scalars
+    pub fn add_small_constant_copied(
         &mut self,
         dims: &[i32],
-        weights: &'network [u8],
+        weights: &[u8],
         data_type: trtx_sys::DataType,
+    ) -> Result<ConstantLayer<'network>> {
+        unsafe { self.add_constant_unsafe(dims, weights, data_type, true) }
+    }
+
+    unsafe fn add_constant_unsafe(
+        &mut self,
+        dims: &[i32],
+        weights: &[u8],
+        data_type: trtx_sys::DataType,
+        copy: bool,
     ) -> Result<ConstantLayer<'network>> {
         let element_count: i64 = dims.iter().map(|&d| d as i64).product();
         let bytes_per_element = match data_type {
@@ -929,7 +894,15 @@ impl<'network> NetworkDefinition<'network> {
         let dims_struct = trtx_sys::Dims::from_slice(&dims_i64);
         let weights_struct = trtx_sys::nvinfer1::Weights::new_with_type(
             data_type.into(),
-            weights.as_ptr() as *const std::ffi::c_void,
+            if copy {
+                self.small_copied_weights.push(weights.to_vec());
+                self.small_copied_weights
+                    .last()
+                    .expect("can't be empty. we just pushed")
+                    .as_ptr()
+            } else {
+                weights.as_ptr()
+            } as *const std::ffi::c_void,
             element_count,
         );
         let layer_ptr = self
@@ -937,6 +910,16 @@ impl<'network> NetworkDefinition<'network> {
             .pin_mut()
             .addConstant(&dims_struct, weights_struct);
         ConstantLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConstant`].
+    pub fn add_constant(
+        &mut self,
+        dims: &[i32],
+        weights: &'network [u8],
+        data_type: trtx_sys::DataType,
+    ) -> Result<ConstantLayer<'network>> {
+        unsafe { self.add_constant_unsafe(dims, weights, data_type, false) }
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addSoftMax`].
@@ -1030,7 +1013,8 @@ impl<'network> NetworkDefinition<'network> {
     ) -> Result<CumulativeLayer<'network>> {
         crate::check_network!(self, input);
         let axis_bytes = axis.to_le_bytes();
-        let axis_constant = self.add_scalar_constant(&axis_bytes, trtx_sys::DataType::kINT32)?;
+        let axis_constant =
+            self.add_small_constant_copied(&[], &axis_bytes, trtx_sys::DataType::kINT32)?;
         let mut axis_tensor = axis_constant.get_output(self, 0)?;
         self.add_cumulative_with_axis_tensor(input, &mut axis_tensor, op, exclusive, reverse)
     }

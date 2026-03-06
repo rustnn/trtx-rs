@@ -6,7 +6,22 @@ use crate::{
     CudaEngine, Logger,
 };
 use autocxx::cxx::UniquePtr;
-use trtx_sys::nvinfer1;
+use trtx_sys::{nvinfer1, DataType};
+
+pub struct Weights<'data, T> {
+    data: &'data [T],
+    data_type: DataType,
+}
+
+impl<T> Weights<'_, T> {
+    fn as_raw(&self) -> nvinfer1::Weights {
+        nvinfer1::Weights {
+            type_: self.data_type.into(),
+            values: self.data.as_ptr() as *const std::ffi::c_void,
+            count: (self.data.len() * size_of::<T>()) as i64,
+        }
+    }
+}
 
 pub struct Refitter<'logger, 'engine> {
     inner: UniquePtr<nvinfer1::IRefitter>,
@@ -74,17 +89,17 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
     }
 
     /// Specify new weights for a layer of given name and role.
-    pub fn set_weights(
+    pub fn set_weights<T>(
         &mut self,
         layer_name: &str,
         role: nvinfer1::WeightsRole,
-        weights: nvinfer1::Weights,
+        weights: Weights<'engine, T>,
     ) -> Result<()> {
         let name_cstr = CString::new(layer_name)?;
         if unsafe {
             self.inner
                 .pin_mut()
-                .setWeights(name_cstr.as_ptr(), role, weights)
+                .setWeights(name_cstr.as_ptr(), role, weights.as_raw())
         } {
             Ok(())
         } else {
@@ -183,12 +198,16 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
     }
 
     /// Specify new weights by name (host location by default).
-    pub fn set_named_weights(&mut self, name: &str, weights: nvinfer1::Weights) -> Result<()> {
+    pub fn set_named_weights<T>(
+        &mut self,
+        name: &str,
+        weights: &Weights<'engine, T>,
+    ) -> Result<()> {
         let name_cstr = CString::new(name)?;
         if unsafe {
             self.inner
                 .pin_mut()
-                .setNamedWeights(name_cstr.as_ptr(), weights)
+                .setNamedWeights(name_cstr.as_ptr(), weights.as_raw())
         } {
             Ok(())
         } else {
@@ -265,7 +284,11 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
     }
 
     /// Specify new weights by name with explicit host/device location.
-    pub fn set_named_weights_with_location(
+    ///
+    /// # Safety
+    /// data of weights must by a valid pointer with correct size and alignment for the data type
+    /// the pointer must correspond to location and must be valid while being used by TensorRT
+    pub unsafe fn set_named_weights_with_location(
         &mut self,
         name: &str,
         weights: nvinfer1::Weights,
@@ -350,7 +373,7 @@ mod tests {
     use std::sync::atomic::{AtomicI32, Ordering};
     use std::sync::{Arc, Mutex};
     use trtx_sys::BuilderFlag;
-    use trtx_sys::{ErrorCode, ErrorRecorder, RecordError};
+    use trtx_sys::{ErrorCode, RecordError};
 
     use super::*;
     use crate::builder::MemoryPoolType;
@@ -457,13 +480,12 @@ mod tests {
         assert!(proto.count >= 0 || proto.count == -1);
         // Refit with same shape: 4 floats
         let new_vals: [f32; 4] = [10.0, 20.0, 30.0, 40.0];
-        let new_weights = nvinfer1::Weights {
-            type_: nvinfer1::DataType::kFLOAT,
-            values: new_vals.as_ptr() as *const std::ffi::c_void,
-            count: 4,
+        let new_weights = Weights {
+            data_type: DataType::kFLOAT,
+            data: &new_vals,
         };
         refitter
-            .set_named_weights(weight_name, new_weights)
+            .set_named_weights(weight_name, &new_weights)
             .expect("set_named_weights");
 
         refitter.refit_cuda_engine().expect("refit_cuda_engine");
