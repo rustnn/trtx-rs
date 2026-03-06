@@ -194,11 +194,10 @@ impl ShuffleLayer<'_> {
     pub fn set_reshape_dimensions(
         &mut self,
         network: &mut NetworkDefinition,
-        dims: &[i32],
+        dims: &[i64],
     ) -> Result<()> {
         crate::check_network!(network, self);
-        let dims_i64: Vec<i64> = dims.iter().map(|&d| d as i64).collect();
-        let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
+        let dims_obj = trtx_sys::Dims::from_slice(&dims);
         self.inner.as_mut().setReshapeDimensions(&dims_obj);
         Ok(())
     }
@@ -219,10 +218,9 @@ impl ShuffleLayer<'_> {
 }
 
 impl ResizeLayer<'_> {
-    pub fn set_output_dimensions(&mut self, network: &mut NetworkDefinition, dims: &[i32]) {
+    pub fn set_output_dimensions(&mut self, network: &mut NetworkDefinition, dims: &[i64]) {
         crate::check_network!(network, self);
-        let dims_i64: Vec<i64> = dims.iter().map(|&d| d as i64).collect();
-        let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
+        let dims_obj = trtx_sys::Dims::from_slice(&dims);
         self.inner.as_mut().setOutputDimensions(&dims_obj);
     }
     pub fn set_resize_mode(&mut self, network: &mut NetworkDefinition, mode: trtx_sys::ResizeMode) {
@@ -437,15 +435,10 @@ impl Tensor<'_> {
         Ok(())
     }
 
-    pub fn dimensions(&self, network: &NetworkDefinition) -> Result<Vec<i32>> {
+    pub fn dimensions(&self, network: &NetworkDefinition) -> Result<Vec<i64>> {
         crate::check_network!(network, self);
         let result = self.inner.as_ref().getDimensions();
-        Ok(result
-            .d
-            .iter()
-            .take(result.nbDims as usize)
-            .map(|&i| i as i32)
-            .collect())
+        Ok(result.d[..result.nbDims as usize].to_vec())
     }
 
     pub fn get_type(&self, network: &NetworkDefinition) -> DataType {
@@ -1044,9 +1037,9 @@ impl<'network> NetworkDefinition<'network> {
     pub fn add_slice(
         &mut self,
         input: &'_ mut Tensor,
-        start: &[i32],
-        size: &[i32],
-        stride: &[i32],
+        start: &[i64],
+        size: &[i64],
+        stride: &[i64],
     ) -> Result<SliceLayer<'_>> {
         crate::check_network!(self, input);
         if start.len() != size.len() || start.len() != stride.len() {
@@ -1054,12 +1047,9 @@ impl<'network> NetworkDefinition<'network> {
                 "start, size, and stride must have the same length".to_string(),
             ));
         }
-        let start_i64: Vec<i64> = start.iter().map(|&d| d as i64).collect();
-        let size_i64: Vec<i64> = size.iter().map(|&d| d as i64).collect();
-        let stride_i64: Vec<i64> = stride.iter().map(|&d| d as i64).collect();
-        let start_dims = trtx_sys::Dims::from_slice(&start_i64);
-        let size_dims = trtx_sys::Dims::from_slice(&size_i64);
-        let stride_dims = trtx_sys::Dims::from_slice(&stride_i64);
+        let start_dims = trtx_sys::Dims::from_slice(&start);
+        let size_dims = trtx_sys::Dims::from_slice(&size);
+        let stride_dims = trtx_sys::Dims::from_slice(&stride);
         let layer_ptr = self.inner.pin_mut().addSlice(
             input.inner.as_mut(),
             &start_dims,
