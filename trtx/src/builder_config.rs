@@ -33,6 +33,10 @@ impl BuilderConfig {
 
     /// See [IBuilderConfig::setProgressMonitor]
     pub fn set_progress_monitor(&mut self, progress_monitor: Pin<Box<ProgressMonitor>>) {
+        if self.progress_monitor.is_some() {
+            // would need to make sure that we don't destroy a monitor still in use
+            panic!("Setting a progress monitor more than once not supported at the moment");
+        }
         self.progress_monitor = Some(progress_monitor);
         #[cfg(not(feature = "mock"))]
         unsafe {
