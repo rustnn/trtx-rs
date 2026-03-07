@@ -15,11 +15,11 @@ use crate::nvinfer1;
 /// Put into a [ProgressMonitor] to subclass [nvinfer1::IProgressMonitor]
 pub trait HandleProgress: Send + Sync {
     /// See [nvinfer::IProgressMonitor::phaseStart]
-    fn phase_start(&mut self, phase_name: &str, parent_phase: Option<&str>, num_steps: i32);
+    fn phase_start(&self, phase_name: &str, parent_phase: Option<&str>, num_steps: i32);
     /// See [nvinfer::IProgressMonitor::stepComplete]. Return whether to continue building or cancel
-    fn step_complete(&mut self, phase_name: &str, step: i32) -> std::ops::ControlFlow<()>;
+    fn step_complete(&self, phase_name: &str, step: i32) -> std::ops::ControlFlow<()>;
     /// See [nvinfer::IProgressMonitor::phaseFinish]
-    fn phase_finish(&mut self, phase_name: &str);
+    fn phase_finish(&self, phase_name: &str);
 }
 
 unsafe extern "system" fn ProgressMonitor_phaseStart(
