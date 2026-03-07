@@ -1,5 +1,6 @@
 //! Network definition for building TensorRT engines
 
+use crate::interfaces::RecordError;
 use cxx::UniquePtr;
 use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
@@ -25,6 +26,7 @@ macro_rules! check_network {
 }
 
 use crate::error::{Error, Result};
+use crate::interfaces::ErrorRecorder;
 
 /// Kernel and optional bias weights for convolution and deconvolution layers.
 #[derive(Clone)]
@@ -466,13 +468,14 @@ pub struct NetworkDefinition<'builder> {
     //error_recorder: Option<Rc<RefCell<ErrorRecorder>>>,
     _builder: PhantomData<&'builder trtx_sys::nvinfer1::IBuilder>,
     small_copied_weights: Vec<Vec<u8>>, // for convenience we hold pointers to scalars here
+    error_recorder: Option<Pin<Box<ErrorRecorder>>>,
 }
 
 impl<'network> NetworkDefinition<'network> {
     pub(crate) fn from_ptr(ptr: *mut INetworkDefinition) -> Self {
         Self {
             inner: unsafe { UniquePtr::from_raw(ptr) },
-            //error_recorder: None,
+            error_recorder: None,
             _builder: Default::default(),
             small_copied_weights: Default::default(),
         }
@@ -1437,19 +1440,28 @@ impl<'builder> NetworkDefinition<'builder> {
         NormalizationLayer::new(self.inner.as_ptr(), ptr)
     }
 
-    ///// Set [nvinfer1::INetworkDefinition::setErrorRecorder]
-    //pub fn set_error_recorder(&mut self, error_recorder: Rc<RefCell<ErrorRecorder>>) {
-    //self.error_recorder = Some(error_recorder);
-    //#[cfg(not(feature = "mock"))]
-    //unsafe {
-    //self.inner.pin_mut().setErrorRecorder(
-    //self.error_recorder
-    //.as_mut()
-    //.unwrap()
-    //.borrow_mut()
-    //.pin_mut()
-    //.get_unchecked_mut(),
-    //)
-    //};
-    //}
+    /// See [nvinfer1::INetworkDefinition::setErrorRecorder]
+    ///
+    /// The Rust bindings only allow setting the error recorder once
+    pub fn set_error_recorder(&mut self, error_recorder: Box<dyn RecordError>) -> Result<()> {
+        let error_recorder = ErrorRecorder::new(error_recorder)?;
+        if self.error_recorder.is_some() {
+            // would need to make sure that we don't destroy a monitor still in use
+            // could offer this as an unsafe method for users who only set this when there is no
+            // build process active. Or we only accept a ref to progress monitor and force user
+            // via lifetimes to keep this alive for builder config lifetime
+            panic!("Setting a progress monitor more than once not supported at the moment");
+        }
+        self.error_recorder = Some(error_recorder);
+        let rec = self
+            .error_recorder
+            .as_mut()
+            .unwrap()
+            .as_trt_error_recorder();
+        #[cfg(not(feature = "mock"))]
+        unsafe {
+            self.inner.pin_mut().setErrorRecorder(rec)
+        };
+        Ok(())
+    }
 }

@@ -2,11 +2,13 @@
 
 use crate::error::{Error, Result};
 use crate::host_memory::HostMemory;
+use crate::interfaces::{ErrorRecorder, RecordError};
 use crate::logger::Logger;
 use crate::network::NetworkDefinition;
 use crate::optimization_profile::OptimizationProfile;
 use autocxx::cxx::memory::UniquePtr;
 use std::marker::PhantomData;
+use std::pin::Pin;
 use trtx_sys::nvinfer1::IBuilder;
 
 /// Network definition builder flags
@@ -25,6 +27,7 @@ pub use trtx_sys::{
 pub struct Builder<'a> {
     inner: UniquePtr<IBuilder>,
     _logger: PhantomData<&'a Logger>,
+    error_recorder: Option<Pin<Box<ErrorRecorder>>>,
 }
 
 impl<'builder> Builder<'builder> {
@@ -70,6 +73,7 @@ impl<'builder> Builder<'builder> {
             }
             Ok(Builder {
                 inner: unsafe { UniquePtr::from_raw(builder_ptr) },
+                error_recorder: None,
                 _logger: Default::default(),
             })
         }
@@ -133,5 +137,30 @@ impl<'builder> Builder<'builder> {
                 })?
         };
         Ok(unsafe { OptimizationProfile::from_raw(profile) })
+    }
+
+    /// See [trtx_sys::nvinfer1::IBuilder::setErrorRecorder]
+    ///
+    /// The Rust bindings only allow setting the error recorder once
+    pub fn set_error_recorder(&mut self, error_recorder: Box<dyn RecordError>) -> Result<()> {
+        let error_recorder = ErrorRecorder::new(error_recorder)?;
+        if self.error_recorder.is_some() {
+            // would need to make sure that we don't destroy a monitor still in use
+            // could offer this as an unsafe method for users who only set this when there is no
+            // build process active. Or we only accept a ref to progress monitor and force user
+            // via lifetimes to keep this alive for builder config lifetime
+            panic!("Setting a progress monitor more than once not supported at the moment");
+        }
+        self.error_recorder = Some(error_recorder);
+        let rec = self
+            .error_recorder
+            .as_mut()
+            .unwrap()
+            .as_trt_error_recorder();
+        #[cfg(not(feature = "mock"))]
+        unsafe {
+            self.inner.pin_mut().setErrorRecorder(rec)
+        };
+        Ok(())
     }
 }
