@@ -32,9 +32,13 @@ impl BuilderConfig {
     }
 
     /// See [IBuilderConfig::setProgressMonitor]
+    /// The Rust bindings only allow setting the progress monitor once per builder config object
     pub fn set_progress_monitor(&mut self, progress_monitor: Pin<Box<ProgressMonitor>>) {
         if self.progress_monitor.is_some() {
             // would need to make sure that we don't destroy a monitor still in use
+            // could offer this as an unsafe method for users who only set this when there is no
+            // build process active. Or we only accept a ref to progress monitor and force user
+            // via lifetimes to keep this alive for builder config lifetime
             panic!("Setting a progress monitor more than once not supported at the moment");
         }
         self.progress_monitor = Some(progress_monitor);
