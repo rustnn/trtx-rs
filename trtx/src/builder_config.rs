@@ -3,6 +3,7 @@
 use std::pin::Pin;
 
 use crate::error::PropertySetAttempt;
+use crate::interfaces::HandleProgress;
 use crate::interfaces::ProgressMonitor;
 use crate::Error;
 use crate::Result;
@@ -33,7 +34,11 @@ impl BuilderConfig {
 
     /// See [IBuilderConfig::setProgressMonitor]
     /// The Rust bindings only allow setting the progress monitor once per builder config object
-    pub fn set_progress_monitor(&mut self, progress_monitor: Pin<Box<ProgressMonitor>>) {
+    pub fn set_progress_monitor(
+        &mut self,
+        progress_monitor: Box<dyn HandleProgress>,
+    ) -> Result<()> {
+        let progress_monitor = ProgressMonitor::new(progress_monitor)?;
         if self.progress_monitor.is_some() {
             // would need to make sure that we don't destroy a monitor still in use
             // could offer this as an unsafe method for users who only set this when there is no
@@ -51,6 +56,7 @@ impl BuilderConfig {
                     .as_trt_progress_monitor(),
             )
         };
+        Ok(())
     }
 
     /// See [IBuilderConfig::setMemoryPoolLimit]
@@ -433,7 +439,7 @@ impl BuilderConfig {
 #[cfg(not(feature = "mock"))]
 mod tests {
     use crate::builder::MemoryPoolType;
-    use crate::interfaces::{HandleProgress, ProgressMonitor};
+    use crate::interfaces::HandleProgress;
     use crate::{Builder, DataType, Logger, NetworkDefinition};
     use std::ops::ControlFlow;
     use std::sync::atomic::{AtomicU32, Ordering};
@@ -507,8 +513,8 @@ mod tests {
         let mut config = builder.create_config().expect("config");
         config.set_memory_pool_limit(MemoryPoolType::kWORKSPACE, 1 << 24);
 
-        let monitor = StdoutProgressMonitor::new(3);
-        config.set_progress_monitor(ProgressMonitor::new(Box::new(monitor)).unwrap());
+        let monitor = Box::new(StdoutProgressMonitor::new(3));
+        config.set_progress_monitor(monitor).unwrap();
 
         let result = builder.build_serialized_network(&mut network, &mut config);
 
@@ -526,8 +532,8 @@ mod tests {
         let mut config = builder.create_config().expect("config");
         config.set_memory_pool_limit(MemoryPoolType::kWORKSPACE, 1 << 24);
 
-        let monitor = StdoutProgressMonitor::new(10000);
-        config.set_progress_monitor(ProgressMonitor::new(Box::new(monitor)).unwrap());
+        let monitor = Box::new(StdoutProgressMonitor::new(10000));
+        config.set_progress_monitor(monitor).unwrap();
 
         let result = builder.build_serialized_network(&mut network, &mut config);
 

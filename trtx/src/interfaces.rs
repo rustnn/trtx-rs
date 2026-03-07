@@ -6,9 +6,9 @@ use trtx_sys::{
 };
 use trtx_sys::{trtx_destroy_progress_monitor, ErrorCode};
 
-/// Rust version of the [nvinfer1::IProgressMonitor]
+/// Rust trait that corresponds to [nvinfer1::IProgressMonitor]
 ///
-/// Put into a [ProgressMonitor] to subclass [nvinfer1::IProgressMonitor]
+/// Use with [crate::BuilderConfig::set_progress_monitor]
 pub trait HandleProgress: Send + Sync {
     /// See [nvinfer::IProgressMonitor::phaseStart]
     fn phase_start(&self, phase_name: &str, parent_phase: Option<&str>, num_steps: i32);
