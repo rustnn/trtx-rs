@@ -96,7 +96,7 @@ impl ProgressMonitor {
                     "Failed to allocate object for IProgressMonitor subclass".to_string(),
                 ));
             }
-            rust_obj.as_mut().get_unchecked_mut().cpp_obj = cpp_obj;
+            rust_obj.as_mut().cpp_obj = cpp_obj;
         }
         Ok(rust_obj)
     }
