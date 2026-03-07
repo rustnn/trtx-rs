@@ -9,7 +9,7 @@ use trtx_sys::{trtx_destroy_progress_monitor, ErrorCode};
 /// Rust trait that corresponds to [nvinfer1::IProgressMonitor]
 ///
 /// Use with [crate::BuilderConfig::set_progress_monitor]
-pub trait HandleProgress: Send + Sync {
+pub trait MonitorProgress: Send + Sync {
     /// See [nvinfer::IProgressMonitor::phaseStart]
     fn phase_start(&self, phase_name: &str, parent_phase: Option<&str>, num_steps: i32);
     /// See [nvinfer::IProgressMonitor::stepComplete]. Return whether to continue building or cancel
@@ -73,11 +73,11 @@ unsafe extern "system" fn ProgressMonitor_phaseFinish(
 #[repr(C)]
 pub(crate) struct ProgressMonitor {
     cpp_obj: *mut std::ffi::c_void,
-    rust_impl: Box<dyn HandleProgress>,
+    rust_impl: Box<dyn MonitorProgress>,
 }
 
 impl ProgressMonitor {
-    pub(crate) fn new(inner: Box<dyn HandleProgress>) -> Result<Pin<Box<ProgressMonitor>>> {
+    pub(crate) fn new(inner: Box<dyn MonitorProgress>) -> Result<Pin<Box<ProgressMonitor>>> {
         let mut rust_obj = Box::pin(ProgressMonitor {
             cpp_obj: null_mut(),
             rust_impl: inner,

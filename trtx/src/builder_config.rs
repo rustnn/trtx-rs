@@ -3,7 +3,7 @@
 use std::pin::Pin;
 
 use crate::error::PropertySetAttempt;
-use crate::interfaces::HandleProgress;
+use crate::interfaces::MonitorProgress;
 use crate::interfaces::ProgressMonitor;
 use crate::Error;
 use crate::Result;
@@ -36,7 +36,7 @@ impl BuilderConfig {
     /// The Rust bindings only allow setting the progress monitor once per builder config object
     pub fn set_progress_monitor(
         &mut self,
-        progress_monitor: Box<dyn HandleProgress>,
+        progress_monitor: Box<dyn MonitorProgress>,
     ) -> Result<()> {
         let progress_monitor = ProgressMonitor::new(progress_monitor)?;
         if self.progress_monitor.is_some() {
@@ -439,7 +439,7 @@ impl BuilderConfig {
 #[cfg(not(feature = "mock"))]
 mod tests {
     use crate::builder::MemoryPoolType;
-    use crate::interfaces::HandleProgress;
+    use crate::interfaces::MonitorProgress;
     use crate::{Builder, DataType, Logger, NetworkDefinition};
     use std::ops::ControlFlow;
     use std::sync::atomic::{AtomicU32, Ordering};
@@ -461,7 +461,7 @@ mod tests {
         }
     }
 
-    impl HandleProgress for StdoutProgressMonitor {
+    impl MonitorProgress for StdoutProgressMonitor {
         fn phase_start(&self, phase_name: &str, parent_phase: Option<&str>, num_steps: i32) {
             println!(
                 "[progress] phase_start phase={:?} parent={:?} num_steps={}",
