@@ -13,7 +13,7 @@ categories = ["external-ffi-bindings"]
 
 [build-dependencies]
 autocxx-build = "0.30"
-bindgen = "0.69"
+bindgen = "0.72"
 cc = "1.0"
 regex = "1.0"
 
