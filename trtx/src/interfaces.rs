@@ -256,23 +256,21 @@ unsafe extern "system" fn ErrorRecorder_getErrorDesc(
     }
 }
 #[allow(non_snake_case)]
-unsafe extern "system" fn ErrorRecorder_hasOverflowed(
-    this: *mut std::cell::RefCell<ErrorRecorder>,
-) -> bool {
-    this.as_ref().unwrap().borrow().rust_impl.has_overflowed()
+unsafe extern "system" fn ErrorRecorder_hasOverflowed(this: *mut ErrorRecorder) -> bool {
+    this.as_ref().unwrap().rust_impl.has_overflowed()
 }
 #[allow(non_snake_case)]
-unsafe extern "system" fn ErrorRecorder_clear(this: *mut std::cell::RefCell<ErrorRecorder>) {
-    this.as_mut().unwrap().borrow_mut().rust_impl.clear();
+unsafe extern "system" fn ErrorRecorder_clear(this: *mut ErrorRecorder) {
+    this.as_mut().unwrap().rust_impl.clear();
 }
 #[allow(non_snake_case)]
 unsafe extern "system" fn ErrorRecorder_reportError(
-    this: *mut std::cell::RefCell<ErrorRecorder>,
+    this: *mut ErrorRecorder,
     val: i32,
     desc: *const ::std::os::raw::c_char,
 ) -> bool {
     let desc_str = CStr::from_ptr(desc).to_string_lossy();
-    this.as_mut().unwrap().borrow_mut().rust_impl.report_error(
+    this.as_mut().unwrap().rust_impl.report_error(
         match val {
             0 => ErrorCode::kSUCCESS,
             1 => ErrorCode::kUNSPECIFIED_ERROR,
@@ -291,24 +289,12 @@ unsafe extern "system" fn ErrorRecorder_reportError(
     )
 }
 #[allow(non_snake_case)]
-unsafe extern "system" fn ErrorRecorder_incRefCount(
-    this: *mut std::cell::RefCell<ErrorRecorder>,
-) -> i32 {
-    this.as_mut()
-        .unwrap()
-        .borrow_mut()
-        .rust_impl
-        .inc_ref_count()
+unsafe extern "system" fn ErrorRecorder_incRefCount(this: *mut ErrorRecorder) -> i32 {
+    this.as_mut().unwrap().rust_impl.inc_ref_count()
 }
 #[allow(non_snake_case)]
-unsafe extern "system" fn ErrorRecorder_decRefCount(
-    this: *mut std::cell::RefCell<ErrorRecorder>,
-) -> i32 {
-    this.as_mut()
-        .unwrap()
-        .borrow_mut()
-        .rust_impl
-        .dec_ref_count()
+unsafe extern "system" fn ErrorRecorder_decRefCount(this: *mut ErrorRecorder) -> i32 {
+    this.as_mut().unwrap().rust_impl.dec_ref_count()
 }
 
 ///
@@ -369,10 +355,10 @@ pub trait RecordError: Send + Sync {
     fn error_code(&self, error_idx: i32) -> ErrorCode;
     fn error_desc(&self, error_idx: i32) -> &CStr;
     fn has_overflowed(&self) -> bool;
-    fn clear(&mut self);
-    unsafe fn report_error(&mut self, val: ErrorCode, desc: &str) -> bool;
-    fn inc_ref_count(&mut self) -> i32;
-    fn dec_ref_count(&mut self) -> i32;
+    fn clear(&self);
+    fn report_error(&self, val: ErrorCode, desc: &str) -> bool;
+    fn inc_ref_count(&self) -> i32;
+    fn dec_ref_count(&self) -> i32;
 }
 
 //#[subclass]
