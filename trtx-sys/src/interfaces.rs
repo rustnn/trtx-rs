@@ -111,7 +111,9 @@ impl ProgressMonitor {
 
 impl Drop for ProgressMonitor {
     fn drop(&mut self) {
-        unsafe { trtx_destroy_progress_monitor_subclass(self.cpp_obj) }
+        if !self.cpp_obj.is_null() {
+            unsafe { trtx_destroy_progress_monitor_subclass(self.cpp_obj) }
+        }
     }
 }
 
