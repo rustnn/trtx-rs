@@ -3,11 +3,11 @@
 use std::pin::Pin;
 
 use crate::error::PropertySetAttempt;
+use crate::interfaces::ProgressMonitor;
 use crate::Error;
 use crate::Result;
 use cxx::UniquePtr;
 use trtx_sys::nvinfer1::{self, IBuilderConfig};
-use trtx_sys::ProgressMonitor;
 use trtx_sys::{
     BuilderFlag, ComputeCapability, DeviceType, EngineCapability, HardwareCompatibilityLevel,
     MemoryPoolType, PreviewFeature, ProfilingVerbosity, RuntimePlatform, TilingOptimizationLevel,
@@ -425,10 +425,10 @@ impl BuilderConfig {
 #[cfg(not(feature = "mock"))]
 mod tests {
     use crate::builder::MemoryPoolType;
+    use crate::interfaces::{HandleProgress, ProgressMonitor};
     use crate::{Builder, DataType, Logger, NetworkDefinition};
     use std::ops::ControlFlow;
     use std::sync::atomic::{AtomicU32, Ordering};
-    use trtx_sys::{HandleProgress, ProgressMonitor};
 
     const NUM_LAYERS: usize = 40;
 
@@ -448,14 +448,14 @@ mod tests {
     }
 
     impl HandleProgress for StdoutProgressMonitor {
-        fn phase_start(&mut self, phase_name: &str, parent_phase: Option<&str>, num_steps: i32) {
+        fn phase_start(&self, phase_name: &str, parent_phase: Option<&str>, num_steps: i32) {
             println!(
                 "[progress] phase_start phase={:?} parent={:?} num_steps={}",
                 phase_name, parent_phase, num_steps
             );
         }
 
-        fn step_complete(&mut self, phase_name: &str, step: i32) -> ControlFlow<()> {
+        fn step_complete(&self, phase_name: &str, step: i32) -> ControlFlow<()> {
             let n = self.step_count.fetch_add(1, Ordering::SeqCst);
             println!(
                 "[progress] step_complete phase={:?} step={}",
@@ -469,7 +469,7 @@ mod tests {
             }
         }
 
-        fn phase_finish(&mut self, phase_name: &str) {
+        fn phase_finish(&self, phase_name: &str) {
             println!("[progress] phase_finish phase={:?}", phase_name);
         }
     }
@@ -500,7 +500,7 @@ mod tests {
         config.set_memory_pool_limit(MemoryPoolType::kWORKSPACE, 1 << 24);
 
         let monitor = StdoutProgressMonitor::new(3);
-        config.set_progress_monitor(ProgressMonitor::new(Box::new(monitor)));
+        config.set_progress_monitor(ProgressMonitor::new(Box::new(monitor)).unwrap());
 
         let result = builder.build_serialized_network(&mut network, &mut config);
 
@@ -519,7 +519,7 @@ mod tests {
         config.set_memory_pool_limit(MemoryPoolType::kWORKSPACE, 1 << 24);
 
         let monitor = StdoutProgressMonitor::new(10000);
-        config.set_progress_monitor(ProgressMonitor::new(Box::new(monitor)));
+        config.set_progress_monitor(ProgressMonitor::new(Box::new(monitor)).unwrap());
 
         let result = builder.build_serialized_network(&mut network, &mut config);
 

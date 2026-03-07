@@ -1,14 +1,11 @@
-use crate::{enums::ErrorCode, ffi, DataType, Dims64, Severity, TensorLocation};
-use ::autocxx::subclass::*;
-use std::{
-    cell::RefCell,
-    ffi::{c_char, CStr},
-    pin::Pin,
-    ptr::null_mut,
-    rc::Rc,
+use crate::{Error, Result};
+use std::{ffi::CStr, pin::Pin, ptr::null_mut};
+use trtx_sys::{
+    nvinfer1, trtx_create_error_recorder_subclass, trtx_create_gpu_allocator_subclass,
+    trtx_create_progress_monitor_subclass, trtx_destroy_error_recorder_subclass,
+    trtx_destroy_gpu_allocator_subclass,
 };
-
-use crate::nvinfer1;
+use trtx_sys::{trtx_destroy_progress_monitor_subclass, ErrorCode};
 
 /// Rust version of the [nvinfer1::IProgressMonitor]
 ///
@@ -22,8 +19,9 @@ pub trait HandleProgress: Send + Sync {
     fn phase_finish(&self, phase_name: &str);
 }
 
+#[allow(non_snake_case)]
 unsafe extern "system" fn ProgressMonitor_phaseStart(
-    this: *mut ProgressMonitor,
+    this: *mut std::ffi::c_void,
     phaseName: *const ::std::os::raw::c_char,
     parentPhase: *const ::std::os::raw::c_char,
     nbSteps: i32,
@@ -41,11 +39,13 @@ unsafe extern "system" fn ProgressMonitor_phaseStart(
         nbSteps,
     );
 }
+#[allow(non_snake_case)]
 unsafe extern "system" fn ProgressMonitor_stepComplete(
-    this: *mut ProgressMonitor,
+    this: *mut std::ffi::c_void,
     phaseName: *const ::std::os::raw::c_char,
     step: i32,
 ) -> bool {
+    let this = this as *mut ProgressMonitor;
     let phase_name = CStr::from_ptr(phaseName);
     this.as_mut()
         .unwrap()
@@ -53,25 +53,17 @@ unsafe extern "system" fn ProgressMonitor_stepComplete(
         .step_complete(&phase_name.to_string_lossy(), step)
         .is_continue()
 }
+#[allow(non_snake_case)]
 unsafe extern "system" fn ProgressMonitor_phaseFinish(
-    this: *mut ProgressMonitor,
+    this: *mut std::ffi::c_void,
     phaseName: *const ::std::os::raw::c_char,
 ) {
+    let this = this as *mut ProgressMonitor;
     let phase_name = CStr::from_ptr(phaseName);
     this.as_mut()
         .unwrap()
         .rust_impl
         .phase_finish(&phase_name.to_string_lossy());
-}
-
-extern "C" {
-    fn trtx_create_progress_monitor_subclass(
-        rust_impl: *mut std::ffi::c_void,
-        phaseStart: *mut std::ffi::c_void,
-        stepComplete: *mut std::ffi::c_void,
-        phaseFinish: *mut std::ffi::c_void,
-    ) -> *mut std::ffi::c_void;
-    fn trtx_destroy_progress_monitor_subclass(cpp_obj: *mut std::ffi::c_void);
 }
 
 ///
@@ -86,7 +78,7 @@ pub struct ProgressMonitor {
 }
 
 impl ProgressMonitor {
-    pub fn new(inner: Box<dyn HandleProgress>) -> Pin<Box<ProgressMonitor>> {
+    pub fn new(inner: Box<dyn HandleProgress>) -> Result<Pin<Box<ProgressMonitor>>> {
         let mut rust_obj = Box::pin(ProgressMonitor {
             cpp_obj: null_mut(),
             rust_impl: inner,
@@ -96,13 +88,21 @@ impl ProgressMonitor {
             let cpp_obj = trtx_create_progress_monitor_subclass(
                 rust_obj.as_mut().get_unchecked_mut() as *mut ProgressMonitor
                     as *mut std::ffi::c_void,
-                ProgressMonitor_phaseStart as *mut std::ffi::c_void,
-                ProgressMonitor_stepComplete as *mut std::ffi::c_void,
-                ProgressMonitor_phaseFinish as *mut std::ffi::c_void,
+                ProgressMonitor_phaseStart,
+                ProgressMonitor_stepComplete,
+                ProgressMonitor_phaseFinish,
             );
+            if cpp_obj.is_null() {
+                panic!("Object allocation failed");
+            }
+            if cpp_obj.is_null() {
+                return Err(Error::Runtime(
+                    "Failed to allocate object for IProgressMonitor subclass".to_string(),
+                ));
+            }
             rust_obj.as_mut().get_unchecked_mut().cpp_obj = cpp_obj;
         }
-        rust_obj
+        Ok(rust_obj)
     }
     pub fn as_trt_progress_monitor(&self) -> *mut nvinfer1::IProgressMonitor {
         self.cpp_obj as *mut nvinfer1::IProgressMonitor
@@ -118,49 +118,43 @@ impl Drop for ProgressMonitor {
 }
 
 /// C callbacks for GpuAllocatorSubclass (bridge to Rust). `this` is *mut RefCell<GpuAllocator>.
+#[allow(non_snake_case)]
 unsafe extern "system" fn GpuAllocator_allocateAsync(
     this: *const GpuAllocator,
     size: u64,
     alignment: u64,
     flags: u32,
-    cuda_stream: *mut crate::ffi::CUstream_st,
+    cuda_stream: *mut std::ffi::c_void,
 ) -> *mut std::ffi::c_void {
     this.as_ref()
         .unwrap()
         .rust_impl
         .allocate_async(size, alignment, flags, cuda_stream)
 }
+#[allow(non_snake_case)]
 unsafe extern "system" fn GpuAllocator_reallocate(
-    this: *const GpuAllocator,
+    this: *const std::ffi::c_void,
     memory: *mut std::ffi::c_void,
     alignment: u64,
     new_size: u64,
 ) -> *mut std::ffi::c_void {
+    let this = this as *mut GpuAllocator;
     this.as_ref()
         .unwrap()
         .rust_impl
         .reallocate(memory, alignment, new_size)
 }
+#[allow(non_snake_case)]
 unsafe extern "system" fn GpuAllocator_deallocateAsync(
-    this: *mut std::cell::RefCell<GpuAllocator>,
+    this: *mut std::ffi::c_void,
     memory: *mut std::ffi::c_void,
-    cuda_stream: *mut crate::ffi::CUstream_st,
+    cuda_stream: *mut std::ffi::c_void,
 ) -> bool {
-    this.as_mut()
+    let this = this as *const GpuAllocator;
+    this.as_ref()
         .unwrap()
-        .borrow_mut()
         .rust_impl
         .deallocate_async(memory, cuda_stream)
-}
-
-extern "C" {
-    fn trtx_create_gpu_allocator_subclass(
-        rust_impl: *mut std::ffi::c_void,
-        allocateAsync: *mut std::ffi::c_void,
-        reallocate: *mut std::ffi::c_void,
-        deallocateAsync: *mut std::ffi::c_void,
-    ) -> *mut std::ffi::c_void;
-    fn trtx_destroy_gpu_allocator_subclass(cpp_obj: *mut std::ffi::c_void);
 }
 
 ///
@@ -174,21 +168,26 @@ pub struct GpuAllocator {
 }
 
 impl GpuAllocator {
-    pub fn new(inner: Box<dyn AllocateGpu>) -> Rc<RefCell<Self>> {
-        let rust_obj = Rc::new(RefCell::new(GpuAllocator {
+    pub fn new(inner: Box<dyn AllocateGpu>) -> Result<Pin<Box<Self>>> {
+        let mut rust_obj = Box::pin(GpuAllocator {
             cpp_obj: null_mut(),
             rust_impl: inner,
-        }));
+        });
         unsafe {
             let cpp_obj = trtx_create_gpu_allocator_subclass(
-                rust_obj.as_ptr() as *mut std::ffi::c_void,
+                rust_obj.as_mut().get_unchecked_mut() as *mut GpuAllocator as *mut std::ffi::c_void,
                 GpuAllocator_allocateAsync as *mut std::ffi::c_void,
                 GpuAllocator_reallocate as *mut std::ffi::c_void,
                 GpuAllocator_deallocateAsync as *mut std::ffi::c_void,
             );
-            rust_obj.borrow_mut().cpp_obj = cpp_obj;
+            if cpp_obj.is_null() {
+                return Err(Error::Runtime(
+                    "Failed to allocate object for IGpuAllocator subclass".to_string(),
+                ));
+            }
+            rust_obj.cpp_obj = cpp_obj;
         }
-        rust_obj
+        Ok(rust_obj)
     }
 
     pub fn as_trt_gpu_allocator(&self) -> *mut nvinfer1::IGpuAllocator {
@@ -214,7 +213,7 @@ pub trait AllocateGpu: Send + Sync {
         size: u64,
         alignment: u64,
         flags: u32,
-        cuda_stream: *mut crate::ffi::CUstream_st,
+        cuda_stream: *mut std::ffi::c_void,
     ) -> *mut std::ffi::c_void;
     unsafe fn reallocate(
         &self,
@@ -225,20 +224,23 @@ pub trait AllocateGpu: Send + Sync {
     unsafe fn deallocate_async(
         &self,
         data: *mut std::ffi::c_void,
-        cuda_stream: *mut crate::ffi::CUstream_st,
+        cuda_stream: *mut std::ffi::c_void,
     ) -> bool;
 }
 
 /// C callbacks for ErrorRecorderSubclass (bridge to Rust). `this` is *mut RefCell<ErrorRecorder>.
+#[allow(non_snake_case)]
 unsafe extern "system" fn ErrorRecorder_getNbErrors(this: *mut ErrorRecorder) -> i32 {
     this.as_ref().unwrap().rust_impl.nb_errors()
 }
+#[allow(non_snake_case)]
 unsafe extern "system" fn ErrorRecorder_getErrorCode(
     this: *const ErrorRecorder,
     error_idx: i32,
 ) -> i32 {
     this.as_ref().unwrap().rust_impl.error_code(error_idx) as i32
 }
+#[allow(non_snake_case)]
 unsafe extern "system" fn ErrorRecorder_getErrorDesc(
     this: *const ErrorRecorder,
     error_idx: i32,
@@ -256,14 +258,17 @@ unsafe extern "system" fn ErrorRecorder_getErrorDesc(
         *out_buf.add(copy_len) = 0;
     }
 }
+#[allow(non_snake_case)]
 unsafe extern "system" fn ErrorRecorder_hasOverflowed(
     this: *mut std::cell::RefCell<ErrorRecorder>,
 ) -> bool {
     this.as_ref().unwrap().borrow().rust_impl.has_overflowed()
 }
+#[allow(non_snake_case)]
 unsafe extern "system" fn ErrorRecorder_clear(this: *mut std::cell::RefCell<ErrorRecorder>) {
     this.as_mut().unwrap().borrow_mut().rust_impl.clear();
 }
+#[allow(non_snake_case)]
 unsafe extern "system" fn ErrorRecorder_reportError(
     this: *mut std::cell::RefCell<ErrorRecorder>,
     val: i32,
@@ -288,6 +293,7 @@ unsafe extern "system" fn ErrorRecorder_reportError(
         &desc_str,
     )
 }
+#[allow(non_snake_case)]
 unsafe extern "system" fn ErrorRecorder_incRefCount(
     this: *mut std::cell::RefCell<ErrorRecorder>,
 ) -> i32 {
@@ -297,6 +303,7 @@ unsafe extern "system" fn ErrorRecorder_incRefCount(
         .rust_impl
         .inc_ref_count()
 }
+#[allow(non_snake_case)]
 unsafe extern "system" fn ErrorRecorder_decRefCount(
     this: *mut std::cell::RefCell<ErrorRecorder>,
 ) -> i32 {
@@ -305,21 +312,6 @@ unsafe extern "system" fn ErrorRecorder_decRefCount(
         .borrow_mut()
         .rust_impl
         .dec_ref_count()
-}
-
-extern "C" {
-    fn trtx_create_error_recorder_subclass(
-        rust_impl: *mut std::ffi::c_void,
-        getNbErrors: *mut std::ffi::c_void,
-        getErrorCode: *mut std::ffi::c_void,
-        getErrorDesc: *mut std::ffi::c_void,
-        hasOverflowed: *mut std::ffi::c_void,
-        clear: *mut std::ffi::c_void,
-        reportError: *mut std::ffi::c_void,
-        incRefCount: *mut std::ffi::c_void,
-        decRefCount: *mut std::ffi::c_void,
-    ) -> *mut std::ffi::c_void;
-    fn trtx_destroy_error_recorder_subclass(cpp_obj: *mut std::ffi::c_void);
 }
 
 ///
@@ -333,14 +325,15 @@ pub struct ErrorRecorder {
 }
 
 impl ErrorRecorder {
-    pub fn new(inner: Box<dyn RecordError>) -> Rc<RefCell<Self>> {
-        let rust_obj = Rc::new(RefCell::new(ErrorRecorder {
+    pub fn new(inner: Box<dyn RecordError>) -> Result<Pin<Box<Self>>> {
+        let mut rust_obj = Box::pin(ErrorRecorder {
             cpp_obj: null_mut(),
             rust_impl: inner,
-        }));
+        });
         unsafe {
             let cpp_obj = trtx_create_error_recorder_subclass(
-                rust_obj.as_ptr() as *mut std::ffi::c_void,
+                rust_obj.as_mut().get_unchecked_mut() as *mut ErrorRecorder
+                    as *mut std::ffi::c_void,
                 ErrorRecorder_getNbErrors as *mut std::ffi::c_void,
                 ErrorRecorder_getErrorCode as *mut std::ffi::c_void,
                 ErrorRecorder_getErrorDesc as *mut std::ffi::c_void,
@@ -350,9 +343,14 @@ impl ErrorRecorder {
                 ErrorRecorder_incRefCount as *mut std::ffi::c_void,
                 ErrorRecorder_decRefCount as *mut std::ffi::c_void,
             );
-            rust_obj.borrow_mut().cpp_obj = cpp_obj;
+            if cpp_obj.is_null() {
+                return Err(Error::Runtime(
+                    "Failed to allocate object for IErrorRecorder subclass".to_string(),
+                ));
+            }
+            rust_obj.as_mut().get_unchecked_mut().cpp_obj = cpp_obj;
         }
-        rust_obj
+        Ok(rust_obj)
     }
 
     pub fn as_trt_error_recorder(&self) -> *mut nvinfer1::IErrorRecorder {
@@ -380,125 +378,91 @@ pub trait RecordError: Send + Sync {
     fn dec_ref_count(&mut self) -> i32;
 }
 
-#[subclass]
-#[derive(Default)]
-pub struct DebugListener {
-    inner: Option<Box<dyn ProcessDebugTensor>>,
-}
+//#[subclass]
+//#[derive(Default)]
+//pub struct DebugListener {
+//inner: Option<Box<dyn ProcessDebugTensor>>,
+//}
 
-impl DebugListener {
-    pub fn new(inner: Box<dyn ProcessDebugTensor>) -> Rc<RefCell<Self>> {
-        let rtn = Self::default_rust_owned();
-        rtn.borrow_mut().inner = Some(inner);
-        rtn
-    }
-}
+//impl DebugListener {
+//pub fn new(inner: Box<dyn ProcessDebugTensor>) -> Rc<RefCell<Self>> {
+//let rtn = Self::default_rust_owned();
+//rtn.borrow_mut().inner = Some(inner);
+//rtn
+//}
+//}
 
-impl nvinfer1::IDebugListener_methods for DebugListener {
-    unsafe fn processDebugTensor(
-        &mut self,
-        addr: *const autocxx::c_void,
-        location: nvinfer1::TensorLocation,
-        type_: nvinfer1::DataType,
-        shape: &Dims64,
-        name: *const c_char,
-        stream: *mut ffi::CUstream_st,
-    ) -> bool {
-        let name = CStr::from_ptr(name);
-        self.inner.as_mut().unwrap().process_debug_tensor(
-            addr,
-            location.into(),
-            type_.into(),
-            shape,
-            &name.to_string_lossy(),
-            stream,
-        )
-    }
-}
+//impl nvinfer1::IDebugListener_methods for DebugListener {
+//unsafe fn processDebugTensor(
+//&mut self,
+//addr: *const autocxx::c_void,
+//location: nvinfer1::TensorLocation,
+//type_: nvinfer1::DataType,
+//shape: &Dims64,
+//name: *const c_char,
+//stream: *mut ffi::CUstream_st,
+//) -> bool {
+//let name = CStr::from_ptr(name);
+//self.inner.as_mut().unwrap().process_debug_tensor(
+//addr,
+//location.into(),
+//type_.into(),
+//shape,
+//&name.to_string_lossy(),
+//stream,
+//)
+//}
+//}
 
-pub trait ProcessDebugTensor: Send + Sync {
-    unsafe fn process_debug_tensor(
-        &mut self,
-        addr: *const autocxx::c_void,
-        location: TensorLocation,
-        type_: DataType,
-        shape: &Dims64,
-        name: &str,
-        stream: *mut ffi::CUstream_st,
-    ) -> bool;
-}
+//pub trait ProcessDebugTensor: Send + Sync {
+//unsafe fn process_debug_tensor(
+//&mut self,
+//addr: *const autocxx::c_void,
+//location: TensorLocation,
+//type_: DataType,
+//shape: &Dims64,
+//name: &str,
+//stream: *mut ffi::CUstream_st,
+//) -> bool;
+//}
 
-#[subclass]
-#[derive(Default)]
-pub struct Logger {
-    inner: Option<Box<dyn HandleLog>>,
-}
+//#[subclass]
+//#[derive(Default)]
+//pub struct StreamReaderV2 {
+//inner: Option<Box<dyn ReadStreamV2>>,
+//}
 
-impl Logger {
-    pub fn new(inner: Box<dyn HandleLog>) -> Rc<RefCell<Self>> {
-        let rtn = Self::default_rust_owned();
-        rtn.borrow_mut().inner = Some(inner);
-        rtn
-    }
-}
+//impl StreamReaderV2 {
+//pub fn new(inner: Box<dyn ReadStreamV2>) -> Rc<RefCell<Self>> {
+//let rtn = Self::default_rust_owned();
+//rtn.borrow_mut().inner = Some(inner);
+//rtn
+//}
+//}
 
-impl nvinfer1::ILogger_methods for Logger {
-    unsafe fn log(&mut self, severity: i32, message: *const i8) {
-        let message = CStr::from_ptr(message);
-        self.inner.as_mut().unwrap().log(
-            match severity {
-                0 => Severity::kINTERNAL_ERROR,
-                1 => Severity::kERROR,
-                2 => Severity::kWARNING,
-                3 => Severity::kINFO,
-                4 | _ => Severity::kVERBOSE,
-            },
-            &message.to_string_lossy(),
-        )
-    }
-}
+//impl nvinfer1::IStreamReaderV2_methods for StreamReaderV2 {
+//unsafe fn read(
+//&mut self,
+//destination: *mut autocxx::c_void,
+//nbBytes: i64,
+//stream: *mut crate::ffi::CUstream_st,
+//) -> i64 {
+//self.inner
+//.as_mut()
+//.unwrap()
+//.read(destination, nbBytes, stream)
+//}
+//fn seek(&mut self, offset: i64, where_: nvinfer1::SeekPosition) -> bool {
+//self.inner.as_mut().unwrap().seek(offset, where_.into())
+//}
+//}
 
-pub trait HandleLog: Send + Sync {
-    unsafe fn log(&mut self, severity: Severity, message: &str);
-}
-
-#[subclass]
-#[derive(Default)]
-pub struct StreamReaderV2 {
-    inner: Option<Box<dyn ReadStreamV2>>,
-}
-
-impl StreamReaderV2 {
-    pub fn new(inner: Box<dyn ReadStreamV2>) -> Rc<RefCell<Self>> {
-        let rtn = Self::default_rust_owned();
-        rtn.borrow_mut().inner = Some(inner);
-        rtn
-    }
-}
-
-impl nvinfer1::IStreamReaderV2_methods for StreamReaderV2 {
-    unsafe fn read(
-        &mut self,
-        destination: *mut autocxx::c_void,
-        nbBytes: i64,
-        stream: *mut crate::ffi::CUstream_st,
-    ) -> i64 {
-        self.inner
-            .as_mut()
-            .unwrap()
-            .read(destination, nbBytes, stream)
-    }
-    fn seek(&mut self, offset: i64, where_: nvinfer1::SeekPosition) -> bool {
-        self.inner.as_mut().unwrap().seek(offset, where_.into())
-    }
-}
-
-pub trait ReadStreamV2: Send + Sync {
-    unsafe fn read(
-        &mut self,
-        destination: *mut autocxx::c_void,
-        nbBytes: i64,
-        stream: *mut crate::ffi::CUstream_st,
-    ) -> i64;
-    fn seek(&mut self, offset: i64, where_: crate::SeekPosition) -> bool;
-}
+//pub trait ReadStreamV2: Send + Sync {
+//unsafe fn read(
+//&mut self,
+//destination: *mut autocxx::c_void,
+//nbBytes: i64,
+//stream: *mut crate::ffi::CUstream_st,
+//) -> i64;
+//fn seek(&mut self, offset: i64, where_: crate::SeekPosition) -> bool;
+//}

@@ -370,58 +370,59 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
 #[cfg(test)]
 #[cfg(not(feature = "mock"))]
 mod tests {
-    use std::sync::atomic::{AtomicI32, Ordering};
-    use std::sync::{Arc, Mutex};
+    //use crate::interfaces::RecordError;
+    //use std::sync::{Arc, Mutex};
+    //use std::sync::atomic::{AtomicI32, Ordering};
+    //use trtx_sys::{ErrorCode};
     use trtx_sys::BuilderFlag;
-    use trtx_sys::{ErrorCode, RecordError};
 
     use super::*;
     use crate::builder::MemoryPoolType;
     use crate::{Builder, DataType, Logger, Runtime};
 
-    /// Error recorder that collects reported errors into a shared `Vec<(ErrorCode, String)>`.
-    struct VecErrorRecorder {
-        messages: Arc<Mutex<Vec<(ErrorCode, String)>>>,
-        ref_count: AtomicI32,
-    }
+    ///// Error recorder that collects reported errors into a shared `Vec<(ErrorCode, String)>`.
+    //struct VecErrorRecorder {
+    //messages: Arc<Mutex<Vec<(ErrorCode, String)>>>,
+    //ref_count: AtomicI32,
+    //}
 
-    impl VecErrorRecorder {
-        fn new(messages: Arc<Mutex<Vec<(ErrorCode, String)>>>) -> Self {
-            Self {
-                messages,
-                ref_count: AtomicI32::new(0),
-            }
-        }
-    }
+    //impl VecErrorRecorder {
+    //fn new(messages: Arc<Mutex<Vec<(ErrorCode, String)>>>) -> Self {
+    //Self {
+    //messages,
+    //ref_count: AtomicI32::new(0),
+    //}
+    //}
+    //}
 
-    impl RecordError for VecErrorRecorder {
-        fn nb_errors(&self) -> i32 {
-            self.messages.lock().unwrap().len() as i32
-        }
-        fn error_code(&self, error_idx: i32) -> ErrorCode {
-            self.messages.lock().unwrap()[error_idx as usize].0
-        }
-        fn error_desc(&self, _error_idx: i32) -> &CStr {
-            static EMPTY: &[u8] = b"\0";
-            unsafe { CStr::from_bytes_with_nul_unchecked(EMPTY) }
-        }
-        fn has_overflowed(&self) -> bool {
-            false
-        }
-        fn clear(&mut self) {
-            self.messages.lock().unwrap().clear();
-        }
-        unsafe fn report_error(&mut self, val: ErrorCode, desc: &str) -> bool {
-            self.messages.lock().unwrap().push((val, desc.to_string()));
-            true
-        }
-        fn inc_ref_count(&mut self) -> i32 {
-            self.ref_count.fetch_add(1, Ordering::SeqCst) + 1
-        }
-        fn dec_ref_count(&mut self) -> i32 {
-            self.ref_count.fetch_sub(1, Ordering::SeqCst) - 1
-        }
-    }
+    //impl RecordError for VecErrorRecorder {
+    //fn nb_errors(&self) -> i32 {
+    //self.messages.lock().unwrap().len() as i32
+    //}
+    //fn error_code(&self, error_idx: i32) -> ErrorCode {
+    //self.messages.lock().unwrap()[error_idx as usize].0
+    //}
+    //fn error_desc(&self, _error_idx: i32) -> &CStr {
+    //static EMPTY: &[u8] = b"\0";
+    //unsafe { CStr::from_bytes_with_nul_unchecked(EMPTY) }
+    //}
+    //fn has_overflowed(&self) -> bool {
+    //false
+    //}
+    //fn clear(&mut self) {
+    //self.messages.lock().unwrap().clear();
+    //}
+    //unsafe fn report_error(&mut self, val: ErrorCode, desc: &str) -> bool {
+    //self.messages.lock().unwrap().push((val, desc.to_string()));
+    //true
+    //}
+    //fn inc_ref_count(&mut self) -> i32 {
+    //self.ref_count.fetch_add(1, Ordering::SeqCst) + 1
+    //}
+    //fn dec_ref_count(&mut self) -> i32 {
+    //self.ref_count.fetch_sub(1, Ordering::SeqCst) - 1
+    //}
+    //}
 
     /// Build a minimal network with one refittable constant layer: constant [1,4] -> output.
     fn build_constant_network(logger: &Logger) -> Result<Vec<u8>> {
@@ -510,10 +511,9 @@ mod tests {
     ////let recorder = ErrorRecorder::new(Box::new(VecErrorRecorder::new(Arc::clone(&errors))));
     ////refitter.set_error_recorder(recorder);
 
-    ////let wrong_weights = nvinfer1::Weights {
+    ////let wrong_weights = crate::Weights {
     ////type_: nvinfer1::DataType::kFLOAT,
-    ////values: [1.0f32].as_ptr() as *const std::ffi::c_void,
-    ////count: 1,
+    ////values: [1.0f32],
     ////};
     ////let _ = refitter.set_named_weights(&weight_name, wrong_weights);
 

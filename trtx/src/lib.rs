@@ -117,6 +117,7 @@ pub mod engine_inspector;
 pub mod error;
 pub mod executor;
 pub mod host_memory;
+pub mod interfaces;
 pub mod logger;
 pub mod network;
 #[cfg(feature = "onnxparser")]

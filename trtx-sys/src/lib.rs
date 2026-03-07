@@ -29,14 +29,6 @@
 #![allow(non_snake_case)]
 #![allow(clippy::all)]
 
-pub mod interfaces;
-pub use crate::interfaces::{AllocateGpu, GpuAllocator};
-pub use crate::interfaces::{DebugListener, ProcessDebugTensor};
-pub use crate::interfaces::{ErrorRecorder, RecordError};
-pub use crate::interfaces::{HandleLog, Logger};
-pub use crate::interfaces::{HandleProgress, ProgressMonitor};
-pub use crate::interfaces::{ReadStreamV2, StreamReaderV2};
-
 #[allow(warnings)]
 mod enums {
     include!(concat!(env!("OUT_DIR"), "/enums.rs"));
@@ -57,7 +49,6 @@ macro_rules! better_enum {
         }
     };
 }
-use crate::enums::Severity;
 
 use std::mem::transmute;
 use std::pin::Pin;
@@ -244,12 +235,6 @@ include_cpp! {
     generate!("nvinfer1::SerializationFlag")
     generate!("nvinfer1::OptProfileSelector")
 
-    //subclass!("nvinfer1::IProgressMonitor", ProgressMonitor)
-    //subclass!("nvinfer1::IGpuAllocator", GpuAllocator)
-    //subclass!("nvinfer1::IErrorRecorder", ErrorRecorder)
-    subclass!("nvinfer1::IDebugListener", DebugListener)
-    subclass!("nvinfer1::ILogger", Logger)
-    subclass!("nvinfer1::IStreamReaderV2", StreamReaderV2)
     // NOTE: createInferBuilder/Runtime moved to logger_bridge.cpp (autocxx struggles with these)
 
     // ONNX Parser
@@ -447,23 +432,62 @@ unsafe impl TrtLayer for nvinfer1::IAttentionBoundaryLayer {
 }
 
 // Logger bridge C functions
-extern "C" {
-    pub fn get_tensorrt_version() -> u32;
-    pub fn create_rust_logger_bridge(
+unsafe extern "C" {
+    pub unsafe fn get_tensorrt_version() -> u32;
+    pub unsafe fn create_rust_logger_bridge(
         callback: RustLogCallback,
         user_data: *mut std::ffi::c_void,
     ) -> *mut RustLoggerBridge;
 
-    pub fn destroy_rust_logger_bridge(logger: *mut RustLoggerBridge);
+    pub unsafe fn destroy_rust_logger_bridge(logger: *mut RustLoggerBridge);
 
-    pub fn get_logger_interface(logger: *mut RustLoggerBridge) -> *mut std::ffi::c_void; // Returns ILogger*
+    pub unsafe fn get_logger_interface(logger: *mut RustLoggerBridge) -> *mut std::ffi::c_void; // Returns ILogger*
+                                                                                                //
+    pub unsafe fn trtx_create_progress_monitor_subclass(
+        user_data: *mut std::ffi::c_void,
+        phaseStart: unsafe extern "system" fn(
+            user_data: *mut std::ffi::c_void,
+            phaseName: *const ::std::os::raw::c_char,
+            parentPhase: *const ::std::os::raw::c_char,
+            nbSteps: i32,
+        ),
+        stepComplete: unsafe extern "system" fn(
+            user_data: *mut std::ffi::c_void,
+            phaseName: *const ::std::os::raw::c_char,
+            step: i32,
+        ) -> bool,
+        phaseFinish: unsafe extern "system" fn(
+            user_data: *mut std::ffi::c_void,
+            phaseName: *const ::std::os::raw::c_char,
+        ),
+    ) -> *mut std::ffi::c_void;
+    pub unsafe fn trtx_destroy_progress_monitor_subclass(cpp_obj: *mut std::ffi::c_void);
+    pub unsafe fn trtx_create_gpu_allocator_subclass(
+        rust_impl: *mut std::ffi::c_void,
+        allocateAsync: *mut std::ffi::c_void,
+        reallocate: *mut std::ffi::c_void,
+        deallocateAsync: *mut std::ffi::c_void,
+    ) -> *mut std::ffi::c_void;
+    pub unsafe fn trtx_destroy_gpu_allocator_subclass(cpp_obj: *mut std::ffi::c_void);
+    pub unsafe fn trtx_create_error_recorder_subclass(
+        rust_impl: *mut std::ffi::c_void,
+        getNbErrors: *mut std::ffi::c_void,
+        getErrorCode: *mut std::ffi::c_void,
+        getErrorDesc: *mut std::ffi::c_void,
+        hasOverflowed: *mut std::ffi::c_void,
+        clear: *mut std::ffi::c_void,
+        reportError: *mut std::ffi::c_void,
+        incRefCount: *mut std::ffi::c_void,
+        decRefCount: *mut std::ffi::c_void,
+    ) -> *mut std::ffi::c_void;
+    pub unsafe fn trtx_destroy_error_recorder_subclass(cpp_obj: *mut std::ffi::c_void);
 
     // TensorRT factory functions (wrapped as simple C functions)
     #[cfg(feature = "link_tensorrt_rtx")]
-    pub fn create_infer_builder(logger: *mut std::ffi::c_void) -> *mut std::ffi::c_void; // Returns IBuilder*
+    pub unsafe fn create_infer_builder(logger: *mut std::ffi::c_void) -> *mut std::ffi::c_void; // Returns IBuilder*
 
     #[cfg(feature = "link_tensorrt_rtx")]
-    pub fn create_infer_runtime(logger: *mut std::ffi::c_void) -> *mut std::ffi::c_void; // Returns IRuntime*
+    pub unsafe fn create_infer_runtime(logger: *mut std::ffi::c_void) -> *mut std::ffi::c_void; // Returns IRuntime*
 
     #[cfg(feature = "link_tensorrt_rtx")]
     pub fn create_infer_refitter(
@@ -471,27 +495,27 @@ extern "C" {
         logger: *mut std::ffi::c_void,
     ) -> *mut std::ffi::c_void; // Returns IRefitter*
 
-    pub fn trtx_refitter_get_missing(
+    pub unsafe fn trtx_refitter_get_missing(
         refitter: *mut std::ffi::c_void,
         size: i32,
         layer_names: *mut *const std::os::raw::c_char,
         roles: *mut i32,
     ) -> i32;
 
-    pub fn trtx_refitter_get_all(
+    pub unsafe fn trtx_refitter_get_all(
         refitter: *mut std::ffi::c_void,
         size: i32,
         layer_names: *mut *const std::os::raw::c_char,
         roles: *mut i32,
     ) -> i32;
 
-    pub fn trtx_refitter_get_missing_weights(
+    pub unsafe fn trtx_refitter_get_missing_weights(
         refitter: *mut std::ffi::c_void,
         size: i32,
         weights_names: *mut *const std::os::raw::c_char,
     ) -> i32;
 
-    pub fn trtx_refitter_get_all_weights(
+    pub unsafe fn trtx_refitter_get_all_weights(
         refitter: *mut std::ffi::c_void,
         size: i32,
         weights_names: *mut *const std::os::raw::c_char,
@@ -499,26 +523,29 @@ extern "C" {
 
     // ONNX Parser factory function
     #[cfg(feature = "link_tensorrt_onnxparser")]
-    pub fn create_onnx_parser(
+    pub unsafe fn create_onnx_parser(
         network: *mut std::ffi::c_void,
         logger: *mut std::ffi::c_void,
     ) -> *mut std::ffi::c_void; // Returns IParser*
                                 //
-    pub fn network_add_concatenation(
+    pub unsafe fn network_add_concatenation(
         network: *mut std::ffi::c_void,
         inputs: *mut *mut std::ffi::c_void,
         nb_inputs: i32,
     ) -> *mut std::ffi::c_void;
 
     // Parser methods
-    pub fn parser_parse(
+    pub unsafe fn parser_parse(
         parser: *mut std::ffi::c_void,
         data: *const std::ffi::c_void,
         size: usize,
     ) -> bool;
-    pub fn parser_get_nb_errors(parser: *mut std::ffi::c_void) -> i32;
-    pub fn parser_get_error(parser: *mut std::ffi::c_void, index: i32) -> *mut std::ffi::c_void;
-    pub fn parser_error_desc(error: *mut std::ffi::c_void) -> *const std::os::raw::c_char;
+    pub unsafe fn parser_get_nb_errors(parser: *mut std::ffi::c_void) -> i32;
+    pub unsafe fn parser_get_error(
+        parser: *mut std::ffi::c_void,
+        index: i32,
+    ) -> *mut std::ffi::c_void;
+    pub unsafe fn parser_error_desc(error: *mut std::ffi::c_void) -> *const std::os::raw::c_char;
 
 }
 
