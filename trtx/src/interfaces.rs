@@ -71,13 +71,13 @@ unsafe extern "system" fn ProgressMonitor_phaseFinish(
 /// Construct a object with a dyn [HandleProgress] to implement
 /// [nvinfer1::IProgressMonitor] from Rust
 #[repr(C)]
-pub struct ProgressMonitor {
+pub(crate) struct ProgressMonitor {
     cpp_obj: *mut std::ffi::c_void,
     rust_impl: Box<dyn HandleProgress>,
 }
 
 impl ProgressMonitor {
-    pub fn new(inner: Box<dyn HandleProgress>) -> Result<Pin<Box<ProgressMonitor>>> {
+    pub(crate) fn new(inner: Box<dyn HandleProgress>) -> Result<Pin<Box<ProgressMonitor>>> {
         let mut rust_obj = Box::pin(ProgressMonitor {
             cpp_obj: null_mut(),
             rust_impl: inner,
