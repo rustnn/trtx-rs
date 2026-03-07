@@ -58,13 +58,13 @@ impl<'builder> Builder<'builder> {
                     }
 
                     let lock = TRTLIB.read()?;
-                    let create_infer_builder: Symbol<fn(*mut c_void, u32) -> *mut c_void> = lock
+                    let create_infer_builder: Symbol<fn(*mut c_void, u32) -> *mut IBuilder> = lock
                         .as_ref()
                         .ok_or(Error::TrtRtxLibraryNotLoaded)?
                         .get(b"createInferBuilder_INTERNAL")?;
                     create_infer_builder(logger_ptr, trtx_sys::get_tensorrt_version())
                 }
-            } as *mut IBuilder;
+            };
             if builder_ptr.is_null() {
                 return Err(Error::Runtime("Failed to create builder".to_string()));
             }
