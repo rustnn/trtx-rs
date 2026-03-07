@@ -115,74 +115,91 @@ impl Drop for ProgressMonitor {
     }
 }
 
-#[subclass]
-#[derive(Default)]
+/// C callbacks for GpuAllocatorSubclass (bridge to Rust). `this` is *mut RefCell<GpuAllocator>.
+unsafe extern "system" fn GpuAllocator_allocateAsync(
+    this: *const GpuAllocator,
+    size: u64,
+    alignment: u64,
+    flags: u32,
+    cuda_stream: *mut crate::ffi::CUstream_st,
+) -> *mut std::ffi::c_void {
+    this.as_ref()
+        .unwrap()
+        .rust_impl
+        .allocate_async(size, alignment, flags, cuda_stream)
+}
+unsafe extern "system" fn GpuAllocator_reallocate(
+    this: *const GpuAllocator,
+    memory: *mut std::ffi::c_void,
+    alignment: u64,
+    new_size: u64,
+) -> *mut std::ffi::c_void {
+    this.as_ref()
+        .unwrap()
+        .rust_impl
+        .reallocate(memory, alignment, new_size)
+}
+unsafe extern "system" fn GpuAllocator_deallocateAsync(
+    this: *mut std::cell::RefCell<GpuAllocator>,
+    memory: *mut std::ffi::c_void,
+    cuda_stream: *mut crate::ffi::CUstream_st,
+) -> bool {
+    this.as_mut()
+        .unwrap()
+        .borrow_mut()
+        .rust_impl
+        .deallocate_async(memory, cuda_stream)
+}
+
+extern "C" {
+    fn trtx_create_gpu_allocator_subclass(
+        rust_impl: *mut std::ffi::c_void,
+        allocateAsync: *mut std::ffi::c_void,
+        reallocate: *mut std::ffi::c_void,
+        deallocateAsync: *mut std::ffi::c_void,
+    ) -> *mut std::ffi::c_void;
+    fn trtx_destroy_gpu_allocator_subclass(cpp_obj: *mut std::ffi::c_void);
+}
+
+///
+/// Subclasses [nvinfer1::IGpuAllocator] via C++ bridge.
+///
+/// Construct with an [AllocateGpu] to implement [nvinfer1::IGpuAllocator] from Rust.
+#[repr(C)]
 pub struct GpuAllocator {
-    inner: Option<Box<dyn AllocateGpu>>,
+    cpp_obj: *mut std::ffi::c_void,
+    rust_impl: Box<dyn AllocateGpu>,
 }
 
 impl GpuAllocator {
     pub fn new(inner: Box<dyn AllocateGpu>) -> Rc<RefCell<Self>> {
-        let rtn = Self::default_rust_owned();
-        rtn.borrow_mut().inner = Some(inner);
-        rtn
+        let rust_obj = Rc::new(RefCell::new(GpuAllocator {
+            cpp_obj: null_mut(),
+            rust_impl: inner,
+        }));
+        unsafe {
+            let cpp_obj = trtx_create_gpu_allocator_subclass(
+                rust_obj.as_ptr() as *mut std::ffi::c_void,
+                GpuAllocator_allocateAsync as *mut std::ffi::c_void,
+                GpuAllocator_reallocate as *mut std::ffi::c_void,
+                GpuAllocator_deallocateAsync as *mut std::ffi::c_void,
+            );
+            rust_obj.borrow_mut().cpp_obj = cpp_obj;
+        }
+        rust_obj
+    }
+
+    pub fn as_trt_gpu_allocator(&self) -> *mut nvinfer1::IGpuAllocator {
+        self.cpp_obj as *mut nvinfer1::IGpuAllocator
     }
 }
 
-impl nvinfer1::IGpuAllocator_methods for GpuAllocator {
-    fn allocate(&mut self, size: u64, alignment: u64, flags: u32) -> *mut autocxx::c_void {
-        unsafe {
-            self.inner
-                .as_mut()
-                .unwrap()
-                .allocate_async(size, alignment, flags, null_mut())
+impl Drop for GpuAllocator {
+    fn drop(&mut self) {
+        if !self.cpp_obj.is_null() {
+            unsafe { trtx_destroy_gpu_allocator_subclass(self.cpp_obj) }
+            self.cpp_obj = null_mut();
         }
-    }
-    unsafe fn allocateAsync(
-        &mut self,
-        size: u64,
-        alignment: u64,
-        flags: u32,
-        cuda_stream: *mut crate::ffi::CUstream_st,
-    ) -> *mut autocxx::c_void {
-        unsafe {
-            self.inner
-                .as_mut()
-                .unwrap()
-                .allocate_async(size, alignment, flags, cuda_stream)
-        }
-    }
-    unsafe fn reallocate(
-        &mut self,
-        memory: *mut autocxx::c_void,
-        alignment: u64,
-        new_size: u64,
-    ) -> *mut autocxx::c_void {
-        unsafe {
-            self.inner
-                .as_mut()
-                .unwrap()
-                .reallocate(memory, alignment, new_size)
-        }
-    }
-
-    unsafe fn deallocate(&mut self, data: *mut autocxx::c_void) -> bool {
-        unsafe {
-            self.inner
-                .as_mut()
-                .unwrap()
-                .deallocate_async(data, null_mut())
-        }
-    }
-    unsafe fn deallocateAsync(
-        &mut self,
-        data: *mut autocxx::c_void,
-        cuda_stream: *mut crate::ffi::CUstream_st,
-    ) -> bool {
-        self.inner
-            .as_mut()
-            .unwrap()
-            .deallocate_async(data, cuda_stream)
     }
 }
 
@@ -191,80 +208,162 @@ pub trait AllocateGpu: Send + Sync {
     //fn allocate(&mut self, size: u64, alignment: u64, flags: u32) -> *mut autocxx::c_void;
     //unsafe fn deallocate(&mut self, data: *mut autocxx::c_void) -> bool;
     unsafe fn allocate_async(
-        &mut self,
+        &self,
         size: u64,
         alignment: u64,
         flags: u32,
         cuda_stream: *mut crate::ffi::CUstream_st,
-    ) -> *mut autocxx::c_void;
+    ) -> *mut std::ffi::c_void;
     unsafe fn reallocate(
-        &mut self,
-        memory: *mut autocxx::c_void,
+        &self,
+        memory: *mut std::ffi::c_void,
         alignment: u64,
         new_size: u64,
-    ) -> *mut autocxx::c_void;
+    ) -> *mut std::ffi::c_void;
     unsafe fn deallocate_async(
-        &mut self,
-        data: *mut autocxx::c_void,
+        &self,
+        data: *mut std::ffi::c_void,
         cuda_stream: *mut crate::ffi::CUstream_st,
     ) -> bool;
 }
 
-#[subclass]
-#[derive(Default)]
+/// C callbacks for ErrorRecorderSubclass (bridge to Rust). `this` is *mut RefCell<ErrorRecorder>.
+unsafe extern "system" fn ErrorRecorder_getNbErrors(this: *mut ErrorRecorder) -> i32 {
+    this.as_ref().unwrap().rust_impl.nb_errors()
+}
+unsafe extern "system" fn ErrorRecorder_getErrorCode(
+    this: *const ErrorRecorder,
+    error_idx: i32,
+) -> i32 {
+    this.as_ref().unwrap().rust_impl.error_code(error_idx) as i32
+}
+unsafe extern "system" fn ErrorRecorder_getErrorDesc(
+    this: *const ErrorRecorder,
+    error_idx: i32,
+    out_buf: *mut ::std::os::raw::c_char,
+    out_buf_size: usize,
+) {
+    if out_buf.is_null() || out_buf_size == 0 {
+        return;
+    }
+    let desc = this.as_ref().unwrap().rust_impl.error_desc(error_idx);
+    let bytes = desc.to_bytes_with_nul();
+    let copy_len = (bytes.len()).min(out_buf_size);
+    std::ptr::copy_nonoverlapping(bytes.as_ptr(), out_buf as *mut u8, copy_len);
+    if copy_len < out_buf_size {
+        *out_buf.add(copy_len) = 0;
+    }
+}
+unsafe extern "system" fn ErrorRecorder_hasOverflowed(
+    this: *mut std::cell::RefCell<ErrorRecorder>,
+) -> bool {
+    this.as_ref().unwrap().borrow().rust_impl.has_overflowed()
+}
+unsafe extern "system" fn ErrorRecorder_clear(this: *mut std::cell::RefCell<ErrorRecorder>) {
+    this.as_mut().unwrap().borrow_mut().rust_impl.clear();
+}
+unsafe extern "system" fn ErrorRecorder_reportError(
+    this: *mut std::cell::RefCell<ErrorRecorder>,
+    val: i32,
+    desc: *const ::std::os::raw::c_char,
+) -> bool {
+    let desc_str = CStr::from_ptr(desc).to_string_lossy();
+    this.as_mut().unwrap().borrow_mut().rust_impl.report_error(
+        match val {
+            0 => ErrorCode::kSUCCESS,
+            1 => ErrorCode::kUNSPECIFIED_ERROR,
+            2 => ErrorCode::kINTERNAL_ERROR,
+            3 => ErrorCode::kINVALID_ARGUMENT,
+            4 => ErrorCode::kINVALID_CONFIG,
+            5 => ErrorCode::kFAILED_ALLOCATION,
+            6 => ErrorCode::kFAILED_INITIALIZATION,
+            7 => ErrorCode::kFAILED_EXECUTION,
+            8 => ErrorCode::kFAILED_COMPUTATION,
+            9 => ErrorCode::kINVALID_STATE,
+            10 => ErrorCode::kUNSUPPORTED_STATE,
+            _ => ErrorCode::kUNSPECIFIED_ERROR,
+        },
+        &desc_str,
+    )
+}
+unsafe extern "system" fn ErrorRecorder_incRefCount(
+    this: *mut std::cell::RefCell<ErrorRecorder>,
+) -> i32 {
+    this.as_mut()
+        .unwrap()
+        .borrow_mut()
+        .rust_impl
+        .inc_ref_count()
+}
+unsafe extern "system" fn ErrorRecorder_decRefCount(
+    this: *mut std::cell::RefCell<ErrorRecorder>,
+) -> i32 {
+    this.as_mut()
+        .unwrap()
+        .borrow_mut()
+        .rust_impl
+        .dec_ref_count()
+}
+
+extern "C" {
+    fn trtx_create_error_recorder_subclass(
+        rust_impl: *mut std::ffi::c_void,
+        getNbErrors: *mut std::ffi::c_void,
+        getErrorCode: *mut std::ffi::c_void,
+        getErrorDesc: *mut std::ffi::c_void,
+        hasOverflowed: *mut std::ffi::c_void,
+        clear: *mut std::ffi::c_void,
+        reportError: *mut std::ffi::c_void,
+        incRefCount: *mut std::ffi::c_void,
+        decRefCount: *mut std::ffi::c_void,
+    ) -> *mut std::ffi::c_void;
+    fn trtx_destroy_error_recorder_subclass(cpp_obj: *mut std::ffi::c_void);
+}
+
+///
+/// Subclasses [nvinfer1::IErrorRecorder] via C++ bridge.
+///
+/// Construct with a [RecordError] to implement [nvinfer1::IErrorRecorder] from Rust.
+#[repr(C)]
 pub struct ErrorRecorder {
-    inner: Option<Box<dyn RecordError>>,
+    cpp_obj: *mut std::ffi::c_void,
+    rust_impl: Box<dyn RecordError>,
 }
 
 impl ErrorRecorder {
     pub fn new(inner: Box<dyn RecordError>) -> Rc<RefCell<Self>> {
-        let rtn = Self::default_rust_owned();
-        rtn.borrow_mut().inner = Some(inner);
-        rtn
+        let rust_obj = Rc::new(RefCell::new(ErrorRecorder {
+            cpp_obj: null_mut(),
+            rust_impl: inner,
+        }));
+        unsafe {
+            let cpp_obj = trtx_create_error_recorder_subclass(
+                rust_obj.as_ptr() as *mut std::ffi::c_void,
+                ErrorRecorder_getNbErrors as *mut std::ffi::c_void,
+                ErrorRecorder_getErrorCode as *mut std::ffi::c_void,
+                ErrorRecorder_getErrorDesc as *mut std::ffi::c_void,
+                ErrorRecorder_hasOverflowed as *mut std::ffi::c_void,
+                ErrorRecorder_clear as *mut std::ffi::c_void,
+                ErrorRecorder_reportError as *mut std::ffi::c_void,
+                ErrorRecorder_incRefCount as *mut std::ffi::c_void,
+                ErrorRecorder_decRefCount as *mut std::ffi::c_void,
+            );
+            rust_obj.borrow_mut().cpp_obj = cpp_obj;
+        }
+        rust_obj
+    }
+
+    pub fn as_trt_error_recorder(&self) -> *mut nvinfer1::IErrorRecorder {
+        self.cpp_obj as *mut nvinfer1::IErrorRecorder
     }
 }
 
-impl nvinfer1::IErrorRecorder_methods for ErrorRecorder {
-    fn getNbErrors(&self) -> i32 {
-        self.inner.as_ref().unwrap().nb_errors()
-    }
-    fn getErrorCode(&self, errorIdx: i32) -> i32 {
-        self.inner.as_ref().unwrap().error_code(errorIdx) as i32
-    }
-    fn getErrorDesc(&self, errorIdx: i32) -> *const ::std::os::raw::c_char {
-        self.inner.as_ref().unwrap().error_desc(errorIdx).as_ptr()
-    }
-    fn hasOverflowed(&self) -> bool {
-        self.inner.as_ref().unwrap().has_overflowed()
-    }
-    fn clear(&mut self) {
-        self.inner.as_mut().unwrap().clear()
-    }
-    unsafe fn reportError(&mut self, val: i32, desc: *const ::std::os::raw::c_char) -> bool {
-        let desc = CStr::from_ptr(desc);
-        self.inner.as_mut().unwrap().report_error(
-            match val {
-                0 => ErrorCode::kSUCCESS,
-                1 => ErrorCode::kUNSPECIFIED_ERROR,
-                2 => ErrorCode::kINTERNAL_ERROR,
-                3 => ErrorCode::kINVALID_ARGUMENT,
-                4 => ErrorCode::kINVALID_CONFIG,
-                5 => ErrorCode::kFAILED_ALLOCATION,
-                6 => ErrorCode::kFAILED_INITIALIZATION,
-                7 => ErrorCode::kFAILED_EXECUTION,
-                8 => ErrorCode::kFAILED_COMPUTATION,
-                9 => ErrorCode::kINVALID_STATE,
-                10 => ErrorCode::kUNSUPPORTED_STATE,
-                _ => ErrorCode::kUNSPECIFIED_ERROR,
-            },
-            &desc.to_string_lossy(),
-        )
-    }
-    fn incRefCount(&mut self) -> i32 {
-        self.inner.as_mut().unwrap().inc_ref_count()
-    }
-    fn decRefCount(&mut self) -> i32 {
-        self.inner.as_mut().unwrap().dec_ref_count()
+impl Drop for ErrorRecorder {
+    fn drop(&mut self) {
+        if !self.cpp_obj.is_null() {
+            unsafe { trtx_destroy_error_recorder_subclass(self.cpp_obj) }
+            self.cpp_obj = null_mut();
+        }
     }
 }
 

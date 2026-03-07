@@ -323,10 +323,150 @@ public:
 void *trtx_create_progress_monitor_subclass(void *self, void *phaseStart,
                                             void *stepComplete,
                                             void *phaseFinish) {
-  return new nvinfer1::ProgressMonitor(self, phaseStart, stepComplete,
-                                       phaseFinish);
+  try {
+    return new nvinfer1::ProgressMonitor(self, phaseStart, stepComplete,
+                                         phaseFinish);
+  } catch (...) {
+    return nullptr;
+  }
 }
 void trtx_destroy_progress_monitor_subclass(void *self) {
   delete (nvinfer1::ProgressMonitor *)(self);
+}
+
+//==============================================================================
+// ErrorRecorder subclass (bridge to Rust RecordError)
+//==============================================================================
+namespace nvinfer1 {
+class ErrorRecorderSubclass : public IErrorRecorder {
+public:
+  using ErrorCode = nvinfer1::ErrorCode;
+  ErrorRecorderSubclass(void *self, int32_t (*getNbErrors)(void *),
+                        int32_t (*getErrorCode)(void *, int32_t),
+                        void (*getErrorDesc)(void *, int32_t, char *, size_t),
+                        bool (*hasOverflowed)(void *), void (*clear)(void *),
+                        bool (*reportError)(void *, int32_t, char const *),
+                        int32_t (*incRefCount)(void *),
+                        int32_t (*decRefCount)(void *))
+      : self(self), m_getNbErrors(getNbErrors), m_getErrorCode(getErrorCode),
+        m_getErrorDesc(getErrorDesc), m_hasOverflowed(hasOverflowed),
+        m_clear(clear), m_reportError(reportError), m_incRefCount(incRefCount),
+        m_decRefCount(decRefCount) {}
+  ~ErrorRecorderSubclass() = default;
+
+  void *self;
+  int32_t (*m_getNbErrors)(void *);
+  int32_t (*m_getErrorCode)(void *, int32_t);
+  void (*m_getErrorDesc)(void *, int32_t, char *, size_t);
+  bool (*m_hasOverflowed)(void *);
+  void (*m_clear)(void *);
+  bool (*m_reportError)(void *, int32_t, char const *);
+  int32_t (*m_incRefCount)(void *);
+  int32_t (*m_decRefCount)(void *);
+
+  mutable std::string m_lastDesc;
+
+  int32_t getNbErrors() const noexcept override { return m_getNbErrors(self); }
+  int32_t getErrorCode(int32_t errorIdx) const noexcept override {
+    return m_getErrorCode(self, errorIdx);
+  }
+  ErrorDesc getErrorDesc(int32_t errorIdx) const noexcept override {
+    char buf[128];
+    m_getErrorDesc(self, errorIdx, buf, sizeof(buf));
+    m_lastDesc = buf;
+    return m_lastDesc.c_str();
+  }
+  bool hasOverflowed() const noexcept override { return m_hasOverflowed(self); }
+  void clear() noexcept override { m_clear(self); }
+  bool reportError(int32_t val, ErrorDesc desc) noexcept override {
+    return m_reportError(self, val, desc);
+  }
+  RefCount incRefCount() noexcept override { return m_incRefCount(self); }
+  RefCount decRefCount() noexcept override { return m_decRefCount(self); }
+};
+} // namespace nvinfer1
+
+void *trtx_create_error_recorder_subclass(void *self, void *getNbErrors,
+                                          void *getErrorCode,
+                                          void *getErrorDesc,
+                                          void *hasOverflowed, void *clear,
+                                          void *reportError, void *incRefCount,
+                                          void *decRefCount) {
+  try {
+    return new nvinfer1::ErrorRecorderSubclass(
+        self, (int32_t (*)(void *))getNbErrors,
+        (int32_t (*)(void *, int32_t))getErrorCode,
+        (void (*)(void *, int32_t, char *, size_t))getErrorDesc,
+        (bool (*)(void *))hasOverflowed, (void (*)(void *))clear,
+        (bool (*)(void *, int32_t, char const *))reportError,
+        (int32_t (*)(void *))incRefCount, (int32_t (*)(void *))decRefCount);
+  } catch (...) {
+    return nullptr;
+  }
+}
+void trtx_destroy_error_recorder_subclass(void *obj) {
+  delete static_cast<nvinfer1::ErrorRecorderSubclass *>(obj);
+}
+
+//==============================================================================
+// GpuAllocator subclass (bridge to Rust AllocateGpu)
+//==============================================================================
+namespace nvinfer1 {
+class GpuAllocatorSubclass : public IGpuAllocator {
+public:
+  GpuAllocatorSubclass(void *self,
+                       void *(*allocateAsync)(void *, uint64_t, uint64_t,
+                                              uint32_t, void *),
+                       void *(*reallocate)(void *, void *, uint64_t, uint64_t),
+                       bool (*deallocateAsync)(void *, void *, void *))
+      : self(self), m_allocateAsync((decltype(m_allocateAsync))allocateAsync),
+        m_reallocate((decltype(m_reallocate))reallocate),
+        m_deallocateAsync((decltype(m_deallocateAsync))deallocateAsync) {}
+  ~GpuAllocatorSubclass() = default;
+
+  void *self;
+  void *(*m_allocateAsync)(void *, uint64_t, uint64_t, uint32_t, void *);
+  void *(*m_reallocate)(void *, void *, uint64_t, uint64_t);
+  bool (*m_deallocateAsync)(void *, void *, void *);
+
+  void *allocate(uint64_t size, uint64_t alignment,
+                 AllocatorFlags flags) noexcept override {
+    return m_allocateAsync(self, size, alignment, static_cast<uint32_t>(flags),
+                           nullptr);
+  }
+  void *reallocate(void *baseAddr, uint64_t alignment,
+                   uint64_t newSize) noexcept override {
+    return m_reallocate(self, baseAddr, alignment, newSize);
+  }
+  bool deallocate(void *memory) noexcept override {
+    return m_deallocateAsync(self, memory, nullptr);
+  }
+  void *allocateAsync(uint64_t size, uint64_t alignment, AllocatorFlags flags,
+                      cudaStream_t stream) noexcept override {
+    return m_allocateAsync(self, size, alignment, static_cast<uint32_t>(flags),
+                           stream);
+  }
+  bool deallocateAsync(void *memory, cudaStream_t stream) noexcept override {
+    return m_deallocateAsync(self, memory, stream);
+  }
+};
+} // namespace nvinfer1
+
+void *trtx_create_gpu_allocator_subclass(void *self, void *allocateAsync,
+                                         void *reallocate,
+                                         void *deallocateAsync) {
+
+  try {
+    return new nvinfer1::GpuAllocatorSubclass(
+        self,
+        (void *(*)(void *, uint64_t, uint64_t, uint32_t, void *))allocateAsync,
+        (void *(*)(void *, void *, uint64_t, uint64_t))reallocate,
+        (bool (*)(void *, void *, void *))deallocateAsync);
+  } catch (...) {
+    return nullptr;
+  }
+}
+void trtx_destroy_gpu_allocator_subclass(void *obj) {
+  delete static_cast<nvinfer1::GpuAllocatorSubclass *>(obj);
 }
 }
