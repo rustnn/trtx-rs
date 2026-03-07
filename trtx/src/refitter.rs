@@ -18,7 +18,7 @@ impl<T> Weights<'_, T> {
         nvinfer1::Weights {
             type_: self.data_type.into(),
             values: self.data.as_ptr() as *const std::ffi::c_void,
-            count: (self.data.len() * size_of::<T>()) as i64,
+            count: self.data.len() as i64,
         }
     }
 }
