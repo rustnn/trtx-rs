@@ -121,6 +121,7 @@ fn generate_enum_bindings(crate_root: &str, out_path: &Path) {
     output = output.replace("extern \"C\"", "extern \"system\"");
     output = output.replace("nvinfer1_", "");
     output = output.replace("ILogger_", "");
+    output = output.replace("impl__EnumMaxImpl", "impl_EnumMaxImpl");
 
     let out_file = out_path.join("enums.rs");
     let mut f = File::create(&out_file).expect("Failed to create enums.rs");
