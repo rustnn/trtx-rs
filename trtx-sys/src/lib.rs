@@ -443,7 +443,7 @@ unsafe extern "C" {
 
     pub unsafe fn get_logger_interface(logger: *mut RustLoggerBridge) -> *mut std::ffi::c_void; // Returns ILogger*
                                                                                                 //
-    pub unsafe fn trtx_create_progress_monitor_subclass(
+    pub unsafe fn trtx_create_progress_monitor(
         user_data: *mut std::ffi::c_void,
         phaseStart: unsafe extern "system" fn(
             user_data: *mut std::ffi::c_void,
@@ -461,15 +461,15 @@ unsafe extern "C" {
             phaseName: *const ::std::os::raw::c_char,
         ),
     ) -> *mut std::ffi::c_void;
-    pub unsafe fn trtx_destroy_progress_monitor_subclass(cpp_obj: *mut std::ffi::c_void);
-    pub unsafe fn trtx_create_gpu_allocator_subclass(
+    pub unsafe fn trtx_destroy_progress_monitor(cpp_obj: *mut std::ffi::c_void);
+    pub unsafe fn trtx_create_gpu_allocator(
         rust_impl: *mut std::ffi::c_void,
         allocateAsync: *mut std::ffi::c_void,
         reallocate: *mut std::ffi::c_void,
         deallocateAsync: *mut std::ffi::c_void,
     ) -> *mut std::ffi::c_void;
-    pub unsafe fn trtx_destroy_gpu_allocator_subclass(cpp_obj: *mut std::ffi::c_void);
-    pub unsafe fn trtx_create_error_recorder_subclass(
+    pub unsafe fn trtx_destroy_gpu_allocator(cpp_obj: *mut std::ffi::c_void);
+    pub unsafe fn trtx_create_error_recorder(
         rust_impl: *mut std::ffi::c_void,
         getNbErrors: *mut std::ffi::c_void,
         getErrorCode: *mut std::ffi::c_void,
@@ -480,7 +480,7 @@ unsafe extern "C" {
         incRefCount: *mut std::ffi::c_void,
         decRefCount: *mut std::ffi::c_void,
     ) -> *mut std::ffi::c_void;
-    pub unsafe fn trtx_destroy_error_recorder_subclass(cpp_obj: *mut std::ffi::c_void);
+    pub unsafe fn trtx_destroy_error_recorder(cpp_obj: *mut std::ffi::c_void);
 
     // TensorRT factory functions (wrapped as simple C functions)
     #[cfg(feature = "link_tensorrt_rtx")]

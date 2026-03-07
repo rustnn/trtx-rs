@@ -1,11 +1,10 @@
 use crate::{Error, Result};
 use std::{ffi::CStr, pin::Pin, ptr::null_mut};
 use trtx_sys::{
-    nvinfer1, trtx_create_error_recorder_subclass, trtx_create_gpu_allocator_subclass,
-    trtx_create_progress_monitor_subclass, trtx_destroy_error_recorder_subclass,
-    trtx_destroy_gpu_allocator_subclass,
+    nvinfer1, trtx_create_error_recorder, trtx_create_gpu_allocator, trtx_create_progress_monitor,
+    trtx_destroy_error_recorder, trtx_destroy_gpu_allocator,
 };
-use trtx_sys::{trtx_destroy_progress_monitor_subclass, ErrorCode};
+use trtx_sys::{trtx_destroy_progress_monitor, ErrorCode};
 
 /// Rust version of the [nvinfer1::IProgressMonitor]
 ///
@@ -85,16 +84,13 @@ impl ProgressMonitor {
         });
 
         unsafe {
-            let cpp_obj = trtx_create_progress_monitor_subclass(
+            let cpp_obj = trtx_create_progress_monitor(
                 rust_obj.as_mut().get_unchecked_mut() as *mut ProgressMonitor
                     as *mut std::ffi::c_void,
                 ProgressMonitor_phaseStart,
                 ProgressMonitor_stepComplete,
                 ProgressMonitor_phaseFinish,
             );
-            if cpp_obj.is_null() {
-                panic!("Object allocation failed");
-            }
             if cpp_obj.is_null() {
                 return Err(Error::Runtime(
                     "Failed to allocate object for IProgressMonitor subclass".to_string(),
@@ -112,7 +108,7 @@ impl ProgressMonitor {
 impl Drop for ProgressMonitor {
     fn drop(&mut self) {
         if !self.cpp_obj.is_null() {
-            unsafe { trtx_destroy_progress_monitor_subclass(self.cpp_obj) }
+            unsafe { trtx_destroy_progress_monitor(self.cpp_obj) }
         }
     }
 }
@@ -174,7 +170,7 @@ impl GpuAllocator {
             rust_impl: inner,
         });
         unsafe {
-            let cpp_obj = trtx_create_gpu_allocator_subclass(
+            let cpp_obj = trtx_create_gpu_allocator(
                 rust_obj.as_mut().get_unchecked_mut() as *mut GpuAllocator as *mut std::ffi::c_void,
                 GpuAllocator_allocateAsync as *mut std::ffi::c_void,
                 GpuAllocator_reallocate as *mut std::ffi::c_void,
@@ -198,7 +194,7 @@ impl GpuAllocator {
 impl Drop for GpuAllocator {
     fn drop(&mut self) {
         if !self.cpp_obj.is_null() {
-            unsafe { trtx_destroy_gpu_allocator_subclass(self.cpp_obj) }
+            unsafe { trtx_destroy_gpu_allocator(self.cpp_obj) }
             self.cpp_obj = null_mut();
         }
     }
@@ -331,7 +327,7 @@ impl ErrorRecorder {
             rust_impl: inner,
         });
         unsafe {
-            let cpp_obj = trtx_create_error_recorder_subclass(
+            let cpp_obj = trtx_create_error_recorder(
                 rust_obj.as_mut().get_unchecked_mut() as *mut ErrorRecorder
                     as *mut std::ffi::c_void,
                 ErrorRecorder_getNbErrors as *mut std::ffi::c_void,
@@ -361,7 +357,7 @@ impl ErrorRecorder {
 impl Drop for ErrorRecorder {
     fn drop(&mut self) {
         if !self.cpp_obj.is_null() {
-            unsafe { trtx_destroy_error_recorder_subclass(self.cpp_obj) }
+            unsafe { trtx_destroy_error_recorder(self.cpp_obj) }
             self.cpp_obj = null_mut();
         }
     }

@@ -320,9 +320,8 @@ public:
 };
 } // namespace nvinfer1
 
-void *trtx_create_progress_monitor_subclass(void *self, void *phaseStart,
-                                            void *stepComplete,
-                                            void *phaseFinish) {
+void *trtx_create_progress_monitor(void *self, void *phaseStart,
+                                   void *stepComplete, void *phaseFinish) {
   try {
     return new nvinfer1::ProgressMonitor(self, phaseStart, stepComplete,
                                          phaseFinish);
@@ -330,7 +329,7 @@ void *trtx_create_progress_monitor_subclass(void *self, void *phaseStart,
     return nullptr;
   }
 }
-void trtx_destroy_progress_monitor_subclass(void *self) {
+void trtx_destroy_progress_monitor(void *self) {
   delete (nvinfer1::ProgressMonitor *)(self);
 }
 
@@ -386,12 +385,11 @@ public:
 };
 } // namespace nvinfer1
 
-void *trtx_create_error_recorder_subclass(void *self, void *getNbErrors,
-                                          void *getErrorCode,
-                                          void *getErrorDesc,
-                                          void *hasOverflowed, void *clear,
-                                          void *reportError, void *incRefCount,
-                                          void *decRefCount) {
+void *trtx_create_error_recorder(void *self, void *getNbErrors,
+                                 void *getErrorCode, void *getErrorDesc,
+                                 void *hasOverflowed, void *clear,
+                                 void *reportError, void *incRefCount,
+                                 void *decRefCount) {
   try {
     return new nvinfer1::ErrorRecorderSubclass(
         self, (int32_t (*)(void *))getNbErrors,
@@ -404,7 +402,7 @@ void *trtx_create_error_recorder_subclass(void *self, void *getNbErrors,
     return nullptr;
   }
 }
-void trtx_destroy_error_recorder_subclass(void *obj) {
+void trtx_destroy_error_recorder(void *obj) {
   delete static_cast<nvinfer1::ErrorRecorderSubclass *>(obj);
 }
 
@@ -452,9 +450,8 @@ public:
 };
 } // namespace nvinfer1
 
-void *trtx_create_gpu_allocator_subclass(void *self, void *allocateAsync,
-                                         void *reallocate,
-                                         void *deallocateAsync) {
+void *trtx_create_gpu_allocator(void *self, void *allocateAsync,
+                                void *reallocate, void *deallocateAsync) {
 
   try {
     return new nvinfer1::GpuAllocatorSubclass(
@@ -466,7 +463,7 @@ void *trtx_create_gpu_allocator_subclass(void *self, void *allocateAsync,
     return nullptr;
   }
 }
-void trtx_destroy_gpu_allocator_subclass(void *obj) {
+void trtx_destroy_gpu_allocator(void *obj) {
   delete static_cast<nvinfer1::GpuAllocatorSubclass *>(obj);
 }
 }
