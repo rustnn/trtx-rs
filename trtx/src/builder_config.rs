@@ -1,7 +1,6 @@
 //! Real TensorRT builder config implementation
 
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::pin::Pin;
 
 use crate::error::PropertySetAttempt;
 use crate::Error;
@@ -17,7 +16,7 @@ use trtx_sys::{
 /// Builder configuration (real mode)
 pub struct BuilderConfig {
     pub(crate) inner: UniquePtr<IBuilderConfig>,
-    progress_monitor: Option<Rc<RefCell<ProgressMonitor>>>,
+    progress_monitor: Option<Pin<Box<ProgressMonitor>>>,
 }
 
 impl BuilderConfig {
@@ -33,18 +32,15 @@ impl BuilderConfig {
     }
 
     /// See [IBuilderConfig::setProgressMonitor]
-    /// TODO: can't use this yet: autocxx currently doesn't allow threaded subclasses
-    pub unsafe fn set_progress_monitor(&mut self, progress_monitor: Rc<RefCell<ProgressMonitor>>) {
+    pub fn set_progress_monitor(&mut self, progress_monitor: Pin<Box<ProgressMonitor>>) {
         self.progress_monitor = Some(progress_monitor);
         #[cfg(not(feature = "mock"))]
         unsafe {
             self.inner.pin_mut().setProgressMonitor(
                 self.progress_monitor
                     .as_mut()
-                    .unwrap()
-                    .borrow_mut()
-                    .pin_mut()
-                    .get_unchecked_mut(),
+                    .expect("progress_monitor can't be empty. we just set it")
+                    .as_trt_progress_monitor(),
             )
         };
     }

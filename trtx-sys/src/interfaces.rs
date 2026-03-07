@@ -3,6 +3,7 @@ use ::autocxx::subclass::*;
 use std::{
     cell::RefCell,
     ffi::{c_char, CStr},
+    pin::Pin,
     ptr::null_mut,
     rc::Rc,
 };
@@ -21,60 +22,96 @@ pub trait HandleProgress: Send + Sync {
     fn phase_finish(&mut self, phase_name: &str);
 }
 
-#[subclass]
-#[derive(Default)]
+unsafe extern "system" fn ProgressMonitor_phaseStart(
+    this: *mut ProgressMonitor,
+    phaseName: *const ::std::os::raw::c_char,
+    parentPhase: *const ::std::os::raw::c_char,
+    nbSteps: i32,
+) {
+    let this = this as *mut ProgressMonitor;
+    let phase_name = CStr::from_ptr(phaseName);
+    let parent_phase = if parentPhase.is_null() {
+        None
+    } else {
+        Some(CStr::from_ptr(phaseName).to_string_lossy())
+    };
+    this.as_mut().unwrap().rust_impl.phase_start(
+        &phase_name.to_string_lossy(),
+        parent_phase.as_ref().map(|v| v.as_ref()),
+        nbSteps,
+    );
+}
+unsafe extern "system" fn ProgressMonitor_stepComplete(
+    this: *mut ProgressMonitor,
+    phaseName: *const ::std::os::raw::c_char,
+    step: i32,
+) -> bool {
+    let phase_name = CStr::from_ptr(phaseName);
+    this.as_mut()
+        .unwrap()
+        .rust_impl
+        .step_complete(&phase_name.to_string_lossy(), step)
+        .is_continue()
+}
+unsafe extern "system" fn ProgressMonitor_phaseFinish(
+    this: *mut ProgressMonitor,
+    phaseName: *const ::std::os::raw::c_char,
+) {
+    let phase_name = CStr::from_ptr(phaseName);
+    this.as_mut()
+        .unwrap()
+        .rust_impl
+        .phase_finish(&phase_name.to_string_lossy());
+}
+
+extern "C" {
+    fn trtx_create_progress_monitor_subclass(
+        rust_impl: *mut std::ffi::c_void,
+        phaseStart: *mut std::ffi::c_void,
+        stepComplete: *mut std::ffi::c_void,
+        phaseFinish: *mut std::ffi::c_void,
+    ) -> *mut std::ffi::c_void;
+    fn trtx_destroy_progress_monitor_subclass(cpp_obj: *mut std::ffi::c_void);
+}
+
+///
 /// Subclasses [nvinfer1::IProgressMonitor]
 ///
 /// Construct a object with a dyn [HandleProgress] to implement
 /// [nvinfer1::IProgressMonitor] from Rust
+#[repr(C)]
 pub struct ProgressMonitor {
-    inner: Option<Box<dyn HandleProgress>>,
+    cpp_obj: *mut std::ffi::c_void,
+    rust_impl: Box<dyn HandleProgress>,
 }
 
 impl ProgressMonitor {
-    pub fn new(inner: Box<dyn HandleProgress>) -> Rc<RefCell<Self>> {
-        let rtn = Self::default_rust_owned();
-        rtn.borrow_mut().inner = Some(inner);
-        rtn
+    pub fn new(inner: Box<dyn HandleProgress>) -> Pin<Box<ProgressMonitor>> {
+        let mut rust_obj = Box::pin(ProgressMonitor {
+            cpp_obj: null_mut(),
+            rust_impl: inner,
+        });
+
+        unsafe {
+            let cpp_obj = trtx_create_progress_monitor_subclass(
+                rust_obj.as_mut().get_unchecked_mut() as *mut ProgressMonitor
+                    as *mut std::ffi::c_void,
+                ProgressMonitor_phaseStart as *mut std::ffi::c_void,
+                ProgressMonitor_stepComplete as *mut std::ffi::c_void,
+                ProgressMonitor_phaseFinish as *mut std::ffi::c_void,
+            );
+            rust_obj.as_mut().get_unchecked_mut().cpp_obj = cpp_obj;
+        }
+        rust_obj
+    }
+    pub fn as_trt_progress_monitor(&self) -> *mut nvinfer1::IProgressMonitor {
+        self.cpp_obj as *mut nvinfer1::IProgressMonitor
     }
 }
 
-impl nvinfer1::IProgressMonitor_methods for ProgressMonitor {
-    unsafe fn phaseStart(
-        &mut self,
-        phaseName: *const ::std::os::raw::c_char,
-        parentPhase: *const ::std::os::raw::c_char,
-        nbSteps: i32,
-    ) {
-        let phase_name = CStr::from_ptr(phaseName);
-        let parent_phase = if parentPhase.is_null() {
-            None
-        } else {
-            Some(CStr::from_ptr(phaseName).to_string_lossy())
-        };
-        self.inner
-            .as_mut()
-            .expect("construction only possible with Some")
-            .phase_start(
-                &phase_name.to_string_lossy(),
-                parent_phase.as_ref().map(|v| v.as_ref()),
-                nbSteps,
-            );
-    }
-    unsafe fn stepComplete(&mut self, phaseName: *const ::std::os::raw::c_char, step: i32) -> bool {
-        let phase_name = CStr::from_ptr(phaseName);
-        self.inner
-            .as_mut()
-            .expect("construction only possible with Some")
-            .step_complete(&phase_name.to_string_lossy(), step)
-            .is_continue()
-    }
-    unsafe fn phaseFinish(&mut self, phaseName: *const ::std::os::raw::c_char) {
-        let phase_name = CStr::from_ptr(phaseName);
-        self.inner
-            .as_mut()
-            .expect("construction only possible with Some")
-            .phase_finish(&phase_name.to_string_lossy());
+impl Drop for ProgressMonitor {
+    fn drop(&mut self) {
+        unsafe { trtx_destroy_progress_monitor_subclass(self.cpp_obj) }
     }
 }
 

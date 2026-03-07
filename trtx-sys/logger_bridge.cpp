@@ -176,10 +176,10 @@ void *create_onnx_parser(void *network, void *logger) {
 }
 #endif
 
-// Refitter methods that use char const** (pointer-to-pointer); autocxx cannot bind these.
+// Refitter methods that use char const** (pointer-to-pointer); autocxx cannot
+// bind these.
 int32_t trtx_refitter_get_missing(void *refitter, int32_t size,
-                                  char const **layer_names,
-                                  int32_t *roles) {
+                                  char const **layer_names, int32_t *roles) {
   if (!refitter || !layer_names || !roles)
     return 0;
   try {
@@ -292,4 +292,41 @@ void *network_add_concatenation(void *network, void **inputs,
 
 uint32_t get_tensorrt_version() { return NV_TENSORRT_VERSION; }
 
-} // extern "C"
+namespace nvinfer1 {
+class ProgressMonitor : public IProgressMonitor {
+public:
+  ProgressMonitor(void *self, void *phaseStart, void *stepComplete,
+                  void *phaseFinish)
+      : self(self), m_phaseStart((decltype(m_phaseStart))phaseStart),
+        m_stepComplete((decltype(m_stepComplete))stepComplete),
+        m_phaseFinish((decltype(m_phaseFinish))phaseFinish) {}
+  ~ProgressMonitor() = default;
+  void *self;
+  void (*m_phaseStart)(void *self, char const *phaseName,
+                       char const *parentPhase, int32_t nbSteps);
+  bool (*m_stepComplete)(void *self, char const *phaseName, int32_t step);
+  void (*m_phaseFinish)(void *self, char const *phaseName);
+
+  void phaseStart(char const *phaseName, char const *parentPhase,
+                  int32_t nbSteps) override {
+    m_phaseStart(self, phaseName, parentPhase, nbSteps);
+  };
+  bool stepComplete(char const *phaseName, int32_t step) override {
+    return m_stepComplete(self, phaseName, step);
+  };
+  void phaseFinish(char const *phaseName) override {
+    m_phaseFinish(self, phaseName);
+  };
+};
+} // namespace nvinfer1
+
+void *trtx_create_progress_monitor_subclass(void *self, void *phaseStart,
+                                            void *stepComplete,
+                                            void *phaseFinish) {
+  return new nvinfer1::ProgressMonitor(self, phaseStart, stepComplete,
+                                       phaseFinish);
+}
+void trtx_destroy_progress_monitor_subclass(void *self) {
+  delete (nvinfer1::ProgressMonitor *)(self);
+}
+}

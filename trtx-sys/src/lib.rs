@@ -244,7 +244,7 @@ include_cpp! {
     generate!("nvinfer1::SerializationFlag")
     generate!("nvinfer1::OptProfileSelector")
 
-    subclass!("nvinfer1::IProgressMonitor", ProgressMonitor)
+    //subclass!("nvinfer1::IProgressMonitor", ProgressMonitor)
     subclass!("nvinfer1::IGpuAllocator", GpuAllocator)
     subclass!("nvinfer1::IErrorRecorder", ErrorRecorder)
     subclass!("nvinfer1::IDebugListener", DebugListener)
