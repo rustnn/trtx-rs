@@ -464,9 +464,24 @@ unsafe extern "C" {
     pub unsafe fn trtx_destroy_progress_monitor(cpp_obj: *mut std::ffi::c_void);
     pub unsafe fn trtx_create_gpu_allocator(
         rust_impl: *mut std::ffi::c_void,
-        allocateAsync: *mut std::ffi::c_void,
-        reallocate: *mut std::ffi::c_void,
-        deallocateAsync: *mut std::ffi::c_void,
+        allocateAsync: unsafe extern "system" fn(
+            this: *const std::ffi::c_void,
+            size: u64,
+            alignment: u64,
+            flags: u32,
+            cuda_stream: *mut std::ffi::c_void,
+        ) -> *mut std::ffi::c_void,
+        reallocate: unsafe extern "system" fn(
+            this: *const std::ffi::c_void,
+            memory: *mut std::ffi::c_void,
+            alignment: u64,
+            new_size: u64,
+        ) -> *mut std::ffi::c_void,
+        deallocateAsync: unsafe extern "system" fn(
+            this: *const std::ffi::c_void,
+            memory: *mut std::ffi::c_void,
+            cuda_stream: *mut std::ffi::c_void,
+        ) -> bool,
     ) -> *mut std::ffi::c_void;
     pub unsafe fn trtx_destroy_gpu_allocator(cpp_obj: *mut std::ffi::c_void);
     pub unsafe fn trtx_create_error_recorder(

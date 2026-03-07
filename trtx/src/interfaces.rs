@@ -116,12 +116,13 @@ impl Drop for ProgressMonitor {
 /// C callbacks for GpuAllocatorSubclass (bridge to Rust). `this` is *mut RefCell<GpuAllocator>.
 #[allow(non_snake_case)]
 unsafe extern "system" fn GpuAllocator_allocateAsync(
-    this: *const GpuAllocator,
+    this: *const std::ffi::c_void,
     size: u64,
     alignment: u64,
     flags: u32,
     cuda_stream: *mut std::ffi::c_void,
 ) -> *mut std::ffi::c_void {
+    let this = this as *const GpuAllocator;
     this.as_ref()
         .unwrap()
         .rust_impl
@@ -134,7 +135,7 @@ unsafe extern "system" fn GpuAllocator_reallocate(
     alignment: u64,
     new_size: u64,
 ) -> *mut std::ffi::c_void {
-    let this = this as *mut GpuAllocator;
+    let this = this as *const GpuAllocator;
     this.as_ref()
         .unwrap()
         .rust_impl
@@ -142,7 +143,7 @@ unsafe extern "system" fn GpuAllocator_reallocate(
 }
 #[allow(non_snake_case)]
 unsafe extern "system" fn GpuAllocator_deallocateAsync(
-    this: *mut std::ffi::c_void,
+    this: *const std::ffi::c_void,
     memory: *mut std::ffi::c_void,
     cuda_stream: *mut std::ffi::c_void,
 ) -> bool {
@@ -172,9 +173,9 @@ impl GpuAllocator {
         unsafe {
             let cpp_obj = trtx_create_gpu_allocator(
                 rust_obj.as_mut().get_unchecked_mut() as *mut GpuAllocator as *mut std::ffi::c_void,
-                GpuAllocator_allocateAsync as *mut std::ffi::c_void,
-                GpuAllocator_reallocate as *mut std::ffi::c_void,
-                GpuAllocator_deallocateAsync as *mut std::ffi::c_void,
+                GpuAllocator_allocateAsync,
+                GpuAllocator_reallocate,
+                GpuAllocator_deallocateAsync,
             );
             if cpp_obj.is_null() {
                 return Err(Error::Runtime(
