@@ -641,3 +641,22 @@ impl nvinfer1::Weights {
         }
     }
 }
+
+impl DataType {
+    pub const fn size_bits(self) -> usize {
+        match self {
+            DataType::kFLOAT => 32,
+            DataType::kHALF => 16,
+            DataType::kINT8 => 8,
+            DataType::kINT32 => 32,
+            DataType::kBOOL => 8,
+            DataType::kUINT8 => 8,
+            DataType::kFP8 => 8,
+            DataType::kBF16 => 16,
+            DataType::kINT64 => 64,
+            DataType::kINT4 => 4,
+            DataType::kFP4 => 4,
+            DataType::kE8M0 => 8,
+        }
+    }
+}

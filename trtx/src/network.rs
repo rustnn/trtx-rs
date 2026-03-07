@@ -689,30 +689,10 @@ impl<'network> NetworkDefinition<'network> {
         let kernel_weights = weights.kernel_weights;
         let bias_weights = weights.bias_weights;
         let bias_dtype = weights.bias_dtype;
-        let kernel_bpe = match kernel_dtype {
-            DataType::kFLOAT => 4,
-            DataType::kHALF => 2,
-            DataType::kINT8 => 1,
-            DataType::kINT32 => 4,
-            _ => {
-                return Err(Error::Runtime(format!(
-                    "Unsupported kernel weight type for convolution: {kernel_dtype:?}",
-                )))
-            }
-        };
+        let kernel_bpe = kernel_dtype.size_bits() / 8;
         let weight_count = (kernel_weights.len() / kernel_bpe) as i64;
         let bias_dtype_val = bias_dtype.unwrap_or(kernel_dtype);
-        let bias_bpe = match bias_dtype_val {
-            DataType::kFLOAT => 4,
-            DataType::kHALF => 2,
-            DataType::kINT8 => 1,
-            DataType::kINT32 => 4,
-            _ => {
-                return Err(Error::Runtime(format!(
-                    "Unsupported bias weight type for convolution: {bias_dtype_val:?}",
-                )))
-            }
-        };
+        let bias_bpe = bias_dtype_val.size_bits() / 8;
         let bias_count = bias_weights
             .map(|b| (b.len() / bias_bpe) as i64)
             .unwrap_or(0);
@@ -763,30 +743,10 @@ impl<'network> NetworkDefinition<'network> {
         let kernel_weights = weights.kernel_weights;
         let bias_weights = weights.bias_weights;
         let bias_dtype = weights.bias_dtype;
-        let kernel_bpe = match kernel_dtype {
-            DataType::kFLOAT => 4,
-            DataType::kHALF => 2,
-            DataType::kINT8 => 1,
-            DataType::kINT32 => 4,
-            _ => {
-                return Err(Error::Runtime(format!(
-                    "Unsupported kernel weight type for deconvolution: {kernel_dtype:?}",
-                )))
-            }
-        };
+        let kernel_bpe = kernel_dtype.size_bits() / 8;
         let weight_count = (kernel_weights.len() / kernel_bpe) as i64;
         let bias_dtype_val = bias_dtype.unwrap_or(kernel_dtype);
-        let bias_bpe = match bias_dtype_val {
-            DataType::kFLOAT => 4,
-            DataType::kHALF => 2,
-            DataType::kINT8 => 1,
-            DataType::kINT32 => 4,
-            _ => {
-                return Err(Error::Runtime(format!(
-                    "Unsupported bias weight type for deconvolution: {bias_dtype:?}",
-                )))
-            }
-        };
+        let bias_bpe = bias_dtype_val.size_bits() / 8;
         let bias_count = bias_weights
             .map(|b| (b.len() / bias_bpe) as i64)
             .unwrap_or(0);
@@ -863,20 +823,7 @@ impl<'network> NetworkDefinition<'network> {
         copy: bool,
     ) -> Result<ConstantLayer<'network>> {
         let element_count: i64 = dims.iter().map(|&d| d as i64).product();
-        let bytes_per_element = match data_type {
-            DataType::kFLOAT => 4,
-            DataType::kHALF => 2,
-            DataType::kINT8 => 1,
-            DataType::kINT32 => 4,
-            DataType::kUINT8 => 1,
-            DataType::kBOOL => 1,
-            _ => {
-                return Err(Error::Runtime(format!(
-                    "Unsupported data type: {data_type:?}",
-                )))
-            }
-        };
-        let expected_bytes = element_count * bytes_per_element;
+        let expected_bytes = element_count * data_type.size_bits() as i64 / 8;
         if weights.len() as i64 != expected_bytes {
             panic!(
                 "Weight size mismatch: expected {expected_bytes} bytes, got {} bytes",
@@ -943,16 +890,16 @@ impl<'network> NetworkDefinition<'network> {
             ScaleMode::kCHANNEL => {
                 let input_dims = input.dimensions(self)?;
                 if input_dims.len() >= 4 {
-                    input_dims[1] as i64
+                    input_dims[1]
                 } else if !input_dims.is_empty() {
-                    input_dims[0] as i64
+                    input_dims[0]
                 } else {
                     1i64
                 }
             }
             ScaleMode::kELEMENTWISE => {
                 let input_dims = input.dimensions(self)?;
-                input_dims.iter().map(|&d| d as i64).product::<i64>()
+                input_dims.iter().product::<i64>()
             }
         };
 
@@ -1047,9 +994,9 @@ impl<'network> NetworkDefinition<'network> {
                 "start, size, and stride must have the same length".to_string(),
             ));
         }
-        let start_dims = trtx_sys::Dims::from_slice(&start);
-        let size_dims = trtx_sys::Dims::from_slice(&size);
-        let stride_dims = trtx_sys::Dims::from_slice(&stride);
+        let start_dims = trtx_sys::Dims::from_slice(start);
+        let size_dims = trtx_sys::Dims::from_slice(size);
+        let stride_dims = trtx_sys::Dims::from_slice(stride);
         let layer_ptr = self.inner.pin_mut().addSlice(
             input.inner.as_mut(),
             &start_dims,
