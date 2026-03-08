@@ -460,8 +460,8 @@ unsafe extern "C" {
             user_data: *mut std::ffi::c_void,
             phaseName: *const ::std::os::raw::c_char,
         ),
-    ) -> *mut std::ffi::c_void;
-    pub unsafe fn trtx_destroy_progress_monitor(cpp_obj: *mut std::ffi::c_void);
+    ) -> *mut nvinfer1::IProgressMonitor;
+    pub unsafe fn trtx_destroy_progress_monitor(cpp_obj: *mut nvinfer1::IProgressMonitor);
     pub unsafe fn trtx_create_gpu_allocator(
         rust_impl: *mut std::ffi::c_void,
         allocateAsync: unsafe extern "system" fn(
@@ -482,8 +482,8 @@ unsafe extern "C" {
             memory: *mut std::ffi::c_void,
             cuda_stream: *mut std::ffi::c_void,
         ) -> bool,
-    ) -> *mut std::ffi::c_void;
-    pub unsafe fn trtx_destroy_gpu_allocator(cpp_obj: *mut std::ffi::c_void);
+    ) -> *mut nvinfer1::IGpuAllocator;
+    pub unsafe fn trtx_destroy_gpu_allocator(cpp_obj: *mut nvinfer1::IGpuAllocator);
     pub unsafe fn trtx_create_error_recorder(
         rust_impl: *mut std::ffi::c_void,
         getNbErrors: *mut std::ffi::c_void,
@@ -494,8 +494,8 @@ unsafe extern "C" {
         reportError: *mut std::ffi::c_void,
         incRefCount: *mut std::ffi::c_void,
         decRefCount: *mut std::ffi::c_void,
-    ) -> *mut std::ffi::c_void;
-    pub unsafe fn trtx_destroy_error_recorder(cpp_obj: *mut std::ffi::c_void);
+    ) -> *mut nvinfer1::IErrorRecorder;
+    pub unsafe fn trtx_destroy_error_recorder(cpp_obj: *mut nvinfer1::IErrorRecorder);
 
     // TensorRT factory functions (wrapped as simple C functions)
     #[cfg(feature = "link_tensorrt_rtx")]

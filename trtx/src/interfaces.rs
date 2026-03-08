@@ -1,10 +1,10 @@
 use crate::{Error, Result};
-use std::{ffi::CStr, pin::Pin, ptr::null_mut};
+use cxx::UniquePtr;
+use std::{ffi::CStr, pin::Pin};
+use trtx_sys::ErrorCode;
 use trtx_sys::{
     nvinfer1, trtx_create_error_recorder, trtx_create_gpu_allocator, trtx_create_progress_monitor,
-    trtx_destroy_error_recorder, trtx_destroy_gpu_allocator,
 };
-use trtx_sys::{trtx_destroy_progress_monitor, ErrorCode};
 
 /// Rust trait that corresponds to [nvinfer1::IProgressMonitor]
 ///
@@ -72,44 +72,36 @@ unsafe extern "system" fn ProgressMonitor_phaseFinish(
 /// [nvinfer1::IProgressMonitor] from Rust
 #[repr(C)]
 pub(crate) struct ProgressMonitor {
-    cpp_obj: *mut std::ffi::c_void,
+    cpp_obj: UniquePtr<nvinfer1::IProgressMonitor>,
     rust_impl: Box<dyn MonitorProgress>,
 }
 
 impl ProgressMonitor {
     pub(crate) fn new(inner: Box<dyn MonitorProgress>) -> Result<Pin<Box<ProgressMonitor>>> {
         let mut rust_obj = Box::pin(ProgressMonitor {
-            cpp_obj: null_mut(),
+            cpp_obj: UniquePtr::null(),
             rust_impl: inner,
         });
 
         unsafe {
-            let cpp_obj = trtx_create_progress_monitor(
+            let cpp_obj = UniquePtr::from_raw(trtx_create_progress_monitor(
                 rust_obj.as_mut().get_unchecked_mut() as *mut ProgressMonitor
                     as *mut std::ffi::c_void,
                 ProgressMonitor_phaseStart,
                 ProgressMonitor_stepComplete,
                 ProgressMonitor_phaseFinish,
-            );
+            ));
             if cpp_obj.is_null() {
                 return Err(Error::Runtime(
                     "Failed to allocate object for IProgressMonitor subclass".to_string(),
                 ));
             }
-            rust_obj.as_mut().cpp_obj = cpp_obj;
+            rust_obj.cpp_obj = cpp_obj;
         }
         Ok(rust_obj)
     }
     pub fn as_trt_progress_monitor(&self) -> *mut nvinfer1::IProgressMonitor {
-        self.cpp_obj as *mut nvinfer1::IProgressMonitor
-    }
-}
-
-impl Drop for ProgressMonitor {
-    fn drop(&mut self) {
-        if !self.cpp_obj.is_null() {
-            unsafe { trtx_destroy_progress_monitor(self.cpp_obj) }
-        }
+        self.cpp_obj.as_mut_ptr()
     }
 }
 
@@ -160,23 +152,23 @@ unsafe extern "system" fn GpuAllocator_deallocateAsync(
 /// Construct with an [AllocateGpu] to implement [nvinfer1::IGpuAllocator] from Rust.
 #[repr(C)]
 pub struct GpuAllocator {
-    cpp_obj: *mut std::ffi::c_void,
+    cpp_obj: UniquePtr<nvinfer1::IGpuAllocator>,
     rust_impl: Box<dyn AllocateGpu>,
 }
 
 impl GpuAllocator {
     pub fn new(inner: Box<dyn AllocateGpu>) -> Result<Pin<Box<Self>>> {
         let mut rust_obj = Box::pin(GpuAllocator {
-            cpp_obj: null_mut(),
+            cpp_obj: UniquePtr::null(),
             rust_impl: inner,
         });
         unsafe {
-            let cpp_obj = trtx_create_gpu_allocator(
+            let cpp_obj = UniquePtr::from_raw(trtx_create_gpu_allocator(
                 rust_obj.as_mut().get_unchecked_mut() as *mut GpuAllocator as *mut std::ffi::c_void,
                 GpuAllocator_allocateAsync,
                 GpuAllocator_reallocate,
                 GpuAllocator_deallocateAsync,
-            );
+            ));
             if cpp_obj.is_null() {
                 return Err(Error::Runtime(
                     "Failed to allocate object for IGpuAllocator subclass".to_string(),
@@ -188,16 +180,7 @@ impl GpuAllocator {
     }
 
     pub fn as_trt_gpu_allocator(&self) -> *mut nvinfer1::IGpuAllocator {
-        self.cpp_obj as *mut nvinfer1::IGpuAllocator
-    }
-}
-
-impl Drop for GpuAllocator {
-    fn drop(&mut self) {
-        if !self.cpp_obj.is_null() {
-            unsafe { trtx_destroy_gpu_allocator(self.cpp_obj) }
-            self.cpp_obj = null_mut();
-        }
+        self.cpp_obj.as_mut_ptr()
     }
 }
 
@@ -303,18 +286,18 @@ unsafe extern "system" fn ErrorRecorder_decRefCount(this: *mut ErrorRecorder) ->
 /// Construct with a [RecordError] to implement [nvinfer1::IErrorRecorder] from Rust.
 #[repr(C)]
 pub struct ErrorRecorder {
-    cpp_obj: *mut std::ffi::c_void,
+    cpp_obj: UniquePtr<nvinfer1::IErrorRecorder>,
     rust_impl: Box<dyn RecordError>,
 }
 
 impl ErrorRecorder {
     pub fn new(inner: Box<dyn RecordError>) -> Result<Pin<Box<Self>>> {
         let mut rust_obj = Box::pin(ErrorRecorder {
-            cpp_obj: null_mut(),
+            cpp_obj: UniquePtr::null(),
             rust_impl: inner,
         });
         unsafe {
-            let cpp_obj = trtx_create_error_recorder(
+            let cpp_obj = UniquePtr::from_raw(trtx_create_error_recorder(
                 rust_obj.as_mut().get_unchecked_mut() as *mut ErrorRecorder
                     as *mut std::ffi::c_void,
                 ErrorRecorder_getNbErrors as *mut std::ffi::c_void,
@@ -325,28 +308,19 @@ impl ErrorRecorder {
                 ErrorRecorder_reportError as *mut std::ffi::c_void,
                 ErrorRecorder_incRefCount as *mut std::ffi::c_void,
                 ErrorRecorder_decRefCount as *mut std::ffi::c_void,
-            );
+            ));
             if cpp_obj.is_null() {
                 return Err(Error::Runtime(
                     "Failed to allocate object for IErrorRecorder subclass".to_string(),
                 ));
             }
-            rust_obj.as_mut().get_unchecked_mut().cpp_obj = cpp_obj;
+            rust_obj.cpp_obj = cpp_obj;
         }
         Ok(rust_obj)
     }
 
     pub fn as_trt_error_recorder(&self) -> *mut nvinfer1::IErrorRecorder {
-        self.cpp_obj as *mut nvinfer1::IErrorRecorder
-    }
-}
-
-impl Drop for ErrorRecorder {
-    fn drop(&mut self) {
-        if !self.cpp_obj.is_null() {
-            unsafe { trtx_destroy_error_recorder(self.cpp_obj) }
-            self.cpp_obj = null_mut();
-        }
+        self.cpp_obj.as_mut_ptr()
     }
 }
 
