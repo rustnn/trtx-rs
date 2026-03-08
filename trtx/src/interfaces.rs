@@ -28,14 +28,11 @@ unsafe extern "system" fn ProgressMonitor_phaseStart(
 ) {
     let this = this as *mut ProgressMonitor;
     let phase_name = CStr::from_ptr(phaseName);
-    let parent_phase = if parentPhase.is_null() {
-        None
-    } else {
-        Some(CStr::from_ptr(phaseName).to_string_lossy())
-    };
+    let parent_phase =
+        (!parentPhase.is_null()).then(|| CStr::from_ptr(phaseName).to_string_lossy());
     this.as_mut().unwrap().rust_impl.phase_start(
         &phase_name.to_string_lossy(),
-        parent_phase.as_ref().map(|v| v.as_ref()),
+        parent_phase.as_deref(),
         nbSteps,
     );
 }
@@ -347,13 +344,14 @@ unsafe extern "system" fn DebugListener_processDebugTensor(
     stream: *mut std::ffi::c_void,
 ) -> bool {
     let this = this as *const DebugListener;
-    let name = CStr::from_ptr(name);
+    let name = (!name.is_null()).then(|| CStr::from_ptr(name));
+    let name = name.map(|s| s.to_string_lossy());
     this.as_ref().unwrap().rust_impl.process_debug_tensor(
         addr,
         location.into(),
         type_.into(),
         shape.as_ref().unwrap(),
-        &name.to_string_lossy(),
+        name.as_deref(),
         stream,
     )
 }
@@ -400,7 +398,7 @@ pub trait ProcessDebugTensor: Send + Sync {
         location: TensorLocation,
         type_: DataType,
         shape: &Dims64,
-        name: &str,
+        name: Option<&str>,
         stream: *mut std::ffi::c_void,
     ) -> bool;
 }

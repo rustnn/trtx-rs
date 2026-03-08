@@ -18,6 +18,7 @@ pub enum PropertySetAttempt {
     BuilderConfigL2LimitForTiling,
     BuilderConfigNbComputeCapabilities,
     BuilderConfigComputeCapability,
+    ExecutionContextTensorDebugState,
 }
 
 /// Errors that can occur when using TensorRT-RTX

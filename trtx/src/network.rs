@@ -199,7 +199,7 @@ impl ShuffleLayer<'_> {
         dims: &[i64],
     ) -> Result<()> {
         crate::check_network!(network, self);
-        let dims_obj = trtx_sys::Dims::from_slice(&dims);
+        let dims_obj = trtx_sys::Dims::from_slice(dims);
         self.inner.as_mut().setReshapeDimensions(&dims_obj);
         Ok(())
     }
@@ -222,7 +222,7 @@ impl ShuffleLayer<'_> {
 impl ResizeLayer<'_> {
     pub fn set_output_dimensions(&mut self, network: &mut NetworkDefinition, dims: &[i64]) {
         crate::check_network!(network, self);
-        let dims_obj = trtx_sys::Dims::from_slice(&dims);
+        let dims_obj = trtx_sys::Dims::from_slice(dims);
         self.inner.as_mut().setOutputDimensions(&dims_obj);
     }
     pub fn set_resize_mode(&mut self, network: &mut NetworkDefinition, mode: trtx_sys::ResizeMode) {
@@ -505,6 +505,24 @@ impl<'network> NetworkDefinition<'network> {
         self.inner.pin_mut().markOutput(tensor.inner.as_mut());
     }
 
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::markDebug`].
+    /// Mark a tensor for debugging; [IExecutionContext::setDebugListener] will receive it during execution.
+    pub fn mark_tensor_debug(&mut self, tensor: &'_ mut Tensor) -> Result<()> {
+        crate::check_network!(self, tensor);
+        let success = self.inner.pin_mut().markDebug(tensor.inner.as_mut());
+        if success {
+            Ok(())
+        } else {
+            Err(Error::Runtime("markDebug failed".to_string()))
+        }
+    }
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::isDebugTensor`].
+    /// Mark a tensor for debugging; [nvinfer1::IExecutionContext::setDebugListener] will receive it during execution.
+    pub fn is_debug_tensor(&self, tensor: &'_ Tensor) -> bool {
+        crate::check_network!(self, tensor);
+        self.inner.isDebugTensor(&tensor.inner.as_ref())
+    }
+
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::getNbInputs`].
     pub fn get_nb_inputs(&self) -> i32 {
         self.inner.getNbInputs()
@@ -594,10 +612,13 @@ impl<'network> NetworkDefinition<'network> {
     pub fn add_unary(
         &mut self,
         input: &'_ mut Tensor,
-        op: trtx_sys::nvinfer1::UnaryOperation,
+        op: trtx_sys::UnaryOperation,
     ) -> Result<UnaryLayer<'network>> {
         crate::check_network!(self, input);
-        let layer_ptr = self.inner.pin_mut().addUnary(input.inner.as_mut(), op);
+        let layer_ptr = self
+            .inner
+            .pin_mut()
+            .addUnary(input.inner.as_mut(), op.into());
         UnaryLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
@@ -613,10 +634,13 @@ impl<'network> NetworkDefinition<'network> {
     pub fn add_cast(
         &mut self,
         input: &'_ mut Tensor,
-        to_type: trtx_sys::nvinfer1::DataType,
+        to_type: trtx_sys::DataType,
     ) -> Result<CastLayer<'_>> {
         crate::check_network!(self, input);
-        let layer_ptr = self.inner.pin_mut().addCast(input.inner.as_mut(), to_type);
+        let layer_ptr = self
+            .inner
+            .pin_mut()
+            .addCast(input.inner.as_mut(), to_type.into());
         CastLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
@@ -625,14 +649,15 @@ impl<'network> NetworkDefinition<'network> {
         &mut self,
         input1: &'_ mut Tensor,
         input2: &'_ mut Tensor,
-        op: trtx_sys::nvinfer1::ElementWiseOperation,
+        op: trtx_sys::ElementWiseOperation,
     ) -> Result<ElementWiseLayer<'network>> {
         crate::check_network!(self, input1);
         crate::check_network!(self, input2);
-        let layer_ptr =
-            self.inner
-                .pin_mut()
-                .addElementWise(input1.inner.as_mut(), input2.inner.as_mut(), op);
+        let layer_ptr = self.inner.pin_mut().addElementWise(
+            input1.inner.as_mut(),
+            input2.inner.as_mut(),
+            op.into(),
+        );
         ElementWiseLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 

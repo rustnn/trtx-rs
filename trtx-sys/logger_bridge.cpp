@@ -495,6 +495,7 @@ public:
   };
 };
 
+extern "C" {
 void *trtx_create_debug_listener(
     nvinfer1::IDebugListener *self,
     bool (*processDebugTensor)(void *self, void const *addr,
@@ -505,5 +506,6 @@ void *trtx_create_debug_listener(
 }
 void trtx_destroy_debug_listener(nvinfer1::IDebugListener *self) {
   delete self;
+}
 }
 } // namespace nvinfer1
