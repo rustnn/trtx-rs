@@ -467,3 +467,43 @@ void trtx_destroy_gpu_allocator(void *obj) {
   delete static_cast<nvinfer1::GpuAllocatorSubclass *>(obj);
 }
 }
+
+namespace nvinfer1 {
+class DebugListener : public IDebugListener {
+public:
+  DebugListener(void *self,
+                bool (*processDebugTensor)(void *self, void const *addr,
+                                           TensorLocation location,
+                                           DataType type, Dims const *shape,
+                                           char const *name,
+                                           cudaStream_t stream))
+      : self(self), m_processDebugTensor(
+                        (decltype(m_processDebugTensor))processDebugTensor) {}
+  ~DebugListener() = default;
+
+  void *self;
+  bool (*m_processDebugTensor)(void *self, void const *addr,
+                               TensorLocation location, DataType type,
+                               Dims const *shape, char const *name,
+                               cudaStream_t stream);
+
+  bool processDebugTensor(void const *addr, TensorLocation location,
+                          DataType type, Dims const &shape, char const *name,
+                          cudaStream_t stream) override {
+    return m_processDebugTensor(self, addr, location, type, &shape, name,
+                                stream);
+  };
+};
+
+void *trtx_create_debug_listener(
+    nvinfer1::IDebugListener *self,
+    bool (*processDebugTensor)(void *self, void const *addr,
+                               TensorLocation location, DataType type,
+                               Dims const *shape, char const *name,
+                               cudaStream_t stream)) {
+  return new DebugListener(self, processDebugTensor);
+}
+void trtx_destroy_debug_listener(nvinfer1::IDebugListener *self) {
+  delete self;
+}
+} // namespace nvinfer1

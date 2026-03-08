@@ -1,10 +1,11 @@
 use crate::{Error, Result};
 use cxx::UniquePtr;
 use std::{ffi::CStr, pin::Pin};
-use trtx_sys::ErrorCode;
 use trtx_sys::{
-    nvinfer1, trtx_create_error_recorder, trtx_create_gpu_allocator, trtx_create_progress_monitor,
+    nvinfer1, trtx_create_debug_listener, trtx_create_error_recorder, trtx_create_gpu_allocator,
+    trtx_create_progress_monitor,
 };
+use trtx_sys::{DataType, Dims64, ErrorCode, TensorLocation};
 
 /// Rust trait that corresponds to [nvinfer1::IProgressMonitor]
 ///
@@ -335,53 +336,74 @@ pub trait RecordError: Send + Sync {
     fn dec_ref_count(&self) -> i32;
 }
 
-//#[subclass]
-//#[derive(Default)]
-//pub struct DebugListener {
-//inner: Option<Box<dyn ProcessDebugTensor>>,
-//}
+#[allow(non_snake_case)]
+unsafe extern "system" fn DebugListener_processDebugTensor(
+    this: *const std::ffi::c_void,
+    addr: *const std::ffi::c_void,
+    location: nvinfer1::TensorLocation,
+    type_: nvinfer1::DataType,
+    shape: *const Dims64,
+    name: *const std::ffi::c_char,
+    stream: *mut std::ffi::c_void,
+) -> bool {
+    let this = this as *const DebugListener;
+    let name = CStr::from_ptr(name);
+    this.as_ref().unwrap().rust_impl.process_debug_tensor(
+        addr,
+        location.into(),
+        type_.into(),
+        shape.as_ref().unwrap(),
+        &name.to_string_lossy(),
+        stream,
+    )
+}
 
-//impl DebugListener {
-//pub fn new(inner: Box<dyn ProcessDebugTensor>) -> Rc<RefCell<Self>> {
-//let rtn = Self::default_rust_owned();
-//rtn.borrow_mut().inner = Some(inner);
-//rtn
-//}
-//}
+///
+/// Subclasses [nvinfer1::IDebugListener] via C++ bridge.
+#[repr(C)]
+pub struct DebugListener {
+    cpp_obj: UniquePtr<nvinfer1::IDebugListener>,
+    rust_impl: Box<dyn ProcessDebugTensor>,
+}
 
-//impl nvinfer1::IDebugListener_methods for DebugListener {
-//unsafe fn processDebugTensor(
-//&mut self,
-//addr: *const autocxx::c_void,
-//location: nvinfer1::TensorLocation,
-//type_: nvinfer1::DataType,
-//shape: &Dims64,
-//name: *const c_char,
-//stream: *mut ffi::CUstream_st,
-//) -> bool {
-//let name = CStr::from_ptr(name);
-//self.inner.as_mut().unwrap().process_debug_tensor(
-//addr,
-//location.into(),
-//type_.into(),
-//shape,
-//&name.to_string_lossy(),
-//stream,
-//)
-//}
-//}
+impl DebugListener {
+    pub fn new(inner: Box<dyn ProcessDebugTensor>) -> Result<Pin<Box<Self>>> {
+        let mut rust_obj = Box::pin(Self {
+            cpp_obj: UniquePtr::null(),
+            rust_impl: inner,
+        });
+        unsafe {
+            let cpp_obj = UniquePtr::from_raw(trtx_create_debug_listener(
+                rust_obj.as_mut().get_unchecked_mut() as *mut DebugListener
+                    as *mut std::ffi::c_void,
+                DebugListener_processDebugTensor,
+            ));
+            if cpp_obj.is_null() {
+                return Err(Error::Runtime(
+                    "Failed to allocate object for IDebugListener subclass".to_string(),
+                ));
+            }
+            rust_obj.cpp_obj = cpp_obj;
+        }
+        Ok(rust_obj)
+    }
 
-//pub trait ProcessDebugTensor: Send + Sync {
-//unsafe fn process_debug_tensor(
-//&mut self,
-//addr: *const autocxx::c_void,
-//location: TensorLocation,
-//type_: DataType,
-//shape: &Dims64,
-//name: &str,
-//stream: *mut ffi::CUstream_st,
-//) -> bool;
-//}
+    pub fn as_raw(&self) -> *mut nvinfer1::IDebugListener {
+        self.cpp_obj.as_mut_ptr()
+    }
+}
+
+pub trait ProcessDebugTensor: Send + Sync {
+    unsafe fn process_debug_tensor(
+        &self,
+        addr: *const std::ffi::c_void,
+        location: TensorLocation,
+        type_: DataType,
+        shape: &Dims64,
+        name: &str,
+        stream: *mut std::ffi::c_void,
+    ) -> bool;
+}
 
 //#[subclass]
 //#[derive(Default)]

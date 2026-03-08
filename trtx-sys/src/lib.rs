@@ -497,6 +497,19 @@ unsafe extern "C" {
     ) -> *mut nvinfer1::IErrorRecorder;
     pub unsafe fn trtx_destroy_error_recorder(cpp_obj: *mut nvinfer1::IErrorRecorder);
 
+    pub unsafe fn trtx_create_debug_listener(
+        rust_impl: *mut std::ffi::c_void,
+        processDebugTensor: unsafe extern "system" fn(
+            this: *const std::ffi::c_void,
+            addr: *const std::ffi::c_void,
+            location: nvinfer1::TensorLocation,
+            type_: nvinfer1::DataType,
+            shape: *const Dims64,
+            name: *const std::ffi::c_char,
+            stream: *mut std::ffi::c_void,
+        ) -> bool,
+    ) -> *mut nvinfer1::IDebugListener;
+
     // TensorRT factory functions (wrapped as simple C functions)
     #[cfg(feature = "link_tensorrt_rtx")]
     pub unsafe fn create_infer_builder(logger: *mut std::ffi::c_void) -> *mut std::ffi::c_void; // Returns IBuilder*
