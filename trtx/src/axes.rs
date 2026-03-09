@@ -48,7 +48,7 @@ impl Axes {
     /// assert_eq!(axes.to_bits(), 0b110);
     /// ```
     #[inline]
-    pub const fn from_indices<const N: usize>(indices: [u32; N]) -> Self {
+    pub const fn new<const N: usize>(indices: [u32; N]) -> Self {
         let mut bits = 0u32;
         let mut i = 0;
         while i < N {
@@ -104,29 +104,29 @@ mod tests {
 
     #[test]
     fn from_indices_empty() {
-        let axes = Axes::from_indices([]);
+        let axes = Axes::new([]);
         assert_eq!(axes.to_bits(), 0);
     }
 
     #[test]
     fn from_indices_single() {
-        assert_eq!(Axes::from_indices([0]).to_bits(), 1);
-        assert_eq!(Axes::from_indices([3]).to_bits(), 1 << 3);
-        assert_eq!(Axes::from_indices([31]).to_bits(), 1 << 31);
+        assert_eq!(Axes::new([0]).to_bits(), 1);
+        assert_eq!(Axes::new([3]).to_bits(), 1 << 3);
+        assert_eq!(Axes::new([31]).to_bits(), 1 << 31);
     }
 
     #[test]
     fn from_indices_multiple() {
-        let axes = Axes::from_indices([1, 2]);
+        let axes = Axes::new([1, 2]);
         assert_eq!(axes.to_bits(), 0b110);
-        let axes = Axes::from_indices([0, 2, 4]);
+        let axes = Axes::new([0, 2, 4]);
         assert_eq!(axes.to_bits(), 0b10101);
     }
 
     #[test]
     fn from_indices_duplicate_same_as_unique() {
-        let a = Axes::from_indices([1, 1, 2]);
-        let b = Axes::from_indices([1, 2]);
+        let a = Axes::new([1, 1, 2]);
+        let b = Axes::new([1, 2]);
         assert_eq!(a.to_bits(), b.to_bits());
     }
 
@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn eq_and_clone() {
-        let a = Axes::from_indices([1, 2]);
+        let a = Axes::new([1, 2]);
         let b = a;
         let c = a.clone();
         assert_eq!(a, b);
@@ -160,11 +160,8 @@ mod tests {
     #[test]
     fn debug_shows_indices_separated_by_pipe() {
         assert_eq!(format!("{:?}", Axes::empty()), "Axes()");
-        assert_eq!(format!("{:?}", Axes::from_indices([0])), "Axes(0)");
-        assert_eq!(format!("{:?}", Axes::from_indices([1, 2])), "Axes(1|2)");
-        assert_eq!(
-            format!("{:?}", Axes::from_indices([0, 2, 4])),
-            "Axes(0|2|4)"
-        );
+        assert_eq!(format!("{:?}", Axes::new([0])), "Axes(0)");
+        assert_eq!(format!("{:?}", Axes::new([1, 2])), "Axes(1|2)");
+        assert_eq!(format!("{:?}", Axes::new([0, 2, 4])), "Axes(0|2|4)");
     }
 }

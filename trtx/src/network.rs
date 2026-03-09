@@ -536,7 +536,7 @@ impl<'network> NetworkDefinition<'network> {
     /// Mark a tensor for debugging; [nvinfer1::IExecutionContext::setDebugListener] will receive it during execution.
     pub fn is_debug_tensor(&self, tensor: &'_ Tensor) -> bool {
         crate::check_network!(self, tensor);
-        self.inner.isDebugTensor(&tensor.as_ref())
+        self.inner.isDebugTensor(tensor.as_ref())
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::getNbInputs`].
@@ -820,16 +820,13 @@ impl<'network> NetworkDefinition<'network> {
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConcatenation`].
-    pub fn add_concatenation(
-        &self,
-        inputs: &mut [&'_ Tensor],
-    ) -> Result<ConcatenationLayer<'network>> {
+    pub fn add_concatenation(&self, inputs: &[&'_ Tensor]) -> Result<ConcatenationLayer<'network>> {
         for t in inputs.iter() {
             crate::check_network!(self, t);
         }
         let mut input_ptrs: Vec<*mut std::ffi::c_void> = inputs
-            .iter_mut()
-            .map(|t| t.as_mut() as &mut ITensor as *mut ITensor as *mut _)
+            .iter()
+            .map(|t| t.as_mut() as *mut ITensor as *mut _)
             .collect();
         let layer_ptr = unsafe {
             trtx_sys::network_add_concatenation(
@@ -1055,7 +1052,7 @@ impl<'network> NetworkDefinition<'network> {
         TopKLayer::new(self.inner.as_ptr(), layer_ptr)
     }
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addResize`].
-    pub fn add_resize(&mut self, input: &'_ Tensor) -> Result<ResizeLayer<'_>> {
+    pub fn add_resize(&mut self, input: &'_ Tensor) -> Result<ResizeLayer<'network>> {
         crate::check_network!(self, input);
         let layer_ptr = self.inner.pin_mut().addResize(input.pin_mut());
         ResizeLayer::new(self.inner.as_ptr(), layer_ptr)
