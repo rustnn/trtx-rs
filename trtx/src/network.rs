@@ -299,7 +299,7 @@ impl ConvolutionLayer<'_> {
         &mut self,
         network: &mut NetworkDefinition,
         index: i32,
-        tensor: &'_ mut Tensor,
+        tensor: &'_ Tensor,
     ) -> Result<()> {
         crate::check_network!(network, self);
         crate::check_network!(network, tensor);
@@ -375,7 +375,7 @@ impl DeconvolutionLayer<'_> {
         &mut self,
         network: &mut NetworkDefinition,
         index: i32,
-        tensor: &'_ mut Tensor,
+        tensor: &'_ Tensor,
     ) -> Result<()> {
         crate::check_network!(network, self);
         crate::check_network!(network, tensor);
@@ -516,14 +516,14 @@ impl<'network> NetworkDefinition<'network> {
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::markOutput`].
-    pub fn mark_output(&mut self, tensor: &'_ mut Tensor) {
+    pub fn mark_output(&mut self, tensor: &'_ Tensor) {
         crate::check_network!(self, tensor);
         self.inner.pin_mut().markOutput(tensor.pin_mut());
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::markDebug`].
     /// Mark a tensor for debugging; [IExecutionContext::setDebugListener] will receive it during execution.
-    pub fn mark_tensor_debug(&mut self, tensor: &'_ mut Tensor) -> Result<()> {
+    pub fn mark_tensor_debug(&mut self, tensor: &'_ Tensor) -> Result<()> {
         crate::check_network!(self, tensor);
         let success = self.inner.pin_mut().markDebug(tensor.pin_mut());
         if success {
@@ -613,7 +613,7 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addActivation`].
     pub fn add_activation(
         &mut self,
-        input: &'_ mut Tensor,
+        input: &'_ Tensor,
         activation_type: trtx_sys::ActivationType,
     ) -> Result<ActivationLayer<'network>> {
         crate::check_network!(self, input);
@@ -627,7 +627,7 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addUnary`].
     pub fn add_unary(
         &mut self,
-        input: &'_ mut Tensor,
+        input: &'_ Tensor,
         op: trtx_sys::UnaryOperation,
     ) -> Result<UnaryLayer<'network>> {
         crate::check_network!(self, input);
@@ -636,7 +636,7 @@ impl<'network> NetworkDefinition<'network> {
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addIdentity`].
-    pub fn add_identity(&mut self, input: &'_ mut Tensor) -> Result<IdentityLayer<'network>> {
+    pub fn add_identity(&mut self, input: &'_ Tensor) -> Result<IdentityLayer<'network>> {
         crate::check_network!(self, input);
         let layer_ptr = self.inner.pin_mut().addIdentity(input.pin_mut());
 
@@ -646,7 +646,7 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addCast`].
     pub fn add_cast(
         &mut self,
-        input: &'_ mut Tensor,
+        input: &'_ Tensor,
         to_type: trtx_sys::DataType,
     ) -> Result<CastLayer<'_>> {
         crate::check_network!(self, input);
@@ -660,8 +660,8 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addElementWise`].
     pub fn add_elementwise(
         &mut self,
-        input1: &'_ mut Tensor,
-        input2: &'_ mut Tensor,
+        input1: &'_ Tensor,
+        input2: &'_ Tensor,
         op: trtx_sys::ElementWiseOperation,
     ) -> Result<ElementWiseLayer<'network>> {
         crate::check_network!(self, input1);
@@ -676,7 +676,7 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addPoolingNd`].
     pub fn add_pooling(
         &'_ mut self,
-        input: &'_ mut Tensor,
+        input: &'_ Tensor,
         pooling_type: trtx_sys::PoolingType,
         window_size: &[i32; 2],
     ) -> Result<PoolingLayer<'network>> {
@@ -690,7 +690,7 @@ impl<'network> NetworkDefinition<'network> {
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addShuffle`].
-    pub fn add_shuffle(&'_ mut self, input: &'_ mut Tensor) -> Result<ShuffleLayer<'network>> {
+    pub fn add_shuffle(&'_ mut self, input: &'_ Tensor) -> Result<ShuffleLayer<'network>> {
         crate::check_network!(self, input);
         let layer_ptr = self.inner.pin_mut().addShuffle(input.pin_mut());
         ShuffleLayer::new(self.inner.as_ptr(), layer_ptr)
@@ -699,9 +699,9 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addMatrixMultiply`].
     pub fn add_matrix_multiply(
         &'_ mut self,
-        input0: &'_ mut Tensor,
+        input0: &'_ Tensor,
         op0: MatrixOperation,
-        input1: &'_ mut Tensor,
+        input1: &'_ Tensor,
         op1: MatrixOperation,
     ) -> Result<MatrixMultiplyLayer<'network>> {
         crate::check_network!(self, input0);
@@ -718,7 +718,7 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConvolutionNd`].
     pub fn add_convolution(
         &'_ mut self,
-        input: &'_ mut Tensor,
+        input: &'_ Tensor,
         nb_output_maps: i32,
         kernel_size: &[i32; 2],
         weights: &ConvWeights<'network>,
@@ -772,7 +772,7 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addDeconvolutionNd`].
     pub fn add_deconvolution(
         &mut self,
-        input: &'_ mut Tensor,
+        input: &'_ Tensor,
         nb_output_maps: i32,
         kernel_size: &[i32; 2],
         weights: &ConvWeights<'network>,
@@ -822,7 +822,7 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConcatenation`].
     pub fn add_concatenation(
         &self,
-        inputs: &mut [&'_ mut Tensor],
+        inputs: &mut [&'_ Tensor],
     ) -> Result<ConcatenationLayer<'network>> {
         for t in inputs.iter() {
             crate::check_network!(self, t);
@@ -902,7 +902,7 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addSoftMax`].
     pub fn add_softmax(
         &mut self,
-        input: &'_ mut Tensor,
+        input: &'_ Tensor,
         axes: crate::Axes,
     ) -> Result<SoftMaxLayer<'_>> {
         crate::check_network!(self, input);
@@ -915,7 +915,7 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addScale`].
     pub fn add_scale(
         &mut self,
-        input: &'_ mut Tensor,
+        input: &'_ Tensor,
         mode: ScaleMode,
         shift: &[u8],
         scale: &[u8],
@@ -962,7 +962,7 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addReduce`].
     pub fn add_reduce(
         &mut self,
-        input: &'_ mut Tensor,
+        input: &'_ Tensor,
         op: trtx_sys::nvinfer1::ReduceOperation,
         axes: crate::Axes,
         keep_dims: bool,
@@ -979,7 +979,7 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addCumulative`].
     pub fn add_cumulative(
         &mut self,
-        input: &'_ mut Tensor,
+        input: &'_ Tensor,
         axis: i32,
         op: trtx_sys::CumulativeOperation,
         exclusive: bool,
@@ -996,8 +996,8 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addCumulative`].
     pub fn add_cumulative_with_axis_tensor(
         &mut self,
-        input: &'_ mut Tensor,
-        axis_tensor: &'_ mut Tensor,
+        input: &'_ Tensor,
+        axis_tensor: &'_ Tensor,
         op: trtx_sys::CumulativeOperation,
         exclusive: bool,
         reverse: bool,
@@ -1017,7 +1017,7 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addSlice`].
     pub fn add_slice(
         &mut self,
-        input: &'_ mut Tensor,
+        input: &'_ Tensor,
         start: &[i64],
         size: &[i64],
         stride: &[i64],
@@ -1041,7 +1041,7 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addTopK`].
     pub fn add_topk(
         &mut self,
-        input: &'_ mut Tensor,
+        input: &'_ Tensor,
         op: TopKOperation,
         k: i32,
         axes: crate::Axes,
@@ -1055,7 +1055,7 @@ impl<'network> NetworkDefinition<'network> {
         TopKLayer::new(self.inner.as_ptr(), layer_ptr)
     }
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addResize`].
-    pub fn add_resize(&mut self, input: &'_ mut Tensor) -> Result<ResizeLayer<'_>> {
+    pub fn add_resize(&mut self, input: &'_ Tensor) -> Result<ResizeLayer<'_>> {
         crate::check_network!(self, input);
         let layer_ptr = self.inner.pin_mut().addResize(input.pin_mut());
         ResizeLayer::new(self.inner.as_ptr(), layer_ptr)
@@ -1064,8 +1064,8 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addGather`].
     pub fn add_gather(
         &'_ mut self,
-        data: &'_ mut Tensor,
-        indices: &'_ mut Tensor,
+        data: &'_ Tensor,
+        indices: &'_ Tensor,
         axis: i32,
     ) -> Result<GatherLayer<'network>> {
         crate::check_network!(self, data);
@@ -1080,9 +1080,9 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addScatter`].
     pub fn add_scatter(
         &mut self,
-        data: &'_ mut Tensor,
-        indices: &'_ mut Tensor,
-        updates: &'_ mut Tensor,
+        data: &'_ Tensor,
+        indices: &'_ Tensor,
+        updates: &'_ Tensor,
         mode: trtx_sys::nvinfer1::ScatterMode,
     ) -> Result<ScatterLayer<'network>> {
         crate::check_network!(self, data);
@@ -1100,8 +1100,8 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addQuantize`].
     pub fn add_quantize(
         &'_ mut self,
-        input: &'_ mut Tensor,
-        scale: &'_ mut Tensor,
+        input: &'_ Tensor,
+        scale: &'_ Tensor,
         output_type: trtx_sys::nvinfer1::DataType,
     ) -> Result<QuantizeLayer<'network>> {
         crate::check_network!(self, input);
@@ -1116,8 +1116,8 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addDequantize`].
     pub fn add_dequantize(
         &mut self,
-        input: &'_ mut Tensor,
-        scale: &'_ mut Tensor,
+        input: &'_ Tensor,
+        scale: &'_ Tensor,
         output_type: trtx_sys::nvinfer1::DataType,
     ) -> Result<DequantizeLayer<'_>> {
         crate::check_network!(self, input);
@@ -1132,9 +1132,9 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addSelect`].
     pub fn add_select(
         &mut self,
-        condition: &'_ mut Tensor,
-        then_input: &'_ mut Tensor,
-        else_input: &'_ mut Tensor,
+        condition: &'_ Tensor,
+        then_input: &'_ Tensor,
+        else_input: &'_ Tensor,
     ) -> Result<SelectLayer<'_>> {
         crate::check_network!(self, condition);
         crate::check_network!(self, then_input);
@@ -1150,7 +1150,7 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addPaddingNd`].
     pub fn add_padding(
         &mut self,
-        input: &'_ mut Tensor,
+        input: &'_ Tensor,
         pre_padding: &[i32],
         post_padding: &[i32],
     ) -> Result<PaddingLayer<'network>> {
@@ -1172,7 +1172,7 @@ impl<'network> NetworkDefinition<'network> {
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addAssertion`].
-    pub fn add_assertion(&mut self, condition: &'_ mut Tensor, message: &str) -> Result<()> {
+    pub fn add_assertion(&mut self, condition: &'_ Tensor, message: &str) -> Result<()> {
         crate::check_network!(self, condition);
         let message_cstr = std::ffi::CString::new(message)?;
         let layer_ptr = unsafe {
@@ -1210,9 +1210,9 @@ impl<'network> NetworkDefinition<'network> {
     /// Creates an attention block (internally creates [`AttentionInputLayer`] and [`AttentionOutputLayer`]).
     pub fn add_attention(
         &mut self,
-        query: &'_ mut Tensor,
-        key: &'_ mut Tensor,
-        value: &'_ mut Tensor,
+        query: &'_ Tensor,
+        key: &'_ Tensor,
+        value: &'_ Tensor,
         norm_op: trtx_sys::AttentionNormalizationOp,
         causal: bool,
     ) -> Result<Attention<'network>> {
@@ -1253,7 +1253,7 @@ impl<'network> Loop<'network> {
     pub fn add_recurrence(
         &mut self,
         network: &mut NetworkDefinition,
-        initial_value: &'_ mut Tensor,
+        initial_value: &'_ Tensor,
     ) -> Result<RecurrenceLayer<'network>> {
         crate::check_network!(network, self);
         crate::check_network!(network, initial_value);
@@ -1265,7 +1265,7 @@ impl<'network> Loop<'network> {
     pub fn add_trip_limit(
         &mut self,
         network: &mut NetworkDefinition,
-        tensor: &'_ mut Tensor,
+        tensor: &'_ Tensor,
         limit: trtx_sys::nvinfer1::TripLimit,
     ) -> Result<TripLimitLayer<'network>> {
         crate::check_network!(network, self);
@@ -1278,7 +1278,7 @@ impl<'network> Loop<'network> {
     pub fn add_iterator(
         &mut self,
         network: &mut NetworkDefinition,
-        tensor: &'_ mut Tensor,
+        tensor: &'_ Tensor,
         axis: i32,
         reverse: bool,
     ) -> Result<IteratorLayer<'network>> {
@@ -1296,7 +1296,7 @@ impl<'network> Loop<'network> {
     pub fn add_loop_output(
         &mut self,
         network: &mut NetworkDefinition,
-        tensor: &'_ mut Tensor,
+        tensor: &'_ Tensor,
         output_kind: trtx_sys::nvinfer1::LoopOutput,
         axis: i32,
     ) -> Result<LoopOutputLayer<'network>> {
@@ -1317,7 +1317,7 @@ impl<'network> IfConditional<'network> {
     pub fn set_condition(
         &mut self,
         network: &mut NetworkDefinition,
-        condition: &'_ mut Tensor,
+        condition: &'_ Tensor,
     ) -> Result<ConditionLayer<'network>> {
         crate::check_network!(network, self);
         crate::check_network!(network, condition);
@@ -1329,7 +1329,7 @@ impl<'network> IfConditional<'network> {
     pub fn add_input(
         &mut self,
         network: &mut NetworkDefinition,
-        input: &'_ mut Tensor,
+        input: &'_ Tensor,
     ) -> Result<IfConditionalInputLayer<'network>> {
         crate::check_network!(network, self);
         crate::check_network!(network, input);
@@ -1341,8 +1341,8 @@ impl<'network> IfConditional<'network> {
     pub fn add_output(
         &mut self,
         network: &mut NetworkDefinition,
-        true_output: &'_ mut Tensor,
-        false_output: &'_ mut Tensor,
+        true_output: &'_ Tensor,
+        false_output: &'_ Tensor,
     ) -> Result<IfConditionalOutputLayer<'network>> {
         crate::check_network!(network, self);
         crate::check_network!(network, true_output);
@@ -1363,7 +1363,7 @@ impl RecurrenceLayer<'_> {
         &mut self,
         network: &mut NetworkDefinition,
         index: i32,
-        tensor: &'_ mut Tensor,
+        tensor: &'_ Tensor,
     ) -> Result<()> {
         crate::check_network!(network, self);
         crate::check_network!(network, tensor);
@@ -1421,9 +1421,9 @@ impl<'builder> NetworkDefinition<'builder> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addNormalization`].
     pub fn add_normalization(
         &mut self,
-        input: &'_ mut Tensor,
-        scale: &'_ mut Tensor,
-        bias: &'_ mut Tensor,
+        input: &'_ Tensor,
+        scale: &'_ Tensor,
+        bias: &'_ Tensor,
         axes_mask: crate::Axes,
     ) -> Result<NormalizationLayer<'builder>> {
         crate::check_network!(self, input);
@@ -1441,9 +1441,9 @@ impl<'builder> NetworkDefinition<'builder> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addNormalizationV2`].
     pub fn add_normalization_v2(
         &mut self,
-        input: &'_ mut Tensor,
-        scale: &'_ mut Tensor,
-        bias: &'_ mut Tensor,
+        input: &'_ Tensor,
+        scale: &'_ Tensor,
+        bias: &'_ Tensor,
         axes_mask: crate::Axes,
     ) -> Result<NormalizationLayer<'builder>> {
         crate::check_network!(self, input);
