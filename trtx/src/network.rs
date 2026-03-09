@@ -270,27 +270,24 @@ impl<'network> ScatterLayer<'network> {
 }
 
 impl ConvolutionLayer<'_> {
-    pub fn set_stride(&mut self, network: &mut NetworkDefinition, stride: &[i32; 2]) {
+    pub fn set_stride(&mut self, network: &mut NetworkDefinition, stride: &[i64; 2]) {
         crate::check_network!(network, self);
-        let dims_i64: Vec<i64> = stride.iter().map(|&s| s as i64).collect();
-        let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
+        let dims_obj = trtx_sys::Dims::from_slice(stride);
         self.inner.as_mut().setStrideNd(&dims_obj);
     }
-    pub fn set_padding(&mut self, network: &mut NetworkDefinition, padding: &[i32; 2]) {
+    pub fn set_padding(&mut self, network: &mut NetworkDefinition, padding: &[i64; 2]) {
         crate::check_network!(network, self);
-        let dims_i64: Vec<i64> = padding.iter().map(|&p| p as i64).collect();
-        let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
+        let dims_obj = trtx_sys::Dims::from_slice(padding);
         self.inner.as_mut().setPaddingNd(&dims_obj);
     }
-    pub fn set_dilation(&mut self, network: &mut NetworkDefinition, dilation: &[i32; 2]) {
+    pub fn set_dilation(&mut self, network: &mut NetworkDefinition, dilation: &[i64; 2]) {
         crate::check_network!(network, self);
-        let dims_i64: Vec<i64> = dilation.iter().map(|&d| d as i64).collect();
-        let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
+        let dims_obj = trtx_sys::Dims::from_slice(dilation);
         self.inner.as_mut().setDilationNd(&dims_obj);
     }
-    pub fn set_num_groups(&mut self, network: &mut NetworkDefinition, num_groups: i32) {
+    pub fn set_num_groups(&mut self, network: &mut NetworkDefinition, num_groups: i64) {
         crate::check_network!(network, self);
-        self.inner.as_mut().setNbGroups(num_groups as i64);
+        self.inner.as_mut().setNbGroups(num_groups);
     }
 
     /// Set an input tensor by index. Input 0 is the activation; 1 is the kernel tensor; 2 is the bias tensor.
@@ -314,10 +311,9 @@ impl ConvolutionLayer<'_> {
 }
 
 impl DeconvolutionLayer<'_> {
-    pub fn set_stride(&mut self, network: &mut NetworkDefinition, stride: &[i32; 2]) -> Result<()> {
+    pub fn set_stride(&mut self, network: &mut NetworkDefinition, stride: &[i64; 2]) -> Result<()> {
         crate::check_network!(network, self);
-        let dims_i64: Vec<i64> = stride.iter().map(|&p| p as i64).collect();
-        let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
+        let dims_obj = trtx_sys::Dims::from_slice(stride);
         self.inner.as_mut().setStrideNd(&dims_obj);
         Ok(())
     }
@@ -327,11 +323,10 @@ impl DeconvolutionLayer<'_> {
     pub fn set_pre_padding(
         &mut self,
         network: &mut NetworkDefinition,
-        padding: &[i32; 2],
+        padding: &[i64; 2],
     ) -> Result<()> {
         crate::check_network!(network, self);
-        let dims_i64: Vec<i64> = padding.iter().map(|&p| p as i64).collect();
-        let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
+        let dims_obj = trtx_sys::Dims::from_slice(padding);
         self.inner.as_mut().setPrePadding(&dims_obj);
         Ok(())
     }
@@ -340,22 +335,20 @@ impl DeconvolutionLayer<'_> {
     pub fn set_post_padding(
         &mut self,
         network: &mut NetworkDefinition,
-        padding: &[i32; 2],
+        padding: &[i64; 2],
     ) -> Result<()> {
         crate::check_network!(network, self);
-        let dims_i64: Vec<i64> = padding.iter().map(|&p| p as i64).collect();
-        let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
+        let dims_obj = trtx_sys::Dims::from_slice(padding);
         self.inner.as_mut().setPostPadding(&dims_obj);
         Ok(())
     }
     pub fn set_dilation(
         &mut self,
         network: &mut NetworkDefinition,
-        dilation: &[i32; 2],
+        dilation: &[i64; 2],
     ) -> Result<()> {
         crate::check_network!(network, self);
-        let dims_i64: Vec<i64> = dilation.iter().map(|&p| p as i64).collect();
-        let dims_obj = trtx_sys::Dims::from_slice(&dims_i64);
+        let dims_obj = trtx_sys::Dims::from_slice(dilation);
         self.inner.as_mut().setDilationNd(&dims_obj);
         Ok(())
     }
@@ -363,10 +356,10 @@ impl DeconvolutionLayer<'_> {
     pub fn set_num_groups(
         &mut self,
         network: &mut NetworkDefinition,
-        num_groups: i32,
+        num_groups: i64,
     ) -> Result<()> {
         crate::check_network!(network, self);
-        self.inner.as_mut().setNbGroups(num_groups as i64);
+        self.inner.as_mut().setNbGroups(num_groups);
         Ok(())
     }
     /// Set an input tensor by index. Input 0 is the activation; 1 is the kernel tensor; 2 is the bias tensor.
@@ -722,7 +715,7 @@ impl<'network> NetworkDefinition<'network> {
         nb_output_maps: i32,
         kernel_size: &[i32; 2],
         weights: &ConvWeights<'network>,
-    ) -> Result<ConvolutionLayer<'_>> {
+    ) -> Result<ConvolutionLayer<'network>> {
         crate::check_network!(self, input);
         let kernel_dtype = weights.kernel_dtype;
         let kernel_weights = weights.kernel_weights;
@@ -773,10 +766,10 @@ impl<'network> NetworkDefinition<'network> {
     pub fn add_deconvolution(
         &mut self,
         input: &'_ Tensor,
-        nb_output_maps: i32,
-        kernel_size: &[i32; 2],
+        nb_output_maps: i64,
+        kernel_size: &[i64; 2],
         weights: &ConvWeights<'network>,
-    ) -> Result<DeconvolutionLayer<'_>> {
+    ) -> Result<DeconvolutionLayer<'network>> {
         crate::check_network!(self, input);
         let kernel_dtype = weights.kernel_dtype;
         let kernel_weights = weights.kernel_weights;
@@ -901,7 +894,7 @@ impl<'network> NetworkDefinition<'network> {
         &mut self,
         input: &'_ Tensor,
         axes: crate::Axes,
-    ) -> Result<SoftMaxLayer<'_>> {
+    ) -> Result<SoftMaxLayer<'network>> {
         crate::check_network!(self, input);
         let layer_ptr = self.inner.pin_mut().addSoftMax(input.pin_mut());
         let mut rtn = SoftMaxLayer::new(self.inner.as_ptr(), layer_ptr)?;
@@ -917,7 +910,7 @@ impl<'network> NetworkDefinition<'network> {
         shift: &[u8],
         scale: &[u8],
         power: &[u8],
-    ) -> Result<ScaleLayer<'_>> {
+    ) -> Result<ScaleLayer<'network>> {
         crate::check_network!(self, input);
         let weight_count = match mode {
             ScaleMode::kUNIFORM => 1i64,
@@ -1116,7 +1109,7 @@ impl<'network> NetworkDefinition<'network> {
         input: &'_ Tensor,
         scale: &'_ Tensor,
         output_type: trtx_sys::nvinfer1::DataType,
-    ) -> Result<DequantizeLayer<'_>> {
+    ) -> Result<DequantizeLayer<'network>> {
         crate::check_network!(self, input);
         crate::check_network!(self, scale);
         let layer_ptr =
@@ -1132,7 +1125,7 @@ impl<'network> NetworkDefinition<'network> {
         condition: &'_ Tensor,
         then_input: &'_ Tensor,
         else_input: &'_ Tensor,
-    ) -> Result<SelectLayer<'_>> {
+    ) -> Result<SelectLayer<'network>> {
         crate::check_network!(self, condition);
         crate::check_network!(self, then_input);
         crate::check_network!(self, else_input);
@@ -1148,8 +1141,8 @@ impl<'network> NetworkDefinition<'network> {
     pub fn add_padding(
         &mut self,
         input: &'_ Tensor,
-        pre_padding: &[i32],
-        post_padding: &[i32],
+        pre_padding: &[i64],
+        post_padding: &[i64],
     ) -> Result<PaddingLayer<'network>> {
         crate::check_network!(self, input);
         if pre_padding.len() != post_padding.len() {
@@ -1157,10 +1150,8 @@ impl<'network> NetworkDefinition<'network> {
                 "pre_padding and post_padding must have the same length".to_string(),
             ));
         }
-        let pre_i64: Vec<i64> = pre_padding.iter().map(|&d| d as i64).collect();
-        let post_i64: Vec<i64> = post_padding.iter().map(|&d| d as i64).collect();
-        let pre_dims = trtx_sys::Dims::from_slice(&pre_i64);
-        let post_dims = trtx_sys::Dims::from_slice(&post_i64);
+        let pre_dims = trtx_sys::Dims::from_slice(pre_padding);
+        let post_dims = trtx_sys::Dims::from_slice(post_padding);
         let layer_ptr = self
             .inner
             .pin_mut()
