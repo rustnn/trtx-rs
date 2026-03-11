@@ -324,8 +324,107 @@ mod tests {
         }
     }
 
+    /// Builds a small conv network: input [1,1,4,4] -> conv(1->4) -> conv(4->4) -> conv(4->4) -> output.
+    /// Each conv output is named and marked for debug.
+    fn build_conv_chain(logger: &Logger) -> crate::Result<(Vec<u8>, Vec<String>)> {
+        // Declare kernel bytes before builder so their lifetime outlives 'network.
+        // conv0: out=4, in=1, 3x3  conv1/2: out=4, in=4, 3x3
+        let make_kernel = |out_ch: usize, in_ch: usize| -> Vec<u8> {
+            std::iter::repeat_n(0.1f32, out_ch * in_ch * 3 * 3)
+                .flat_map(|v| v.to_le_bytes())
+                .collect()
+        };
+        let kernel_0 = make_kernel(4, 1);
+        let kernel_1 = make_kernel(4, 4);
+        let kernel_2 = make_kernel(4, 4);
+
+        let mut builder = Builder::new(logger)?;
+        let mut network = builder.create_network(0)?;
+
+        // Input: [N=1, C=1, H=4, W=4] — TensorRT conv requires at least 4D
+        let mut tensor = network.add_input("input", DataType::kFLOAT, &[1, 1, 4, 4])?;
+        let mut debug_names = Vec::new();
+
+        let conv_defs: [(i32, &Vec<u8>); 3] = [(4, &kernel_0), (4, &kernel_1), (4, &kernel_2)];
+        for (i, &(out_ch, kbytes)) in conv_defs.iter().enumerate() {
+            let weights = crate::ConvWeights {
+                kernel_weights: kbytes,
+                kernel_dtype: DataType::kFLOAT,
+                bias_weights: None,
+                bias_dtype: None,
+            };
+            let mut conv = network.add_convolution(&tensor, out_ch, &[3, 3], &weights)?;
+            conv.set_padding(&mut network, &[1i64, 1i64]);
+            let name = format!("conv_out_{}", i);
+            conv.set_name(&mut network, &name)?;
+            tensor = conv.get_output(&network, 0)?;
+            tensor.set_name(&mut network, &name)?;
+            network.mark_tensor_debug(&tensor)?;
+            debug_names.push(name);
+        }
+        network.mark_output(&tensor);
+
+        let mut config = builder.create_config()?;
+        config.set_memory_pool_limit(MemoryPoolType::kWORKSPACE, 1 << 20);
+        let engine_data = builder.build_serialized_network(&mut network, &mut config)?;
+        Ok((engine_data.to_vec(), debug_names))
+    }
+
     #[test]
-    #[ignore]
+    fn set_debug_listener_conv_chain() {
+        let logger = Logger::stderr().expect("logger");
+        let (engine_data, _debug_names) = build_conv_chain(&logger).expect("build conv network");
+
+        let mut runtime = Runtime::new(&logger).expect("runtime");
+        let mut engine = runtime
+            .deserialize_cuda_engine(&engine_data)
+            .expect("deserialize");
+        let mut context = engine
+            .create_execution_context()
+            .expect("execution context");
+
+        let seen = Arc::new(Mutex::new(Vec::<(String, Vec<i64>)>::new()));
+        context
+            .set_debug_listener(Box::new(CollectingDebugListener {
+                seen: Arc::clone(&seen),
+            }))
+            .expect("set_debug_listener");
+        context.set_all_tensors_debug_state(true).unwrap();
+
+        // input: 1 channel 4x4, output: 4 channels 4x4
+        let input_elems = 1 * 4 * 4;
+        let output_elems = 4 * 4 * 4;
+        let elem_size = std::mem::size_of::<f32>();
+        let input_bytes: Vec<u8> = std::iter::repeat_n(1.0f32, input_elems)
+            .flat_map(|v| v.to_le_bytes())
+            .collect();
+        let mut input_device = DeviceBuffer::new(input_elems * elem_size).expect("input buffer");
+        let output_device = DeviceBuffer::new(output_elems * elem_size).expect("output buffer");
+        input_device
+            .copy_from_host(&input_bytes)
+            .expect("copy input");
+
+        unsafe {
+            context
+                .set_tensor_address("input", input_device.as_ptr())
+                .expect("set input");
+            context
+                .set_tensor_address("conv_out_2", output_device.as_ptr())
+                .expect("set output");
+            context
+                .enqueue_v3(crate::cuda::get_default_stream())
+                .expect("enqueue");
+        }
+        synchronize().expect("sync");
+
+        let seen = seen.lock().unwrap();
+        assert!(
+            !seen.is_empty(),
+            "debug listener should have seen at least one tensor, saw 0"
+        );
+    }
+
+    #[test]
     // our callback does not get called at the moment
     fn set_debug_listener_plus1_chain() {
         let logger = Logger::stderr().expect("logger");
