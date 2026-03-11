@@ -274,18 +274,18 @@ mod tests {
         for i in 1..=4 {
             let one_layer =
                 network.add_small_constant_copied(&[1], &one_bytes, DataType::kFLOAT)?;
-            let mut one_t = one_layer.get_output(&network, 0)?;
+            let one_t = one_layer.get_output(&network, 0)?;
             let mut sum_layer =
-                network.add_elementwise(&mut tensor, &mut one_t, ElementWiseOperation::kSUM)?;
+                network.add_elementwise(&tensor, &one_t, ElementWiseOperation::kSUM)?;
             sum_layer.set_name(&mut network, &format!("plus1_{}", i))?;
             tensor = sum_layer.get_output(&network, 0)?;
             let name = format!("tensor_{}", i);
             tensor.set_name(&mut network, &name)?;
-            network.mark_tensor_debug(&mut tensor)?;
+            network.mark_tensor_debug(&tensor)?;
             assert!(network.is_debug_tensor(&tensor));
             debug_names.push(name);
         }
-        network.mark_output(&mut tensor);
+        network.mark_output(&tensor);
 
         let mut config = builder.create_config()?;
         config.set_memory_pool_limit(MemoryPoolType::kWORKSPACE, 1 << 20);
@@ -392,7 +392,7 @@ mod tests {
         context.set_all_tensors_debug_state(true).unwrap();
 
         // input: 1 channel 4x4, output: 4 channels 4x4
-        let input_elems = 1 * 4 * 4;
+        let input_elems = 4 * 4;
         let output_elems = 4 * 4 * 4;
         let elem_size = std::mem::size_of::<f32>();
         let input_bytes: Vec<u8> = std::iter::repeat_n(1.0f32, input_elems)

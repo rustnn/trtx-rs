@@ -186,6 +186,9 @@ pub trait AllocateGpu: Send + Sync {
     // we omit the following deprecated methods
     //fn allocate(&mut self, size: u64, alignment: u64, flags: u32) -> *mut autocxx::c_void;
     //unsafe fn deallocate(&mut self, data: *mut autocxx::c_void) -> bool;
+
+    /// # Safety
+    /// User needs to ensure memory safety for CUDA device pointers and follow regular CUDA rules
     unsafe fn allocate_async(
         &self,
         size: u64,
@@ -193,12 +196,16 @@ pub trait AllocateGpu: Send + Sync {
         flags: u32,
         cuda_stream: *mut std::ffi::c_void,
     ) -> *mut std::ffi::c_void;
+    /// # Safety
+    /// User needs to ensure memory safety for CUDA device pointers and follow regular CUDA rules
     unsafe fn reallocate(
         &self,
         memory: *mut std::ffi::c_void,
         alignment: u64,
         new_size: u64,
     ) -> *mut std::ffi::c_void;
+    /// # Safety
+    /// User needs to ensure memory safety for CUDA device pointers and follow regular CUDA rules
     unsafe fn deallocate_async(
         &self,
         data: *mut std::ffi::c_void,
@@ -392,6 +399,10 @@ impl DebugListener {
 }
 
 pub trait ProcessDebugTensor: Send + Sync {
+    /// # Safety
+    ///
+    /// User needs to ensure memory safety for CUDA pointers and ensure correct lifetimes for CUDA
+    /// objects
     unsafe fn process_debug_tensor(
         &self,
         addr: *const std::ffi::c_void,

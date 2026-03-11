@@ -58,12 +58,14 @@ impl Tensor<'_> {
         }
     }
 
+    #[allow(clippy::mut_from_ref)]
     fn pin_mut(&self) -> Pin<&mut nvinfer1::ITensor> {
         unsafe { Pin::new_unchecked(self.inner.as_mut().unwrap()) }
     }
     fn as_ref(&self) -> &nvinfer1::ITensor {
         unsafe { self.inner.as_ref().unwrap() }
     }
+    #[allow(clippy::mut_from_ref)]
     fn as_mut(&self) -> &mut nvinfer1::ITensor {
         unsafe { self.inner.as_mut().unwrap() }
     }
@@ -794,7 +796,7 @@ impl<'network> NetworkDefinition<'network> {
         } else {
             std::ptr::null()
         };
-        let kernel_dims = trtx_sys::Dims::new_2d(kernel_size[0] as i64, kernel_size[1] as i64);
+        let kernel_dims = trtx_sys::Dims::new_2d(kernel_size[0], kernel_size[1]);
         let kernel_w = trtx_sys::nvinfer1::Weights::new_with_type(
             kernel_dtype.into(),
             kernel_ptr,
@@ -804,7 +806,7 @@ impl<'network> NetworkDefinition<'network> {
             trtx_sys::nvinfer1::Weights::new_with_type(bias_dtype_val.into(), bias_ptr, bias_count);
         let layer_ptr = self.inner.pin_mut().addDeconvolutionNd(
             input.pin_mut(),
-            nb_output_maps as i64,
+            nb_output_maps,
             kernel_dims,
             kernel_w,
             bias_w,
@@ -978,8 +980,8 @@ impl<'network> NetworkDefinition<'network> {
         let axis_bytes = axis.to_le_bytes();
         let axis_constant =
             self.add_small_constant_copied(&[], &axis_bytes, trtx_sys::DataType::kINT32)?;
-        let mut axis_tensor = axis_constant.get_output(self, 0)?;
-        self.add_cumulative_with_axis_tensor(input, &mut axis_tensor, op, exclusive, reverse)
+        let axis_tensor = axis_constant.get_output(self, 0)?;
+        self.add_cumulative_with_axis_tensor(input, &axis_tensor, op, exclusive, reverse)
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addCumulative`].

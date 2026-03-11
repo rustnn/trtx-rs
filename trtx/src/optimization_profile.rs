@@ -10,7 +10,7 @@ pub struct OptimizationProfile<'builder> {
 }
 
 impl<'builder> OptimizationProfile<'builder> {
-    pub unsafe fn from_raw(profile: &'builder mut nvinfer1::IOptimizationProfile) -> Self {
+    pub fn from_raw(profile: &'builder mut nvinfer1::IOptimizationProfile) -> Self {
         Self {
             inner: unsafe { Pin::new_unchecked(profile) },
             _builder: Default::default(),

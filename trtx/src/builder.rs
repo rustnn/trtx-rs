@@ -136,7 +136,7 @@ impl<'builder> Builder<'builder> {
                     Error::Runtime("Failed to create optimization profile".to_string())
                 })?
         };
-        Ok(unsafe { OptimizationProfile::from_raw(profile) })
+        Ok(OptimizationProfile::from_raw(profile))
     }
 
     /// See [trtx_sys::nvinfer1::IBuilder::setErrorRecorder]
