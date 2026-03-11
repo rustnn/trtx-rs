@@ -44,7 +44,7 @@ impl Axes {
     /// ```
     /// # use trtx::Axes;
     /// // Axes 1 and 2 (e.g. for channel normalization over NCHW)
-    /// let axes = Axes::from_indices([1, 2]);
+    /// let axes = Axes::new([1, 2]);
     /// assert_eq!(axes.to_bits(), 0b110);
     /// ```
     #[inline]
@@ -54,6 +54,23 @@ impl Axes {
         while i < N {
             bits |= 1u32.wrapping_shl(indices[i]);
             i += 1;
+        }
+        Axes(bits)
+    }
+
+    /// Build from a list of axis indices. Each index sets the corresponding bit.
+    ///
+    /// # Example
+    /// ```
+    /// # use trtx::Axes;
+    /// // Axes 1 and 2 (e.g. for channel normalization over NCHW)
+    /// let axes = Axes::from_slice(&[1, 2]);
+    /// assert_eq!(axes.to_bits(), 0b110);
+    /// ```
+    pub fn from_slice(indices: &[u32]) -> Self {
+        let mut bits = 0u32;
+        for &index in indices {
+            bits |= 1u32.wrapping_shl(index);
         }
         Axes(bits)
     }

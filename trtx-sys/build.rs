@@ -103,6 +103,7 @@ fn generate_enum_bindings(crate_root: &str, out_path: &Path) {
         ".*Transformation",
         ".*Location",
         ".*Role",
+        ".*Limit",
         ".*AttentionNormalizationOp",
         ".*SeekPosition",
     ] {

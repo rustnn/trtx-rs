@@ -269,7 +269,7 @@ impl<'network> ScatterLayer<'network> {
     }
 }
 
-impl ConvolutionLayer<'_> {
+impl<'network> ConvolutionLayer<'network> {
     pub fn set_stride(&mut self, network: &mut NetworkDefinition, stride: &[i64; 2]) {
         crate::check_network!(network, self);
         let dims_obj = trtx_sys::Dims::from_slice(stride);
@@ -296,7 +296,7 @@ impl ConvolutionLayer<'_> {
         &mut self,
         network: &mut NetworkDefinition,
         index: i32,
-        tensor: &'_ Tensor,
+        tensor: &'_ Tensor<'network>,
     ) -> Result<()> {
         crate::check_network!(network, self);
         crate::check_network!(network, tensor);
@@ -310,7 +310,7 @@ impl ConvolutionLayer<'_> {
     }
 }
 
-impl DeconvolutionLayer<'_> {
+impl<'network> DeconvolutionLayer<'network> {
     pub fn set_stride(&mut self, network: &mut NetworkDefinition, stride: &[i64; 2]) -> Result<()> {
         crate::check_network!(network, self);
         let dims_obj = trtx_sys::Dims::from_slice(stride);
@@ -368,7 +368,7 @@ impl DeconvolutionLayer<'_> {
         &mut self,
         network: &mut NetworkDefinition,
         index: i32,
-        tensor: &'_ Tensor,
+        tensor: &'_ Tensor<'network>,
     ) -> Result<()> {
         crate::check_network!(network, self);
         crate::check_network!(network, tensor);
@@ -641,7 +641,7 @@ impl<'network> NetworkDefinition<'network> {
         &mut self,
         input: &'_ Tensor,
         to_type: trtx_sys::DataType,
-    ) -> Result<CastLayer<'_>> {
+    ) -> Result<CastLayer<'network>> {
         crate::check_network!(self, input);
         let layer_ptr = self
             .inner
@@ -671,10 +671,10 @@ impl<'network> NetworkDefinition<'network> {
         &'_ mut self,
         input: &'_ Tensor,
         pooling_type: trtx_sys::PoolingType,
-        window_size: &[i32; 2],
+        window_size: &[i64; 2],
     ) -> Result<PoolingLayer<'network>> {
         crate::check_network!(self, input);
-        let window_dims = trtx_sys::Dims::new_2d(window_size[0] as i64, window_size[1] as i64);
+        let window_dims = trtx_sys::Dims::new_2d(window_size[0], window_size[1]);
         let layer_ptr =
             self.inner
                 .pin_mut()
@@ -835,7 +835,7 @@ impl<'network> NetworkDefinition<'network> {
     /// Same as [`Self::add_constant`] just copying the provided weights for small weights like scalars
     pub fn add_small_constant_copied(
         &mut self,
-        dims: &[i32],
+        dims: &[i64],
         weights: &[u8],
         data_type: trtx_sys::DataType,
     ) -> Result<ConstantLayer<'network>> {
@@ -844,12 +844,12 @@ impl<'network> NetworkDefinition<'network> {
 
     unsafe fn add_constant_unsafe(
         &mut self,
-        dims: &[i32],
+        dims: &[i64],
         weights: &[u8],
         data_type: trtx_sys::DataType,
         copy: bool,
     ) -> Result<ConstantLayer<'network>> {
-        let element_count: i64 = dims.iter().map(|&d| d as i64).product();
+        let element_count: i64 = dims.iter().product();
         let expected_bytes = element_count * data_type.size_bits() as i64 / 8;
         if weights.len() as i64 != expected_bytes {
             panic!(
@@ -857,8 +857,7 @@ impl<'network> NetworkDefinition<'network> {
                 weights.len()
             );
         }
-        let dims_i64: Vec<i64> = dims.iter().map(|&d| d as i64).collect();
-        let dims_struct = trtx_sys::Dims::from_slice(&dims_i64);
+        let dims_struct = trtx_sys::Dims::from_slice(dims);
         let weights_struct = trtx_sys::nvinfer1::Weights::new_with_type(
             data_type.into(),
             if copy {
@@ -882,7 +881,7 @@ impl<'network> NetworkDefinition<'network> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConstant`].
     pub fn add_constant(
         &mut self,
-        dims: &[i32],
+        dims: &[i64],
         weights: &'network [u8],
         data_type: trtx_sys::DataType,
     ) -> Result<ConstantLayer<'network>> {
@@ -1073,7 +1072,7 @@ impl<'network> NetworkDefinition<'network> {
         data: &'_ Tensor,
         indices: &'_ Tensor,
         updates: &'_ Tensor,
-        mode: trtx_sys::nvinfer1::ScatterMode,
+        mode: trtx_sys::ScatterMode,
     ) -> Result<ScatterLayer<'network>> {
         crate::check_network!(self, data);
         crate::check_network!(self, indices);
@@ -1082,7 +1081,7 @@ impl<'network> NetworkDefinition<'network> {
             data.pin_mut(),
             indices.pin_mut(),
             updates.pin_mut(),
-            mode,
+            mode.into(),
         );
         ScatterLayer::new(self.inner.as_ptr(), layer_ptr)
     }
@@ -1092,14 +1091,14 @@ impl<'network> NetworkDefinition<'network> {
         &'_ mut self,
         input: &'_ Tensor,
         scale: &'_ Tensor,
-        output_type: trtx_sys::nvinfer1::DataType,
+        output_type: trtx_sys::DataType,
     ) -> Result<QuantizeLayer<'network>> {
         crate::check_network!(self, input);
         crate::check_network!(self, scale);
         let layer_ptr =
             self.inner
                 .pin_mut()
-                .addQuantize(input.pin_mut(), scale.pin_mut(), output_type);
+                .addQuantize(input.pin_mut(), scale.pin_mut(), output_type.into());
         QuantizeLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
@@ -1108,14 +1107,15 @@ impl<'network> NetworkDefinition<'network> {
         &mut self,
         input: &'_ Tensor,
         scale: &'_ Tensor,
-        output_type: trtx_sys::nvinfer1::DataType,
+        output_type: trtx_sys::DataType,
     ) -> Result<DequantizeLayer<'network>> {
         crate::check_network!(self, input);
         crate::check_network!(self, scale);
-        let layer_ptr =
-            self.inner
-                .pin_mut()
-                .addDequantize(input.pin_mut(), scale.pin_mut(), output_type);
+        let layer_ptr = self.inner.pin_mut().addDequantize(
+            input.pin_mut(),
+            scale.pin_mut(),
+            output_type.into(),
+        );
         DequantizeLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
@@ -1254,11 +1254,15 @@ impl<'network> Loop<'network> {
         &mut self,
         network: &mut NetworkDefinition,
         tensor: &'_ Tensor,
-        limit: trtx_sys::nvinfer1::TripLimit,
+        limit: trtx_sys::TripLimit,
     ) -> Result<TripLimitLayer<'network>> {
         crate::check_network!(network, self);
         crate::check_network!(network, tensor);
-        let layer_ptr = { self.inner.as_mut().addTripLimit(tensor.pin_mut(), limit) };
+        let layer_ptr = {
+            self.inner
+                .as_mut()
+                .addTripLimit(tensor.pin_mut(), limit.into())
+        };
         TripLimitLayer::new(network.inner.as_ptr(), layer_ptr)
     }
 
@@ -1345,13 +1349,13 @@ impl<'network> IfConditional<'network> {
 
 // --- RecurrenceLayer: set_input(1, tensor) for value from inside loop ---
 
-impl RecurrenceLayer<'_> {
+impl<'network> RecurrenceLayer<'network> {
     /// See [`trtx_sys::nvinfer1::IRecurrenceLayer`]. Input 0 = initial value (set at creation); input 1 = value from previous iteration (from inside loop).
     pub fn set_input(
         &mut self,
         network: &mut NetworkDefinition,
         index: i32,
-        tensor: &'_ Tensor,
+        tensor: &'_ Tensor<'network>,
     ) -> Result<()> {
         crate::check_network!(network, self);
         crate::check_network!(network, tensor);
