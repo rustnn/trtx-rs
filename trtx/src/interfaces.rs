@@ -353,14 +353,18 @@ unsafe extern "system" fn DebugListener_processDebugTensor(
     let this = this as *const DebugListener;
     let name = (!name.is_null()).then(|| CStr::from_ptr(name));
     let name = name.map(|s| s.to_string_lossy());
-    this.as_ref().unwrap().rust_impl.process_debug_tensor(
-        addr,
-        location.into(),
-        type_.into(),
-        shape.as_ref().unwrap(),
-        name.as_deref(),
-        stream,
-    )
+    this.as_ref()
+        .unwrap()
+        .rust_impl
+        .process_debug_tensor(
+            addr,
+            location.into(),
+            type_.into(),
+            shape.as_ref().unwrap(),
+            name.as_deref(),
+            stream,
+        )
+        .is_ok()
 }
 
 ///
@@ -370,6 +374,8 @@ pub struct DebugListener {
     cpp_obj: UniquePtr<nvinfer1::IDebugListener>,
     rust_impl: Box<dyn ProcessDebugTensor>,
 }
+
+pub type ProcessDebugTensorResult = std::result::Result<(), ()>;
 
 impl DebugListener {
     pub fn new(inner: Box<dyn ProcessDebugTensor>) -> Result<Pin<Box<Self>>> {
@@ -411,7 +417,7 @@ pub trait ProcessDebugTensor: Send + Sync {
         shape: &Dims64,
         name: Option<&str>,
         stream: *mut std::ffi::c_void,
-    ) -> bool;
+    ) -> ProcessDebugTensorResult;
 }
 
 //#[subclass]

@@ -256,7 +256,7 @@ mod tests {
 
     use crate::builder::{Builder, MemoryPoolType};
     use crate::cuda::{synchronize, DeviceBuffer};
-    use crate::interfaces::ProcessDebugTensor;
+    use crate::interfaces::{ProcessDebugTensor, ProcessDebugTensorResult};
     use crate::logger::Logger;
     use crate::{DataType, ElementWiseOperation, Runtime};
     use trtx_sys::{Dims64, TensorLocation};
@@ -309,7 +309,7 @@ mod tests {
             shape: &Dims64,
             name: Option<&str>,
             _stream: *mut std::ffi::c_void,
-        ) -> bool {
+        ) -> ProcessDebugTensorResult {
             let dims: Vec<i64> = shape
                 .d
                 .iter()
@@ -320,7 +320,7 @@ mod tests {
                 .lock()
                 .unwrap()
                 .push((name.unwrap().to_string(), dims));
-            true
+            Ok(())
         }
     }
 
@@ -390,6 +390,7 @@ mod tests {
             }))
             .expect("set_debug_listener");
         context.set_all_tensors_debug_state(true).unwrap();
+        context.set_unfused_tensors_debug_state(true).unwrap();
 
         // input: 1 channel 4x4, output: 4 channels 4x4
         let input_elems = 4 * 4;
@@ -450,6 +451,7 @@ mod tests {
             }))
             .expect("set_debug_listener");
         context.set_all_tensors_debug_state(true).unwrap();
+        context.set_unfused_tensors_debug_state(true).unwrap();
 
         let elem_size = std::mem::size_of::<f32>();
         let mut input_device = DeviceBuffer::new(elem_size).expect("input buffer");
