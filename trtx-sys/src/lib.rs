@@ -64,7 +64,8 @@ better_enum!(PreviewFeature);
 better_enum!(HardwareCompatibilityLevel);
 better_enum!(RuntimePlatform);
 better_enum!(TilingOptimizationLevel);
-better_enum!(ComputeCapability);
+//#[cfg!(not(feature="enterprise_10_15_1"))]
+//better_enum!(ComputeCapability);
 better_enum!(CumulativeOperation);
 better_enum!(ElementWiseOperation);
 better_enum!(GatherMode);
@@ -216,7 +217,8 @@ include_cpp! {
     generate_pod!("nvinfer1::HardwareCompatibilityLevel")
     generate_pod!("nvinfer1::RuntimePlatform")
     generate_pod!("nvinfer1::TilingOptimizationLevel")
-    generate_pod!("nvinfer1::ComputeCapability")
+
+    //generate_pod!("nvinfer1::ComputeCapability")
     generate_pod!("nvinfer1::APILanguage")
     // NOTE: RNN enums commented out because IRNNv2Layer (deprecated) cannot be generated
     // generate!("nvinfer1::RNNOperation")

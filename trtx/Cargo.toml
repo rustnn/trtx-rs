@@ -39,6 +39,8 @@ onnxparser = ["trtx-sys/onnxparser"]
 
 # versions
 v_1_3 = ["trtx-sys/v_1_3"]
+# TensorRT Enterprise 10.15.1 (libnvinfer.so.10.15.1, libnvonnxparser.so.10.15.1)
+enterprise_10_15_1 = ["trtx-sys/enterprise_10_15_1"]
 
 [dev-dependencies]
 # For examples and tests

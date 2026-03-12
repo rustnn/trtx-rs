@@ -61,10 +61,10 @@ fn prepare_transformed_headers(trt_dir: &Path, out_dir: &Path) -> PathBuf {
 }
 
 /// Generate enum bindings from NvInfer.h using bindgen (replaces generate_debug_enum.sh).
-fn generate_enum_bindings(crate_root: &str, out_path: &Path) {
-    let trt_version = "1.3";
-    let header = format!("{crate_root}/TensorRT-Headers/TRT-RTX-{trt_version}/NvInfer.h");
-    let include_dir = format!("{crate_root}/TensorRT-Headers/TRT-RTX-{trt_version}");
+/// `header_include_subdir`: path relative to crate_root, e.g. "TensorRT-Headers/TRT-RTX-1.3" or "TensorRT-Headers/TensorRT-10.15.1.29"
+fn generate_enum_bindings(crate_root: &str, out_path: &Path, header_include_subdir: &str) {
+    let header = format!("{crate_root}/{header_include_subdir}/NvInfer.h");
+    let include_dir = format!("{crate_root}/{header_include_subdir}");
     let cuda_shim = format!("{crate_root}/TensorRT-Headers");
 
     println!("cargo:rerun-if-changed={header}");
@@ -135,12 +135,27 @@ fn main() {
     let crate_root = env::var("CARGO_MANIFEST_DIR").unwrap();
     let link_trt = env::var("CARGO_FEATURE_LINK_TENSORRT_RTX").is_ok();
     let link_trt_onnxparser = env::var("CARGO_FEATURE_LINK_TENSORRT_ONNXPARSER").is_ok();
+    let enterprise = env::var("CARGO_FEATURE_ENTERPRISE_10_15_1").is_ok();
 
     println!("cargo:rerun-if-env-changed=CARGO_FEATURE_LINK_TENSORRT_RTX");
     println!("cargo:rerun-if-env-changed=CARGO_FEATURE_LINK_TENSORRT_ONNXPARSER");
+    println!("cargo:rerun-if-env-changed=CARGO_FEATURE_ENTERPRISE_10_15_1");
+
+    // Header/include path and link libs depend on version feature
+    let (header_include_subdir, include_dir_path) = if enterprise {
+        (
+            "TensorRT-Headers/TensorRT-10.15.1.29",
+            PathBuf::from(format!("{crate_root}/TensorRT-Headers/TensorRT-10.15.1.29")),
+        )
+    } else {
+        (
+            "TensorRT-Headers/TRT-RTX-1.3",
+            PathBuf::from(format!("{crate_root}/TensorRT-Headers/TRT-RTX-1.3")),
+        )
+    };
 
     // Generate enum bindings from NvInfer.h (used in both mock and real builds)
-    generate_enum_bindings(&crate_root, &out_path);
+    generate_enum_bindings(&crate_root, &out_path, header_include_subdir);
 
     // Check if we're in mock mode
     let is_mock = env::var("CARGO_FEATURE_MOCK").is_ok();
@@ -152,7 +167,7 @@ fn main() {
     println!("cargo:rerun-if-env-changed=CUDA_ROOT");
     println!("cargo:rerun-if-env-changed=LIBCLANG_PATH");
 
-    // Look for TensorRT-RTX installation
+    // Look for TensorRT installation (lib dir for linking)
     // Users can override with TENSORRT_RTX_DIR environment variable
     let trtx_dir = match env::var("TENSORRT_RTX_DIR") {
         Ok(dir) => {
@@ -160,38 +175,46 @@ fn main() {
             dir
         }
         Err(_) => {
+            let default = if enterprise {
+                "/usr/local/tensorrt"
+            } else {
+                "/usr/local/tensorrt-rtx"
+            };
             println!(
-                "cargo:warning=TENSORRT_RTX_DIR not set, using default: /usr/local/tensorrt-rtx"
+                "cargo:warning=TENSORRT_RTX_DIR not set, using default: {}",
+                default
             );
-            "/usr/local/tensorrt-rtx".to_string()
+            default.to_string()
         }
     };
 
-    #[cfg(feature = "v_1_3")]
-    let trt_version = "1.3";
-
-    let include_dir = PathBuf::from(format!(
-        "{crate_root}/TensorRT-Headers/TRT-RTX-{trt_version}"
-    ));
-    println!("cargo:rerun-if-changed={}", include_dir.display());
+    println!("cargo:rerun-if-changed={}", include_dir_path.display());
     let cuda_shim_include_dir = format!("{crate_root}/TensorRT-Headers");
     let lib_dir = format!("{trtx_dir}/lib");
 
-    let transformed_include_dir = prepare_transformed_headers(&include_dir, &out_path);
+    let transformed_include_dir = prepare_transformed_headers(&include_dir_path, &out_path);
     let transformed_include_dir_str = transformed_include_dir.to_string_lossy();
 
     #[cfg(unix)]
-    let trt_version_suffix = "";
+    let (trt_lib_name, onnxparser_lib_name) = if enterprise {
+        ("nvinfer", "nvonnxparser")
+    } else {
+        ("tensorrt_rtx", "tensorrt_onnxparser")
+    };
 
-    #[cfg(all(windows, feature = "v_1_3"))]
-    let trt_version_suffix = "_1_3";
+    #[cfg(windows)]
+    let (trt_lib_name, onnxparser_lib_name) = if enterprise {
+        ("nvinfer", "nvonnxparser")
+    } else {
+        ("tensorrt_rtx_1_3", "tensorrt_onnxparser_1_3")
+    };
 
     println!("cargo:rustc-link-search=native={}", lib_dir);
     if link_trt {
-        println!("cargo:rustc-link-lib=dylib=tensorrt_rtx{trt_version_suffix}");
+        println!("cargo:rustc-link-lib=dylib={trt_lib_name}");
     }
     if link_trt_onnxparser {
-        println!("cargo:rustc-link-lib=dylib=tensorrt_onnxparser{trt_version_suffix}");
+        println!("cargo:rustc-link-lib=dylib={onnxparser_lib_name}");
     }
 
     // Build logger bridge C++ wrapper

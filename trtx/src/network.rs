@@ -1089,37 +1089,36 @@ impl<'network> NetworkDefinition<'network> {
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addQuantize`].
-    pub fn add_quantize(
-        &'_ mut self,
-        input: &'_ Tensor,
-        scale: &'_ Tensor,
-        output_type: trtx_sys::DataType,
-    ) -> Result<QuantizeLayer<'network>> {
-        crate::check_network!(self, input);
-        crate::check_network!(self, scale);
-        let layer_ptr =
-            self.inner
-                .pin_mut()
-                .addQuantize(input.pin_mut(), scale.pin_mut(), output_type.into());
-        QuantizeLayer::new(self.inner.as_ptr(), layer_ptr)
-    }
+    //pub fn add_quantize(
+    //&'_ mut self,
+    //input: &'_ Tensor,
+    //scale: &'_ Tensor,
+    //output_type: trtx_sys::DataType,
+    //) -> Result<QuantizeLayer<'network>> {
+    //crate::check_network!(self, input);
+    //crate::check_network!(self, scale);
+    //let layer_ptr =
+    //self.inner
+    //.pin_mut()
+    //.addQuantize(input.pin_mut(), scale.pin_mut(), output_type.into());
+    //QuantizeLayer::new(self.inner.as_ptr(), layer_ptr)
+    //}
 
-    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addDequantize`].
-    pub fn add_dequantize(
-        &mut self,
-        input: &'_ Tensor,
-        scale: &'_ Tensor,
-        output_type: trtx_sys::DataType,
-    ) -> Result<DequantizeLayer<'network>> {
-        crate::check_network!(self, input);
-        crate::check_network!(self, scale);
-        let layer_ptr = self.inner.pin_mut().addDequantize(
-            input.pin_mut(),
-            scale.pin_mut(),
-            output_type.into(),
-        );
-        DequantizeLayer::new(self.inner.as_ptr(), layer_ptr)
-    }
+    ///// See [`trtx_sys::nvinfer1::INetworkDefinition::addDequantize`].
+    //pub fn add_dequantize(
+    //&mut self,
+    //input: &'_ Tensor,
+    //scale: &'_ Tensor,
+    //output_type: trtx_sys::DataType,
+    //) -> Result<DequantizeLayer<'network>> {
+    //crate::check_network!(self, input);
+    //crate::check_network!(self, scale);
+    //let layer_ptr = self.inner.pin_mut().addDequantize(
+    //input.pin_mut(),
+    //scale.pin_mut(),
+    //);
+    //DequantizeLayer::new(self.inner.as_ptr(), layer_ptr)
+    //}
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addSelect`].
     pub fn add_select(

@@ -10,8 +10,8 @@ use crate::Result;
 use cxx::UniquePtr;
 use trtx_sys::nvinfer1::{self, IBuilderConfig};
 use trtx_sys::{
-    BuilderFlag, ComputeCapability, DeviceType, EngineCapability, HardwareCompatibilityLevel,
-    MemoryPoolType, PreviewFeature, ProfilingVerbosity, RuntimePlatform, TilingOptimizationLevel,
+    BuilderFlag, DeviceType, EngineCapability, HardwareCompatibilityLevel, MemoryPoolType,
+    PreviewFeature, ProfilingVerbosity, RuntimePlatform, TilingOptimizationLevel,
 };
 
 /// Builder configuration (real mode)
@@ -371,68 +371,68 @@ impl BuilderConfig {
         }
     }
 
-    /// See [IBuilderConfig::setNbComputeCapabilities]
-    pub fn set_nb_compute_capabilities(
-        &mut self,
-        max_nb_compute_capabilities: i32,
-    ) -> crate::Result<()> {
-        if cfg!(not(feature = "mock")) {
-            if self
-                .inner
-                .pin_mut()
-                .setNbComputeCapabilities(max_nb_compute_capabilities)
-            {
-                Ok(())
-            } else {
-                Err(crate::Error::FailedToSetProperty(
-                    PropertySetAttempt::BuilderConfigNbComputeCapabilities,
-                ))
-            }
-        } else {
-            Ok(())
-        }
-    }
+    ///// See [IBuilderConfig::setNbComputeCapabilities]
+    //pub fn set_nb_compute_capabilities(
+    //&mut self,
+    //max_nb_compute_capabilities: i32,
+    //) -> crate::Result<()> {
+    //if cfg!(not(any(feature = "mock", feature = "enterprise_10_15_1"))) {
+    //if self
+    //.inner
+    //.pin_mut()
+    //.setNbComputeCapabilities(max_nb_compute_capabilities)
+    //{
+    //Ok(())
+    //} else {
+    //Err(crate::Error::FailedToSetProperty(
+    //PropertySetAttempt::BuilderConfigNbComputeCapabilities,
+    //))
+    //}
+    //} else {
+    //Ok(())
+    //}
+    //}
 
-    /// See [IBuilderConfig::getNbComputeCapabilities]
-    pub fn get_nb_compute_capabilities(&self) -> i32 {
-        if cfg!(not(feature = "mock")) {
-            self.inner.getNbComputeCapabilities()
-        } else {
-            0
-        }
-    }
+    ///// See [IBuilderConfig::getNbComputeCapabilities]
+    //pub fn get_nb_compute_capabilities(&self) -> i32 {
+    //if cfg!(not(feature = "mock")) {
+    //self.inner.getNbComputeCapabilities()
+    //} else {
+    //0
+    //}
+    //}
 
-    /// See [IBuilderConfig::setComputeCapability]
-    pub fn set_compute_capability(
-        &mut self,
-        compute_capability: ComputeCapability,
-        index: i32,
-    ) -> crate::Result<()> {
-        if cfg!(not(feature = "mock")) {
-            if self
-                .inner
-                .pin_mut()
-                .setComputeCapability(compute_capability.into(), index)
-            {
-                Ok(())
-            } else {
-                Err(crate::Error::FailedToSetProperty(
-                    PropertySetAttempt::BuilderConfigComputeCapability,
-                ))
-            }
-        } else {
-            Ok(())
-        }
-    }
+    ///// See [IBuilderConfig::setComputeCapability]
+    //pub fn set_compute_capability(
+    //&mut self,
+    //compute_capability: ComputeCapability,
+    //index: i32,
+    //) -> crate::Result<()> {
+    //if cfg!(not(any(feature = "mock", feature = "enterprise_10_15_1"))) {
+    //if self
+    //.inner
+    //.pin_mut()
+    //.setComputeCapability(compute_capability.into(), index)
+    //{
+    //Ok(())
+    //} else {
+    //Err(crate::Error::FailedToSetProperty(
+    //PropertySetAttempt::BuilderConfigComputeCapability,
+    //))
+    //}
+    //} else {
+    //Ok(())
+    //}
+    //}
 
-    /// See [IBuilderConfig::getComputeCapability]
-    pub fn get_compute_capability(&self, index: i32) -> ComputeCapability {
-        if cfg!(not(feature = "mock")) {
-            self.inner.getComputeCapability(index).into()
-        } else {
-            ComputeCapability::kNONE
-        }
-    }
+    ///// See [IBuilderConfig::getComputeCapability]
+    //pub fn get_compute_capability(&self, index: i32) -> ComputeCapability {
+    //if cfg!(not(any(feature = "mock", feature = "enterprise_10_15_1"))) {
+    //self.inner.getComputeCapability(index).into()
+    //} else {
+    //ComputeCapability::kNONE
+    //}
+    //}
 }
 
 #[cfg(test)]

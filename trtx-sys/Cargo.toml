@@ -25,6 +25,8 @@ link_tensorrt_onnxparser = ["onnxparser"]
 
 # versions
 v_1_3 = []
+# TensorRT Enterprise 10.15.1 (headers in TensorRT-Headers/TensorRT-10.15.1.29; libs: libnvinfer.so.10.15.1, libnvonnxparser.so.10.15.1)
+enterprise_10_15_1 = []
 
 [dependencies]
 autocxx = "0.30"

@@ -160,14 +160,20 @@ pub fn dynamically_load_tensorrt(_filename: Option<impl AsFilename>) -> Result<(
         } else {
             #[cfg(unix)]
             unsafe {
-                #[cfg(feature = "v_1_3")]
-                libloading::Library::new("libtensorrt_rtx.so.1.3.0")
+                if cfg!(feature = "enterprise_10_15_1") {
+                    libloading::Library::new("libnvinfer.so.10.15.1")
+                } else {
+                    libloading::Library::new("libtensorrt_rtx.so.1.3.0")
+                }
             }
 
             #[cfg(windows)]
             unsafe {
-                #[cfg(feature = "v_1_3")]
-                libloading::Library::new("tensorrt_rtx_1_3.dll")
+                if cfg!(feature = "enterprise_10_15_1") {
+                    libloading::Library::new("nvinfer.dll")
+                } else {
+                    libloading::Library::new("tensorrt_rtx_1_3.dll")
+                }
             }
         }?;
 
@@ -193,13 +199,19 @@ pub fn dynamically_load_tensorrt_onnxparser(_filename: Option<impl AsFilename>) 
         } else {
             #[cfg(unix)]
             unsafe {
-                #[cfg(feature = "v_1_3")]
-                libloading::Library::new("libtensorrt_onnxparser_rtx.so.1.3.0")
+                if cfg!(feature = "enterprise_10_15_1") {
+                    libloading::Library::new("libnvonnxparser.so.10.15.1")
+                } else {
+                    libloading::Library::new("libtensorrt_onnxparser_rtx.so.1.3.0")
+                }
             }
             #[cfg(windows)]
             unsafe {
-                #[cfg(feature = "v_1_3")]
-                libloading::Library::new("tensorrt_onnxparser_rtx_1_3.dll")
+                if cfg!(feature = "enterprise_10_15_1") {
+                    libloading::Library::new("nvonnxparser.dll")
+                } else {
+                    libloading::Library::new("tensorrt_onnxparser_rtx_1_3.dll")
+                }
             }
         }?;
 
