@@ -51,7 +51,7 @@
 //! let logger = Logger::stderr()?;
 //!
 //! // Build phase
-//! let builder = Builder::new(&logger)?;
+//! let mut builder = Builder::new(&logger)?;
 //! let mut network = builder.create_network(network_flags::EXPLICIT_BATCH)?;
 //! let mut config = builder.create_config()?;
 //!
@@ -63,8 +63,8 @@
 //! std::fs::write("model.engine", &engine_data)?;
 //!
 //! // Inference phase
-//! let runtime = Runtime::new(&logger)?;
-//! let engine = runtime.deserialize_cuda_engine(&engine_data)?;
+//! let mut runtime = Runtime::new(&logger)?;
+//! let mut engine = runtime.deserialize_cuda_engine(&engine_data)?;
 //! let context = engine.create_execution_context()?;
 //!
 //! // List I/O tensors
@@ -103,32 +103,33 @@
 
 // Allow unnecessary casts - they're needed for real mode (u32) but not mock mode (i32)
 #![cfg_attr(feature = "mock", allow(clippy::unnecessary_cast))]
-
-#[cfg(not(feature = "mock"))]
-mod real;
-
-#[cfg(feature = "mock")]
-pub mod mock;
+// We don't use real parameters in mocks
+#![cfg_attr(feature = "mock", allow(unused))]
+#![cfg_attr(feature = "mock", allow(unused_variables))]
 
 pub mod autocxx_helpers;
+pub mod axes;
 pub mod builder;
+pub mod builder_config;
 pub mod cuda;
-pub mod enum_helpers;
+pub mod cuda_engine;
+pub mod engine_inspector;
 pub mod error;
 pub mod executor;
+pub mod host_memory;
+pub mod interfaces;
 pub mod logger;
 pub mod network;
 #[cfg(feature = "onnxparser")]
 pub mod onnx_parser;
+pub mod optimization_profile;
+pub mod refitter;
 pub mod runtime;
 
 // Re-export commonly used types
-pub use builder::{Builder, BuilderConfig};
+pub use axes::Axes;
+pub use builder::{Builder, BuilderConfig, ProfilingVerbosity};
 pub use cuda::{get_default_stream, synchronize, DeviceBuffer};
-pub use enum_helpers::{
-    activation_type_name, datatype_name, elementwise_op_name, pooling_type_name, reduce_op_name,
-    unary_op_name,
-};
 pub use error::{Error, Result};
 #[cfg(feature = "onnxparser")]
 pub use executor::{run_onnx_with_tensorrt, run_onnx_zeroed};
@@ -139,7 +140,8 @@ pub use logger::{LogHandler, Logger, Severity, StderrLogger};
 pub use network::{ConvWeights, NetworkDefinition, Tensor};
 #[cfg(feature = "onnxparser")]
 pub use onnx_parser::OnnxParser;
-pub use runtime::{CudaEngine, ExecutionContext, Runtime};
+pub use refitter::Refitter;
+pub use runtime::{CudaEngine, EngineInspector, ExecutionContext, Runtime};
 
 #[cfg(feature = "dlopen_tensorrt_rtx")]
 #[cfg(not(any(feature = "link_tensorrt_rtx", feature = "mock")))]
@@ -209,9 +211,9 @@ pub fn dynamically_load_tensorrt_onnxparser(_filename: Option<impl AsFilename>) 
 // Re-export TensorRT operation enums
 pub use trtx_sys::{
     ActivationType, CumulativeOperation, DataType, ElementWiseOperation, GatherMode,
-    InterpolationMode, MatrixOperation, PoolingType, ReduceOperation,
-    ResizeCoordinateTransformation, ResizeRoundMode, ResizeSelector, ScaleMode, ScatterMode,
-    TopKOperation, UnaryOperation,
+    InterpolationMode, LayerInformationFormat, LayerType, MatrixOperation, PoolingType,
+    ReduceOperation, ResizeCoordinateTransformation, ResizeRoundMode, ResizeSelector, ScaleMode,
+    ScatterMode, TopKOperation, UnaryOperation,
 };
 
 // Re-export ResizeMode typedef (InterpolationMode alias)
