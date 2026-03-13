@@ -5,6 +5,7 @@ use std::pin::Pin;
 use crate::error::PropertySetAttempt;
 use crate::interfaces::MonitorProgress;
 use crate::interfaces::ProgressMonitor;
+use crate::optimization_profile::OptimizationProfile;
 use crate::Error;
 use crate::Result;
 use cxx::UniquePtr;
@@ -191,6 +192,29 @@ impl BuilderConfig {
         } else {
             0
         }
+    }
+
+    /// See [IBuilderConfig::addOptimizationProfile].
+    /// Returns the profile index (0-based) on success.
+    pub fn add_optimization_profile(
+        &mut self,
+        profile: &mut OptimizationProfile<'_>,
+    ) -> Result<i32> {
+        #[cfg(not(feature = "mock"))]
+        {
+            let idx = unsafe {
+                self.inner
+                    .pin_mut()
+                    .addOptimizationProfile(profile.inner.as_mut().get_unchecked_mut())
+            };
+            if idx >= 0 {
+                Ok(idx)
+            } else {
+                Err(Error::Runtime("addOptimizationProfile failed".to_string()))
+            }
+        }
+        #[cfg(feature = "mock")]
+        Ok(0)
     }
 
     /// See [IBuilderConfig::setTacticSources]
