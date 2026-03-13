@@ -476,7 +476,7 @@ impl Tensor<'_> {
         unsafe { Ok(std::ffi::CStr::from_ptr(name_ptr).to_str()?.to_string()) }
     }
 
-    pub fn set_name(&mut self, network: &'_ mut NetworkDefinition, name: &str) -> Result<()> {
+    pub fn set_name(&self, network: &'_ mut NetworkDefinition, name: &str) -> Result<()> {
         crate::check_network!(network, self);
         let name_cstr = std::ffi::CString::new(name)?;
         unsafe {
@@ -1520,5 +1520,108 @@ impl<'builder> NetworkDefinition<'builder> {
             self.inner.pin_mut().setErrorRecorder(rec)
         };
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use trtx_sys::LayerType;
+
+    use crate::{Builder, Logger};
+
+    #[test]
+    #[cfg(not(feature = "mock"))]
+    fn test_get_layer() {
+        let logger = Logger::stderr().unwrap();
+        let mut builder = Builder::new(&logger).unwrap();
+        let mut network = builder.create_network(0).unwrap();
+        let input = network
+            .add_input("a", trtx_sys::DataType::kFLOAT, &[1])
+            .unwrap();
+        let a = network
+            .add_activation(&input, trtx_sys::ActivationType::kRELU)
+            .unwrap()
+            .get_output(&network, 0)
+            .unwrap();
+        let b = network
+            .add_activation(&a, trtx_sys::ActivationType::kRELU)
+            .unwrap()
+            .get_output(&network, 0)
+            .unwrap();
+        let c = network
+            .add_activation(&b, trtx_sys::ActivationType::kRELU)
+            .unwrap()
+            .get_output(&network, 0)
+            .unwrap();
+        a.set_name(&mut network, "Fritz").unwrap();
+        b.set_name(&mut network, "Adam").unwrap();
+        c.set_name(&mut network, "James").unwrap();
+
+        assert_eq!(
+            &network
+                .get_layer(0)
+                .unwrap()
+                .get_output(&network, 0)
+                .unwrap()
+                .name(&network)
+                .unwrap(),
+            "Fritz"
+        );
+        assert_eq!(
+            &network
+                .get_layer(1)
+                .unwrap()
+                .get_output(&network, 0)
+                .unwrap()
+                .name(&network)
+                .unwrap(),
+            "Adam"
+        );
+        assert_eq!(
+            &network
+                .get_layer(2)
+                .unwrap()
+                .get_output(&network, 0)
+                .unwrap()
+                .name(&network)
+                .unwrap(),
+            "James"
+        );
+        assert_eq!(
+            network.get_layer(2).unwrap().layer_type_dynamic(),
+            LayerType::kACTIVATION
+        );
+        network
+            .get_layer(1)
+            .unwrap()
+            .set_name(&mut network, "Eva")
+            .unwrap();
+        assert_eq!(
+            &network
+                .get_layer(1)
+                .unwrap()
+                .get_output(&network, 0)
+                .unwrap()
+                .name(&network)
+                .unwrap(),
+            &network
+                .get_layer(2)
+                .unwrap()
+                .get_input(&network, 0)
+                .unwrap()
+                .name(&network)
+                .unwrap(),
+        );
+        assert_eq!(
+            "Adam",
+            &network
+                .get_layer(2)
+                .unwrap()
+                .get_input(&network, 0)
+                .unwrap()
+                .name(&network)
+                .unwrap()
+        );
+        assert_eq!(&network.get_layer(1).unwrap().name(&network), "Eva");
     }
 }
