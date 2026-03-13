@@ -245,7 +245,6 @@ include_cpp! {
 }
 
 pub unsafe trait TrtLayer {
-    const TYPE: LayerType;
     fn as_layer(&self) -> &nvinfer1::ILayer {
         // can't use safe `as_ref() -> &nvinfer1::ILayer` because only implemented for direct
         // subclasses of ILayer
@@ -265,170 +264,233 @@ pub unsafe trait TrtLayer {
         }
     }
 }
+pub unsafe trait ConcreteTrtLayer: TrtLayer {
+    const TYPE: LayerType;
+}
 
-unsafe impl TrtLayer for nvinfer1::IActivationLayer {
+unsafe impl TrtLayer for nvinfer1::IActivationLayer {}
+unsafe impl TrtLayer for nvinfer1::IConvolutionLayer {}
+unsafe impl TrtLayer for nvinfer1::ICastLayer {}
+unsafe impl TrtLayer for nvinfer1::IPoolingLayer {}
+unsafe impl TrtLayer for nvinfer1::ILRNLayer {}
+unsafe impl TrtLayer for nvinfer1::IScaleLayer {}
+unsafe impl TrtLayer for nvinfer1::ISoftMaxLayer {}
+unsafe impl TrtLayer for nvinfer1::IDeconvolutionLayer {}
+unsafe impl TrtLayer for nvinfer1::IConcatenationLayer {}
+unsafe impl TrtLayer for nvinfer1::IElementWiseLayer {}
+unsafe impl TrtLayer for nvinfer1::IUnaryLayer {}
+unsafe impl TrtLayer for nvinfer1::IPaddingLayer {}
+unsafe impl TrtLayer for nvinfer1::IShuffleLayer {}
+unsafe impl TrtLayer for nvinfer1::IReduceLayer {}
+unsafe impl TrtLayer for nvinfer1::ITopKLayer {}
+unsafe impl TrtLayer for nvinfer1::IGatherLayer {}
+unsafe impl TrtLayer for nvinfer1::IMatrixMultiplyLayer {}
+unsafe impl TrtLayer for nvinfer1::IRaggedSoftMaxLayer {}
+unsafe impl TrtLayer for nvinfer1::IConstantLayer {}
+unsafe impl TrtLayer for nvinfer1::IIdentityLayer {}
+unsafe impl TrtLayer for nvinfer1::ISliceLayer {}
+unsafe impl TrtLayer for nvinfer1::IShapeLayer {}
+unsafe impl TrtLayer for nvinfer1::IParametricReLULayer {}
+unsafe impl TrtLayer for nvinfer1::IResizeLayer {}
+unsafe impl TrtLayer for nvinfer1::ISelectLayer {}
+unsafe impl TrtLayer for nvinfer1::IFillLayer {}
+unsafe impl TrtLayer for nvinfer1::IQuantizeLayer {}
+unsafe impl TrtLayer for nvinfer1::IDequantizeLayer {}
+unsafe impl TrtLayer for nvinfer1::IScatterLayer {}
+unsafe impl TrtLayer for nvinfer1::IEinsumLayer {}
+unsafe impl TrtLayer for nvinfer1::IAssertionLayer {}
+unsafe impl TrtLayer for nvinfer1::IOneHotLayer {}
+unsafe impl TrtLayer for nvinfer1::INonZeroLayer {}
+unsafe impl TrtLayer for nvinfer1::IGridSampleLayer {}
+unsafe impl TrtLayer for nvinfer1::INMSLayer {}
+unsafe impl TrtLayer for nvinfer1::IReverseSequenceLayer {}
+unsafe impl TrtLayer for nvinfer1::INormalizationLayer {}
+unsafe impl TrtLayer for nvinfer1::ISqueezeLayer {}
+unsafe impl TrtLayer for nvinfer1::IUnsqueezeLayer {}
+unsafe impl TrtLayer for nvinfer1::ICumulativeLayer {}
+unsafe impl TrtLayer for nvinfer1::IDynamicQuantizeLayer {}
+unsafe impl TrtLayer for nvinfer1::IRotaryEmbeddingLayer {}
+unsafe impl TrtLayer for nvinfer1::IKVCacheUpdateLayer {}
+
+unsafe impl TrtLayer for nvinfer1::IAttentionInputLayer {}
+unsafe impl TrtLayer for nvinfer1::IAttentionOutputLayer {}
+unsafe impl TrtLayer for nvinfer1::ILoopBoundaryLayer {}
+unsafe impl TrtLayer for nvinfer1::ILoopOutputLayer {}
+unsafe impl TrtLayer for nvinfer1::IRecurrenceLayer {}
+unsafe impl TrtLayer for nvinfer1::ITripLimitLayer {}
+unsafe impl TrtLayer for nvinfer1::IIteratorLayer {}
+unsafe impl TrtLayer for nvinfer1::IConditionLayer {}
+unsafe impl TrtLayer for nvinfer1::IIfConditionalOutputLayer {}
+unsafe impl TrtLayer for nvinfer1::IIfConditionalInputLayer {}
+unsafe impl TrtLayer for nvinfer1::IAttentionBoundaryLayer {}
+// this one is not concrete
+unsafe impl TrtLayer for nvinfer1::ILayer {}
+
+// indirect subclasses of ILayer e.g. via ILoopBoundaryLayer, IAttentionBoundaryLayer, IIfConditionalBoundaryLayer
+
+unsafe impl ConcreteTrtLayer for nvinfer1::IActivationLayer {
     const TYPE: LayerType = LayerType::kACTIVATION;
 }
-unsafe impl TrtLayer for nvinfer1::IConvolutionLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IConvolutionLayer {
     const TYPE: LayerType = LayerType::kCONVOLUTION;
 }
-unsafe impl TrtLayer for nvinfer1::ICastLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::ICastLayer {
     const TYPE: LayerType = LayerType::kCAST;
 }
-unsafe impl TrtLayer for nvinfer1::IPoolingLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IPoolingLayer {
     const TYPE: LayerType = LayerType::kPOOLING;
 }
-unsafe impl TrtLayer for nvinfer1::ILRNLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::ILRNLayer {
     const TYPE: LayerType = LayerType::kLRN;
 }
-unsafe impl TrtLayer for nvinfer1::IScaleLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IScaleLayer {
     const TYPE: LayerType = LayerType::kSCALE;
 }
-unsafe impl TrtLayer for nvinfer1::ISoftMaxLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::ISoftMaxLayer {
     const TYPE: LayerType = LayerType::kSOFTMAX;
 }
-unsafe impl TrtLayer for nvinfer1::IDeconvolutionLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IDeconvolutionLayer {
     const TYPE: LayerType = LayerType::kDECONVOLUTION;
 }
-unsafe impl TrtLayer for nvinfer1::IConcatenationLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IConcatenationLayer {
     const TYPE: LayerType = LayerType::kCONCATENATION;
 }
-unsafe impl TrtLayer for nvinfer1::IElementWiseLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IElementWiseLayer {
     const TYPE: LayerType = LayerType::kELEMENTWISE;
 }
-unsafe impl TrtLayer for nvinfer1::IUnaryLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IUnaryLayer {
     const TYPE: LayerType = LayerType::kUNARY;
 }
-unsafe impl TrtLayer for nvinfer1::IPaddingLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IPaddingLayer {
     const TYPE: LayerType = LayerType::kPADDING;
 }
-unsafe impl TrtLayer for nvinfer1::IShuffleLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IShuffleLayer {
     const TYPE: LayerType = LayerType::kSHUFFLE;
 }
-unsafe impl TrtLayer for nvinfer1::IReduceLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IReduceLayer {
     const TYPE: LayerType = LayerType::kREDUCE;
 }
-unsafe impl TrtLayer for nvinfer1::ITopKLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::ITopKLayer {
     const TYPE: LayerType = LayerType::kTOPK;
 }
-unsafe impl TrtLayer for nvinfer1::IGatherLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IGatherLayer {
     const TYPE: LayerType = LayerType::kGATHER;
 }
-unsafe impl TrtLayer for nvinfer1::IMatrixMultiplyLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IMatrixMultiplyLayer {
     const TYPE: LayerType = LayerType::kMATRIX_MULTIPLY;
 }
-unsafe impl TrtLayer for nvinfer1::IRaggedSoftMaxLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IRaggedSoftMaxLayer {
     const TYPE: LayerType = LayerType::kRAGGED_SOFTMAX;
 }
-unsafe impl TrtLayer for nvinfer1::IConstantLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IConstantLayer {
     const TYPE: LayerType = LayerType::kCONSTANT;
 }
-unsafe impl TrtLayer for nvinfer1::IIdentityLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IIdentityLayer {
     const TYPE: LayerType = LayerType::kIDENTITY;
 }
-unsafe impl TrtLayer for nvinfer1::ISliceLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::ISliceLayer {
     const TYPE: LayerType = LayerType::kSLICE;
 }
-unsafe impl TrtLayer for nvinfer1::IShapeLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IShapeLayer {
     const TYPE: LayerType = LayerType::kSHAPE;
 }
-unsafe impl TrtLayer for nvinfer1::IParametricReLULayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IParametricReLULayer {
     const TYPE: LayerType = LayerType::kPARAMETRIC_RELU;
 }
-unsafe impl TrtLayer for nvinfer1::IResizeLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IResizeLayer {
     const TYPE: LayerType = LayerType::kRESIZE;
 }
-unsafe impl TrtLayer for nvinfer1::ISelectLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::ISelectLayer {
     const TYPE: LayerType = LayerType::kSELECT;
 }
-unsafe impl TrtLayer for nvinfer1::IFillLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IFillLayer {
     const TYPE: LayerType = LayerType::kFILL;
 }
-unsafe impl TrtLayer for nvinfer1::IQuantizeLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IQuantizeLayer {
     const TYPE: LayerType = LayerType::kQUANTIZE;
 }
-unsafe impl TrtLayer for nvinfer1::IDequantizeLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IDequantizeLayer {
     const TYPE: LayerType = LayerType::kDEQUANTIZE;
 }
-unsafe impl TrtLayer for nvinfer1::IScatterLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IScatterLayer {
     const TYPE: LayerType = LayerType::kSCATTER;
 }
-unsafe impl TrtLayer for nvinfer1::IEinsumLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IEinsumLayer {
     const TYPE: LayerType = LayerType::kEINSUM;
 }
-unsafe impl TrtLayer for nvinfer1::IAssertionLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IAssertionLayer {
     const TYPE: LayerType = LayerType::kASSERTION;
 }
-unsafe impl TrtLayer for nvinfer1::IOneHotLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IOneHotLayer {
     const TYPE: LayerType = LayerType::kONE_HOT;
 }
-unsafe impl TrtLayer for nvinfer1::INonZeroLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::INonZeroLayer {
     const TYPE: LayerType = LayerType::kNON_ZERO;
 }
-unsafe impl TrtLayer for nvinfer1::IGridSampleLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IGridSampleLayer {
     const TYPE: LayerType = LayerType::kGRID_SAMPLE;
 }
-unsafe impl TrtLayer for nvinfer1::INMSLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::INMSLayer {
     const TYPE: LayerType = LayerType::kNMS;
 }
-unsafe impl TrtLayer for nvinfer1::IReverseSequenceLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IReverseSequenceLayer {
     const TYPE: LayerType = LayerType::kREVERSE_SEQUENCE;
 }
-unsafe impl TrtLayer for nvinfer1::INormalizationLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::INormalizationLayer {
     const TYPE: LayerType = LayerType::kNORMALIZATION;
 }
-unsafe impl TrtLayer for nvinfer1::ISqueezeLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::ISqueezeLayer {
     const TYPE: LayerType = LayerType::kSQUEEZE;
 }
-unsafe impl TrtLayer for nvinfer1::IUnsqueezeLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IUnsqueezeLayer {
     const TYPE: LayerType = LayerType::kUNSQUEEZE;
 }
-unsafe impl TrtLayer for nvinfer1::ICumulativeLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::ICumulativeLayer {
     const TYPE: LayerType = LayerType::kCUMULATIVE;
 }
-unsafe impl TrtLayer for nvinfer1::IDynamicQuantizeLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IDynamicQuantizeLayer {
     const TYPE: LayerType = LayerType::kDYNAMIC_QUANTIZE;
 }
-unsafe impl TrtLayer for nvinfer1::IRotaryEmbeddingLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IRotaryEmbeddingLayer {
     const TYPE: LayerType = LayerType::kROTARY_EMBEDDING;
 }
-unsafe impl TrtLayer for nvinfer1::IKVCacheUpdateLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IKVCacheUpdateLayer {
     const TYPE: LayerType = LayerType::kKVCACHE_UPDATE;
 }
 
 // indirect subclasses of ILayer e.g. via ILoopBoundaryLayer, IAttentionBoundaryLayer, IIfConditionalBoundaryLayer
 
-unsafe impl TrtLayer for nvinfer1::IAttentionInputLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IAttentionInputLayer {
     const TYPE: LayerType = LayerType::kATTENTION_INPUT;
 }
-unsafe impl TrtLayer for nvinfer1::IAttentionOutputLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IAttentionOutputLayer {
     const TYPE: LayerType = LayerType::kATTENTION_OUTPUT;
 }
-unsafe impl TrtLayer for nvinfer1::ILoopBoundaryLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::ILoopBoundaryLayer {
     const TYPE: LayerType = LayerType::kTRIP_LIMIT;
 }
-unsafe impl TrtLayer for nvinfer1::ILoopOutputLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::ILoopOutputLayer {
     const TYPE: LayerType = LayerType::kLOOP_OUTPUT;
 }
-unsafe impl TrtLayer for nvinfer1::IRecurrenceLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IRecurrenceLayer {
     const TYPE: LayerType = LayerType::kRECURRENCE;
 }
-unsafe impl TrtLayer for nvinfer1::ITripLimitLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::ITripLimitLayer {
     const TYPE: LayerType = LayerType::kTRIP_LIMIT;
 }
-unsafe impl TrtLayer for nvinfer1::IIteratorLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IIteratorLayer {
     const TYPE: LayerType = LayerType::kITERATOR;
 }
-unsafe impl TrtLayer for nvinfer1::IConditionLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IConditionLayer {
     const TYPE: LayerType = LayerType::kCONDITION;
 }
-unsafe impl TrtLayer for nvinfer1::IIfConditionalOutputLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IIfConditionalOutputLayer {
     const TYPE: LayerType = LayerType::kCONDITIONAL_OUTPUT;
 }
-unsafe impl TrtLayer for nvinfer1::IIfConditionalInputLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IIfConditionalInputLayer {
     const TYPE: LayerType = LayerType::kCONDITIONAL_INPUT;
 }
-unsafe impl TrtLayer for nvinfer1::IAttentionBoundaryLayer {
+unsafe impl ConcreteTrtLayer for nvinfer1::IAttentionBoundaryLayer {
     const TYPE: LayerType = LayerType::kATTENTION_INPUT;
 }
 

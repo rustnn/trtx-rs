@@ -75,6 +75,9 @@ pub enum Error {
     #[error("Failed to create layer: {0:?}")]
     LayerCreationFailed(LayerType),
 
+    #[error("Failed to get generic layer from network")]
+    GetLayerFailed,
+
     #[error("Failed to get a tensor from the network")]
     GetTensorFailed,
 

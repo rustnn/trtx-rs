@@ -6,8 +6,8 @@ use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 use std::pin::Pin;
 use trtx_sys::nvinfer1::{IConcatenationLayer, INetworkDefinition, ITensor};
-use trtx_sys::TrtLayer;
 use trtx_sys::{nvinfer1, LayerType};
+use trtx_sys::{ConcreteTrtLayer, TrtLayer};
 use trtx_sys::{DataType, MatrixOperation, ScaleMode, TopKOperation};
 
 /// Panics if the layer or tensor was created from a different network.
@@ -76,7 +76,12 @@ pub struct Layer<'network, Inner: TrtLayer> {
     pub(crate) network: *const nvinfer1::INetworkDefinition,
 }
 
-impl<'network, Inner: TrtLayer> Layer<'network, Inner> {
+impl<'network, Inner: ConcreteTrtLayer> Layer<'network, Inner> {
+    /// See [nvinfer1::ILayer::getType] (compile time dispatch)
+    pub const fn layer_type(&self) -> LayerType {
+        Inner::TYPE
+    }
+
     pub(crate) fn new(
         network: *const nvinfer1::INetworkDefinition,
         ptr: *mut Inner,
@@ -91,8 +96,38 @@ impl<'network, Inner: TrtLayer> Layer<'network, Inner> {
             })
         }
     }
-    pub const fn layer_type(&self) -> LayerType {
-        Inner::TYPE
+}
+impl<'network> Layer<'network, nvinfer1::ILayer> {
+    /// See [nvinfer1::ILayer::getType] (dynamic dispatch)
+    pub fn layer_type_dynamic(&self) -> LayerType {
+        self.inner.as_layer().getType().into()
+    }
+
+    /// Create a generic ILayer (of unknown type)
+    pub(crate) fn new_dyn(
+        network: *const nvinfer1::INetworkDefinition,
+        ptr: *mut nvinfer1::ILayer,
+    ) -> Result<Self> {
+        unsafe {
+            let ptr = ptr.as_mut().ok_or(Error::GetLayerFailed)?;
+            Ok(Self {
+                inner: Pin::new_unchecked(ptr),
+                network,
+            })
+        }
+    }
+}
+
+impl<'network, Inner: TrtLayer> Layer<'network, Inner> {
+    /// See [nvinfer1::ILayer::getInput]
+    pub fn get_input(
+        &self,
+        network: &'_ NetworkDefinition,
+        index: i32,
+    ) -> Result<Tensor<'network>> {
+        check_network!(network, self);
+        let tensor = self.inner.as_layer().getInput(index);
+        unsafe { Tensor::new(self.network, tensor) }
     }
 
     /// See [nvinfer1::ILayer::getOutput]
@@ -191,6 +226,8 @@ pub type IteratorLayer<'layer> = Layer<'layer, nvinfer1::IIteratorLayer>;
 pub type ConditionLayer<'layer> = Layer<'layer, nvinfer1::IConditionLayer>;
 pub type IfConditionalOutputLayer<'layer> = Layer<'layer, nvinfer1::IIfConditionalOutputLayer>;
 pub type IfConditionalInputLayer<'layer> = Layer<'layer, nvinfer1::IIfConditionalInputLayer>;
+
+pub type DynLayer<'layer> = Layer<'layer, nvinfer1::ILayer>;
 
 /// Attention block (query, key, value → output). Created by [`NetworkDefinition::add_attention`].
 /// Input/output layers are managed internally by TensorRT.
@@ -573,7 +610,13 @@ impl<'network> NetworkDefinition<'network> {
         self.inner.getNbLayers()
     }
 
+    pub fn get_layer(&self, layer_index: i32) -> Result<DynLayer<'network>> {
+        let layer_ptr = self.inner.getLayer(layer_index);
+        DynLayer::new_dyn(self.inner.as_ptr(), layer_ptr)
+    }
+
     /// Layer name at index (for introspection/dumping). Returns "(Unnamed)" if null.
+    #[deprecated = "use network.get_layer(index)?.name(&network)"]
     pub fn get_layer_name(&self, layer_index: i32) -> Result<String> {
         let layer_ptr = self.inner.getLayer(layer_index);
         unsafe { layer_ptr.as_mut() }
@@ -593,6 +636,7 @@ impl<'network> NetworkDefinition<'network> {
     }
 
     /// Layer type enum value at index (for introspection/dumping). See TensorRT LayerType.
+    #[deprecated = "use network.get_layer(index)?.layer_type_dyn()"]
     pub fn get_layer_type(&self, layer_index: i32) -> Result<i32> {
         let layer_ptr = self.inner.getLayer(layer_index);
         if layer_ptr.is_null() {
@@ -1453,7 +1497,7 @@ impl<'builder> NetworkDefinition<'builder> {
         NormalizationLayer::new(self.inner.as_ptr(), ptr)
     }
 
-    /// See [nvinfer1::INetworkDefinition::setErrorRecorder]
+    /// See [y nvinfer1::INetworkDefinition::setErrorRecorder]
     ///
     /// The Rust bindings only allow setting the error recorder once
     pub fn set_error_recorder(&mut self, error_recorder: Box<dyn RecordError>) -> Result<()> {
