@@ -3,10 +3,10 @@ use std::{ffi::CStr, marker::PhantomData};
 use crate::engine_inspector::EngineInspector;
 use crate::error::PropertySetAttempt;
 use crate::host_memory::HostMemory;
-use crate::{Error, ExecutionContext, Result};
+use crate::{DataType, Error, ExecutionContext, Result};
 use autocxx::cxx::UniquePtr;
 use trtx_sys::{
-    nvinfer1::{self, DataType, ICudaEngine, TensorIOMode},
+    nvinfer1::{self, ICudaEngine, TensorIOMode},
     SerializationFlag,
 };
 
@@ -96,7 +96,7 @@ impl<'engine> CudaEngine<'engine> {
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorDataType`].
     pub fn get_tensor_data_type(&self, name: &str) -> Result<DataType> {
         let name_cstr = std::ffi::CString::new(name)?;
-        Ok(unsafe { self.inner.getTensorDataType(name_cstr.as_ptr()) })
+        Ok(unsafe { self.inner.getTensorDataType(name_cstr.as_ptr()) }.into())
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getNbLayers`].

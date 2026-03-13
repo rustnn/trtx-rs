@@ -5,7 +5,7 @@ use trtx_sys::{nvinfer1, Dims64, OptProfileSelector};
 
 /// See [nvinfer1::IOptimizationProfile]
 pub struct OptimizationProfile<'builder> {
-    inner: Pin<&'builder mut nvinfer1::IOptimizationProfile>,
+    pub(crate) inner: Pin<&'builder mut nvinfer1::IOptimizationProfile>,
     _builder: PhantomData<&'builder nvinfer1::IBuilder>,
 }
 
