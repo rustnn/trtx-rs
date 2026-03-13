@@ -250,9 +250,11 @@ impl<'runtime> Runtime<'runtime> {
 }
 
 #[cfg(test)]
-#[cfg(not(feature = "mock"))]
+//#[cfg(not(feature = "mock"))]
 mod tests {
+
     use std::sync::{Arc, Mutex};
+    use trtx_sys::BuilderFlag;
 
     use crate::builder::{Builder, MemoryPoolType};
     use crate::cuda::{synchronize, DeviceBuffer};
@@ -498,5 +500,125 @@ mod tests {
                 seen.iter().map(|(n, _)| n.as_str()).collect::<Vec<_>>()
             );
         }
+    }
+
+    /// Path to Depth-Anything-V2 ONNX model (used by set_debug_listener_onnx_depth_anything test).
+    const DEPTH_ANYTHING_V2_ONNX_PATH: &str =
+        //"/home/stephan/projects/Depth-Anything-V2/depth_anything_v2_torch.float16_120.onnx";
+        "/home/stephan/Downloads/candy.onnx";
+
+    #[test]
+    #[cfg(feature = "onnxparser")]
+    //#[ignore = "requires ONNX file at DEPTH_ANYTHING_V2_ONNX_PATH and GPU"]
+    fn set_debug_listener_onnx_depth_anything() {
+        use crate::builder::network_flags;
+        use crate::builder::{Builder, MemoryPoolType};
+        use crate::onnx_parser::OnnxParser;
+        use trtx_sys::{Dims64, OptProfileSelector};
+
+        let onnx_path = DEPTH_ANYTHING_V2_ONNX_PATH;
+        let onnx_bytes = std::fs::read(onnx_path)
+            .unwrap_or_else(|e| panic!("read ONNX file {}: {}", onnx_path, e));
+
+        let logger = Logger::stderr().expect("logger");
+
+        // Build engine from ONNX
+        let mut builder = Builder::new(&logger).expect("builder");
+        let mut network = builder
+            .create_network(network_flags::EXPLICIT_BATCH)
+            .expect("network");
+        let mut parser = OnnxParser::new(&mut network, &logger).expect("parser");
+        parser.parse(&onnx_bytes).expect("parse ONNX");
+        for i in 0..10 {
+            network
+                .mark_tensor_debug(&network.get_layer_output(i, 0).unwrap())
+                .unwrap();
+        }
+
+        // Set batch dimension via optimization profile: input is float16[N,3,126,210], fix N=1
+        let input_name = network
+            .get_input(0)
+            .and_then(|t| t.name(&network))
+            .expect("first input name");
+        //let batch_dims = Dims64::from_slice(&[1, 3, 126, 210]);
+        //let mut profile = builder
+        //.creata_optimization_profile()
+        //.expect("optimization profile");
+        //profile
+        //.set_dimensions(&input_name, OptProfileSelector::kMIN, &batch_dims)
+        //.expect("set MIN");
+        //profile
+        //.set_dimensions(&input_name, OptProfileSelector::kOPT, &batch_dims)
+        //.expect("set OPT");
+        //profile
+        //.set_dimensions(&input_name, OptProfileSelector::kMAX, &batch_dims)
+        //.expect("set MAX");
+
+        let mut config = builder.create_config().expect("config");
+        config.set_memory_pool_limit(MemoryPoolType::kWORKSPACE, 1 << 30);
+        config.set_flag(BuilderFlag::kDEBUG);
+        //config
+        //.add_optimization_profile(&mut profile)
+        //.expect("add profile");
+        let engine_data = builder
+            .build_serialized_network(&mut network, &mut config)
+            .expect("build");
+        let engine_data = engine_data.to_vec();
+
+        // Runtime: deserialize and create context
+        let mut runtime = Runtime::new(&logger).expect("runtime");
+        let mut engine = runtime
+            .deserialize_cuda_engine(&engine_data)
+            .expect("deserialize");
+        let mut context = engine
+            .create_execution_context()
+            .expect("execution context");
+
+        // Debug listener that collects tensor names/shapes
+        let seen = Arc::new(Mutex::new(Vec::<(String, Vec<i64>)>::new()));
+        context
+            .set_debug_listener(Box::new(CollectingDebugListener {
+                seen: Arc::clone(&seen),
+            }))
+            .expect("set_debug_listener");
+        context.set_all_tensors_debug_state(true).unwrap();
+        context.set_unfused_tensors_debug_state(true).unwrap();
+
+        // Discover I/O tensors and sizes via TRT API; allocate zeroed buffers
+        let num_tensors = engine.get_nb_io_tensors().expect("get_nb_io_tensors");
+        assert!(num_tensors > 0, "engine has no I/O tensors");
+
+        let mut buffers: Vec<(String, DeviceBuffer)> = Vec::new();
+        for i in 0..num_tensors {
+            let name = engine.get_tensor_name(i).expect("get_tensor_name");
+            let shape = engine.get_tensor_shape(&name).expect("get_tensor_shape");
+            let dtype = engine
+                .get_tensor_data_type(&name)
+                .expect("get_tensor_data_type");
+            let num_elements: usize = shape.iter().map(|&d| d as usize).product();
+            let element_bits = dtype.size_bits();
+            let size_bytes = num_elements * (element_bits / 8);
+            let buffer = DeviceBuffer::new(size_bytes).expect("device buffer");
+            unsafe {
+                context
+                    .set_tensor_address(&name, buffer.as_ptr())
+                    .expect("set_tensor_address");
+            }
+            buffers.push((name, buffer));
+        }
+
+        // Run inference (zeroed inputs)
+        unsafe {
+            context
+                .enqueue_v3(crate::cuda::get_default_stream())
+                .expect("enqueue");
+        }
+        synchronize().expect("sync");
+
+        let seen = seen.lock().unwrap();
+        assert!(
+            !seen.is_empty(),
+            "debug listener should see at least one tensor (saw 0)"
+        );
     }
 }

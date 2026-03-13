@@ -604,6 +604,32 @@ impl<'network> NetworkDefinition<'network> {
         };
         Ok(layer_type as i32)
     }
+    pub fn get_layer_input(&self, layer_index: i32, input_index: i32) -> Result<Tensor<'network>> {
+        let layer_ptr = self.inner.getLayer(layer_index);
+        if layer_ptr.is_null() {
+            return Err(Error::Runtime(format!("No layer at index {}", layer_index)));
+        }
+        let tensor = unsafe {
+            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ILayer>(layer_ptr as *mut _)
+                .getOutput(input_index)
+        };
+        Ok(unsafe { Tensor::new(self.inner.as_ptr(), tensor)? })
+    }
+    pub fn get_layer_output(
+        &self,
+        layer_index: i32,
+        output_index: i32,
+    ) -> Result<Tensor<'network>> {
+        let layer_ptr = self.inner.getLayer(layer_index);
+        if layer_ptr.is_null() {
+            return Err(Error::Runtime(format!("No layer at index {}", layer_index)));
+        }
+        let tensor = unsafe {
+            crate::autocxx_helpers::cast_and_pin::<trtx_sys::nvinfer1::ILayer>(layer_ptr as *mut _)
+                .getOutput(output_index)
+        };
+        Ok(unsafe { Tensor::new(self.inner.as_ptr(), tensor)? })
+    }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addActivation`].
     pub fn add_activation(

@@ -18,8 +18,8 @@ pub mod network_flags {
 }
 
 pub use crate::builder_config::BuilderConfig;
-#[cfg(not(feature = "enterprise_10_15_1"))]
-pub use trtx_sys::ComputeCapability;
+//#[cfg(not(feature = "enterprise_10_15_1"))]
+//pub use trtx_sys::ComputeCapability;
 pub use trtx_sys::{
     BuilderFlag, DeviceType, EngineCapability, HardwareCompatibilityLevel, MemoryPoolType,
     PreviewFeature, ProfilingVerbosity, RuntimePlatform, TilingOptimizationLevel,
