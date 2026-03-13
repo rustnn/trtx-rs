@@ -371,6 +371,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "only works on TRT enterprise at the moment"]
     fn set_debug_listener_conv_chain() {
         let logger = Logger::stderr().expect("logger");
         let (engine_data, _debug_names) = build_conv_chain(&logger).expect("build conv network");
@@ -426,7 +427,7 @@ mod tests {
     }
 
     #[test]
-    // our callback does not get called at the moment
+    #[ignore = "only works on TRT enterprise at the moment"]
     fn set_debug_listener_plus1_chain() {
         let logger = Logger::stderr().expect("logger");
         let (engine_data, expected_debug_names) =
