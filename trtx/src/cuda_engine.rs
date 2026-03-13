@@ -339,3 +339,66 @@ impl<'engine> CudaEngine<'engine> {
         }
     }
 }
+
+#[cfg(test)]
+#[cfg(not(feature = "mock"))]
+mod tests {
+    use crate::builder::network_flags;
+    use crate::builder::{Builder, MemoryPoolType};
+    use crate::logger::Logger;
+    use crate::runtime::Runtime;
+    use crate::{CudaEngine, DataType};
+    use trtx_sys::LayerInformationFormat;
+
+    /// Build a minimal serialized engine with ProfilingVerbosity::kVERBOSE so inspector has layer info.
+    fn build_minimal_engine_with_verbose_profiling(logger: &Logger) -> crate::Result<Vec<u8>> {
+        let mut builder = Builder::new(logger)?;
+        let mut network = builder.create_network(network_flags::EXPLICIT_BATCH)?;
+        let mut tensor = network.add_input("input", DataType::kFLOAT, &[1, 4])?;
+        tensor = network
+            .add_activation(&tensor, trtx_sys::ActivationType::kRELU)
+            .unwrap()
+            .get_output(&network, 0)
+            .unwrap();
+        tensor = network
+            .add_activation(&tensor, trtx_sys::ActivationType::kRELU)
+            .unwrap()
+            .get_output(&network, 0)
+            .unwrap();
+        network.mark_output(&tensor);
+
+        let mut config = builder.create_config()?;
+        config.set_memory_pool_limit(MemoryPoolType::kWORKSPACE, 1 << 20);
+        config.set_profiling_verbosity(crate::ProfilingVerbosity::kDETAILED);
+
+        let engine_data = builder.build_serialized_network(&mut network, &mut config)?;
+        Ok(engine_data.to_vec())
+    }
+
+    #[test]
+    fn engine_inspector_json_verbose_profiling() {
+        let logger = Logger::stderr().expect("logger");
+        let engine_data =
+            build_minimal_engine_with_verbose_profiling(&logger).expect("build engine");
+
+        let mut runtime = Runtime::new(&logger).expect("runtime");
+        let engine: CudaEngine<'_> = runtime
+            .deserialize_cuda_engine(&engine_data)
+            .expect("deserialize");
+
+        let inspector = engine.create_engine_inspector().expect("engine inspector");
+        let json = inspector
+            .get_engine_information(LayerInformationFormat::kJSON)
+            .expect("get_engine_information JSON");
+
+        assert!(
+            !json.is_empty(),
+            "engine information JSON should not be empty"
+        );
+        assert!(
+            json.trim_start().starts_with('{'),
+            "engine information should be JSON (starts with '{{'); got: {}...",
+            json.chars().take(80).collect::<String>()
+        );
+    }
+}

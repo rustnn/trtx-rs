@@ -128,7 +128,7 @@ pub mod runtime;
 
 // Re-export commonly used types
 pub use axes::Axes;
-pub use builder::{Builder, BuilderConfig};
+pub use builder::{Builder, BuilderConfig, ProfilingVerbosity};
 pub use cuda::{get_default_stream, synchronize, DeviceBuffer};
 pub use error::{Error, Result};
 #[cfg(feature = "onnxparser")]
