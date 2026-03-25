@@ -1,3 +1,8 @@
+//! Engine refitter (update weights in a deserialized engine).
+//!
+//! [`Refitter`] wraps [`trtx_sys::nvinfer1::IRefitter`] (C++ [`nvinfer1::IRefitter`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_refitter.html)).
+//! [`Weights`] mirrors [`trtx_sys::nvinfer1::Weights`] (C++ [`nvinfer1::Weights`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_weights.html)).
+
 use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 use std::pin::Pin;
@@ -10,6 +15,7 @@ use crate::{
 use autocxx::cxx::UniquePtr;
 use trtx_sys::{nvinfer1, DataType};
 
+/// View compatible with [`trtx_sys::nvinfer1::Weights`]; C++ [`nvinfer1::Weights`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_weights.html).
 pub struct Weights<'data, T> {
     data: &'data [T],
     data_type: DataType,
@@ -25,6 +31,7 @@ impl<T> Weights<'_, T> {
     }
 }
 
+/// [`trtx_sys::nvinfer1::IRefitter`] — C++ [`nvinfer1::IRefitter`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_refitter.html).
 pub struct Refitter<'logger, 'engine> {
     inner: UniquePtr<nvinfer1::IRefitter>,
     error_recorder: Option<Pin<Box<ErrorRecorder>>>,

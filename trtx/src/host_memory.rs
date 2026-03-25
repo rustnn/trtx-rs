@@ -1,3 +1,7 @@
+//! Host memory buffer returned by the TensorRT builder (serialized engines, etc.).
+//!
+//! [`HostMemory`] wraps [`trtx_sys::nvinfer1::IHostMemory`] (C++ [`nvinfer1::IHostMemory`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_host_memory.html)).
+
 use core::slice;
 use cxx::UniquePtr;
 use std::marker::PhantomData;
@@ -5,6 +9,7 @@ use std::ops::Deref;
 use trtx_sys::nvinfer1::{self};
 use trtx_sys::DataType;
 
+/// [`trtx_sys::nvinfer1::IHostMemory`] — C++ [`nvinfer1::IHostMemory`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_host_memory.html).
 pub struct HostMemory<'builder> {
     pub(crate) inner: UniquePtr<nvinfer1::IHostMemory>,
     _builder: PhantomData<&'builder nvinfer1::IBuilder>,

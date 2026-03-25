@@ -1,4 +1,7 @@
-//! Runtime for deserializing and managing TensorRT engines
+//! Runtime for deserializing and managing TensorRT engines.
+//!
+//! [`Runtime`] wraps [`trtx_sys::nvinfer1::IRuntime`] (C++ [`nvinfer1::IRuntime`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_runtime.html)).
+//! [`ExecutionContext`] wraps [`trtx_sys::nvinfer1::IExecutionContext`] (C++ [`nvinfer1::IExecutionContext`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_execution_context.html)).
 
 use std::ffi::CString;
 use std::marker::PhantomData;
@@ -13,7 +16,7 @@ use crate::error::{Error, Result};
 use crate::interfaces::{DebugListener, ProcessDebugTensor};
 use crate::logger::Logger;
 
-/// Execution context for running inference
+/// [`trtx_sys::nvinfer1::IExecutionContext`] — C++ [`nvinfer1::IExecutionContext`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_execution_context.html).
 pub struct ExecutionContext<'a> {
     inner: UniquePtr<nvinfer1::IExecutionContext>,
     _engine: std::marker::PhantomData<&'a CudaEngine<'a>>,
@@ -157,7 +160,7 @@ impl<'a> ExecutionContext<'a> {
     }
 }
 
-/// Runtime for deserializing engines
+/// [`trtx_sys::nvinfer1::IRuntime`] — C++ [`nvinfer1::IRuntime`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_runtime.html).
 pub struct Runtime<'logger> {
     inner: UniquePtr<nvinfer1::IRuntime>,
     _logger: PhantomData<&'logger Logger>,

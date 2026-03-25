@@ -1,4 +1,6 @@
-//! Builder for creating TensorRT engines
+//! Builder for creating TensorRT engines.
+//!
+//! Wraps [`trtx_sys::nvinfer1::IBuilder`]; C++: [`nvinfer1::IBuilder`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_builder.html).
 
 use crate::error::{Error, Result};
 use crate::host_memory::HostMemory;
@@ -24,6 +26,8 @@ pub use trtx_sys::{
 };
 
 /// Builder for creating TensorRT engines
+///
+/// [`trtx_sys::nvinfer1::IBuilder`] — C++ [`nvinfer1::IBuilder`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_builder.html).
 pub struct Builder<'a> {
     inner: UniquePtr<IBuilder>,
     _logger: PhantomData<&'a Logger>,
