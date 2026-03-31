@@ -51,7 +51,7 @@
 //! let logger = Logger::stderr()?;
 //!
 //! // Build phase
-//! let builder = Builder::new(&logger)?;
+//! let mut builder = Builder::new(&logger)?;
 //! let mut network = builder.create_network(network_flags::EXPLICIT_BATCH)?;
 //! let mut config = builder.create_config()?;
 //!
@@ -63,8 +63,8 @@
 //! std::fs::write("model.engine", &engine_data)?;
 //!
 //! // Inference phase
-//! let runtime = Runtime::new(&logger)?;
-//! let engine = runtime.deserialize_cuda_engine(&engine_data)?;
+//! let mut runtime = Runtime::new(&logger)?;
+//! let mut engine = runtime.deserialize_cuda_engine(&engine_data)?;
 //! let context = engine.create_execution_context()?;
 //!
 //! // List I/O tensors
@@ -96,39 +96,46 @@
 //! 1. **NVIDIA TensorRT-RTX**: Download and install from [NVIDIA Developer](https://developer.nvidia.com/tensorrt)
 //!      - The TensorRT libraries should be in a location where they can be dynamically loaded.
 //!        (e.g. by setting PATH on Windows or LD_LIBRARY_PATH on Linux)
-//!      - This crate currently requires TensorRT RTX version 1.3 (see Cargo feature `v_1_3`).
-//!        Other versions, might become available in future.
+//!      - This crate currently requires TensorRT RTX version 1.3 or 1.4 (see Cargo feature `v_1_3`, `v_1_4`)
+//!        Use `default-features = false` plus version feature to select version.
+//!        You will also have to either enable `dlopen_tensorrt_rtx` or `link_tensorrt_rtx`.
 //!
 //! 2. **NVIDIA GPU**: Compatible with TensorRT-RTX requirements
 
 // Allow unnecessary casts - they're needed for real mode (u32) but not mock mode (i32)
-#![cfg_attr(feature = "mock", allow(clippy::unnecessary_cast))]
+#![cfg_attr(
+    any(feature = "mock", feature = "mock_runtime"),
+    allow(clippy::unnecessary_cast)
+)]
+// We don't use real parameters in mocks
+#![cfg_attr(any(feature = "mock", feature = "mock_runtime"), allow(unused))]
+#![cfg_attr(
+    any(feature = "mock", feature = "mock_runtime"),
+    allow(unused_variables)
+)]
 
-#[cfg(not(feature = "mock"))]
-mod real;
-
-#[cfg(feature = "mock")]
-pub mod mock;
-
-pub mod autocxx_helpers;
+pub mod axes;
 pub mod builder;
+pub mod builder_config;
 pub mod cuda;
-pub mod enum_helpers;
+pub mod cuda_engine;
+pub mod engine_inspector;
 pub mod error;
 pub mod executor;
+pub mod host_memory;
+pub mod interfaces;
 pub mod logger;
 pub mod network;
 #[cfg(feature = "onnxparser")]
 pub mod onnx_parser;
+pub mod optimization_profile;
+pub mod refitter;
 pub mod runtime;
 
 // Re-export commonly used types
-pub use builder::{Builder, BuilderConfig};
+pub use axes::Axes;
+pub use builder::{Builder, BuilderConfig, ProfilingVerbosity};
 pub use cuda::{get_default_stream, synchronize, DeviceBuffer};
-pub use enum_helpers::{
-    activation_type_name, datatype_name, elementwise_op_name, pooling_type_name, reduce_op_name,
-    unary_op_name,
-};
 pub use error::{Error, Result};
 #[cfg(feature = "onnxparser")]
 pub use executor::{run_onnx_with_tensorrt, run_onnx_zeroed};
@@ -139,7 +146,8 @@ pub use logger::{LogHandler, Logger, Severity, StderrLogger};
 pub use network::{ConvWeights, NetworkDefinition, Tensor};
 #[cfg(feature = "onnxparser")]
 pub use onnx_parser::OnnxParser;
-pub use runtime::{CudaEngine, ExecutionContext, Runtime};
+pub use refitter::Refitter;
+pub use runtime::{CudaEngine, EngineInspector, ExecutionContext, Runtime};
 
 #[cfg(feature = "dlopen_tensorrt_rtx")]
 #[cfg(not(any(feature = "link_tensorrt_rtx", feature = "mock")))]
@@ -156,16 +164,20 @@ pub fn dynamically_load_tensorrt(_filename: Option<impl AsFilename>) -> Result<(
         let lib = if let Some(filename) = _filename {
             unsafe { libloading::Library::new(filename) }
         } else {
-            #[cfg(unix)]
             unsafe {
-                #[cfg(feature = "v_1_3")]
-                libloading::Library::new("libtensorrt_rtx.so.1.3.0")
-            }
-
-            #[cfg(windows)]
-            unsafe {
-                #[cfg(feature = "v_1_3")]
-                libloading::Library::new("tensorrt_rtx_1_3.dll")
+                libloading::Library::new(if cfg!(unix) {
+                    if cfg!(feature = "v_1_4") {
+                        "libtensorrt_rtx.so.1.4.0"
+                    } else {
+                        "libtensorrt_rtx.so.1.3.0"
+                    }
+                } else {
+                    if cfg!(feature = "v_1_4") {
+                        "tensorrt_rtx_1_4.dll"
+                    } else {
+                        "tensorrt_rtx_1_3.dll"
+                    }
+                })
             }
         }?;
 
@@ -189,15 +201,20 @@ pub fn dynamically_load_tensorrt_onnxparser(_filename: Option<impl AsFilename>) 
         let lib = if let Some(filename) = _filename {
             unsafe { libloading::Library::new(filename) }
         } else {
-            #[cfg(unix)]
             unsafe {
-                #[cfg(feature = "v_1_3")]
-                libloading::Library::new("libtensorrt_onnxparser_rtx.so.1.3.0")
-            }
-            #[cfg(windows)]
-            unsafe {
-                #[cfg(feature = "v_1_3")]
-                libloading::Library::new("tensorrt_onnxparser_rtx_1_3.dll")
+                libloading::Library::new(if cfg!(unix) {
+                    if cfg!(feature = "v_1_4") {
+                        "libtensorrt_onnxparser_rtx.so.1.4.0"
+                    } else {
+                        "libtensorrt_onnxparser_rtx.so.1.3.0"
+                    }
+                } else {
+                    if cfg!(feature = "v_1_4") {
+                        "tensorrt_onnxparser_rtx_1_4.dll"
+                    } else {
+                        "tensorrt_onnxparser_rtx_1_3.dll"
+                    }
+                })
             }
         }?;
 
@@ -206,13 +223,10 @@ pub fn dynamically_load_tensorrt_onnxparser(_filename: Option<impl AsFilename>) 
     Ok(())
 }
 
-// Re-export TensorRT operation enums
+// Re-export TensorRT enums
 pub use trtx_sys::{
     ActivationType, CumulativeOperation, DataType, ElementWiseOperation, GatherMode,
-    InterpolationMode, MatrixOperation, PoolingType, ReduceOperation,
-    ResizeCoordinateTransformation, ResizeRoundMode, ResizeSelector, ScaleMode, ScatterMode,
-    TopKOperation, UnaryOperation,
+    InterpolationMode, LayerInformationFormat, LayerType, MatrixOperation, PoolingType,
+    ReduceOperation, ResizeCoordinateTransformation, ResizeMode, ResizeRoundMode, ResizeSelector,
+    ScaleMode, ScatterMode, TensorFormat, TensorIOMode, TopKOperation, UnaryOperation,
 };
-
-// Re-export ResizeMode typedef (InterpolationMode alias)
-pub use trtx_sys::ResizeMode;

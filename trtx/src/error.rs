@@ -2,9 +2,24 @@
 
 use std::ffi::NulError;
 use thiserror::Error;
+use trtx_sys::LayerType;
 
 /// Result type for TensorRT-RTX operations
 pub type Result<T> = std::result::Result<T, Error>;
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum PropertySetAttempt {
+    SerializationFlag,
+    OptimizationProfileSetDimensions,
+    OptimizationProfileSetExtraMemoryTarget,
+    OptimizationProfileSetShapeValues,
+    BuilderConfigTacticSources,
+    BuilderConfigTilingOptimizationLevel,
+    BuilderConfigL2LimitForTiling,
+    BuilderConfigNbComputeCapabilities,
+    BuilderConfigComputeCapability,
+    ExecutionContextTensorDebugState,
+}
 
 /// Errors that can occur when using TensorRT-RTX
 #[derive(Debug, Error)]
@@ -56,41 +71,26 @@ pub enum Error {
 
     #[error("Would unwrap a poisened lock")]
     LockPoisining,
+
+    #[error("Failed to create layer: {0:?}")]
+    LayerCreationFailed(LayerType),
+
+    #[error("Failed to get generic layer from network")]
+    GetLayerFailed,
+
+    #[error("Failed to get a tensor from the network")]
+    GetTensorFailed,
+
+    #[error("Failed to create BuilderConfig")]
+    BuilderConfigCreationFailed,
+
+    #[error("Failed to set property: {0:?}")]
+    FailedToSetProperty(PropertySetAttempt),
 }
 
 impl<T> From<std::sync::PoisonError<T>> for Error {
     fn from(_: std::sync::PoisonError<T>) -> Self {
         Error::LockPoisining
-    }
-}
-
-impl Error {
-    /// Create error from FFI error code and message buffer (mock mode)
-    #[cfg(feature = "mock")]
-    pub(crate) fn from_ffi(code: i32, error_msg: &[i8]) -> Self {
-        let msg = Self::parse_error_msg(error_msg);
-
-        match code {
-            code if code == trtx_sys::TRTX_ERROR_INVALID_ARGUMENT as i32 => {
-                Error::InvalidArgument(msg)
-            }
-            code if code == trtx_sys::TRTX_ERROR_OUT_OF_MEMORY as i32 => Error::OutOfMemory(msg),
-            code if code == trtx_sys::TRTX_ERROR_RUNTIME_ERROR as i32 => Error::Runtime(msg),
-            code if code == trtx_sys::TRTX_ERROR_CUDA_ERROR as i32 => Error::Cuda(msg),
-            _ => Error::Unknown(msg),
-        }
-    }
-
-    /// Parse error message from C string buffer (mock mode)
-    #[cfg(feature = "mock")]
-    fn parse_error_msg(buffer: &[i8]) -> String {
-        // Find null terminator
-        let len = buffer.iter().position(|&c| c == 0).unwrap_or(buffer.len());
-
-        // Convert i8 to u8 safely
-        let bytes: Vec<u8> = buffer[..len].iter().map(|&c| c as u8).collect();
-
-        String::from_utf8_lossy(&bytes).into_owned()
     }
 }
 
@@ -102,24 +102,5 @@ mod tests {
     fn test_error_display() {
         let err = Error::InvalidArgument("test".to_string());
         assert_eq!(err.to_string(), "Invalid argument: test");
-    }
-
-    #[test]
-    #[cfg(feature = "mock")]
-    fn test_parse_error_msg() {
-        let msg = b"test error\0".map(|b| b as i8);
-        let parsed = Error::parse_error_msg(&msg);
-        assert_eq!(parsed, "test error");
-    }
-
-    #[test]
-    #[cfg(feature = "mock")]
-    fn test_from_ffi() {
-        let msg = b"test\0".map(|b| b as i8);
-        let err = Error::from_ffi(trtx_sys::TRTX_ERROR_INVALID_ARGUMENT as i32, &msg);
-        match err {
-            Error::InvalidArgument(s) => assert_eq!(s, "test"),
-            _ => panic!("Wrong error type"),
-        }
     }
 }

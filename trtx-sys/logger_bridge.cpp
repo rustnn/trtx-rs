@@ -1,49 +1,52 @@
 /**
  * Logger Bridge for TensorRT-RTX Rust Bindings
- * 
+ *
  * This file provides C wrapper functions for TensorRT-RTX C++ API.
- * While we use autocxx for most C++ bindings, some wrappers are still necessary.
- * 
+ * While we use autocxx for most C++ bindings, some wrappers are still
+ * necessary.
+ *
  * ## Architecture
- * 
+ *
  * ```
  * Rust (trtx) → Raw FFI (trtx-sys) → logger_bridge.cpp → TensorRT C++ + autocxx
  * ```
- * 
+ *
  * ## Why These Wrappers Exist
- * 
+ *
  * ### NECESSARY WRAPPERS (Cannot be removed):
- * 
- * 1. **Logger Bridge (lines 29-52)**: 
+ *
+ * 1. **Logger Bridge (lines 29-52)**:
  *    - Rust cannot implement C++ virtual classes
  *    - RustLoggerImpl forwards virtual method calls to Rust callbacks
  *    - REQUIRED: No alternative
- * 
+ *
  * 2. **Factory Functions (lines 55-91)**:
  *    - createInferBuilder/Runtime take `ILogger&` references
  *    - autocxx struggles with C++ reference parameters
  *    - REQUIRED: Simplest solution for reference params
- * 
+ *
  * 3. **CUDA Wrappers (lines 658-677)**:
  *    - Bridge between std::ffi::c_void and autocxx::c_void
  *    - Type compatibility issue between Rust and autocxx types
  *    - KEEP FOR NOW: Could be removed with codebase-wide type migration
- * 
+ *
  * ### POTENTIALLY REDUNDANT WRAPPERS:
- * 
+ *
  * 4. **TensorRT Method Wrappers (lines 94-657)**:
  *    - Builder, Network, Tensor, Engine, Context methods
- *    - autocxx CAN generate these with `generate!("nvinfer1::INetworkDefinition")`
+ *    - autocxx CAN generate these with
+ * `generate!("nvinfer1::INetworkDefinition")`
  *    - POTENTIALLY REMOVABLE: ~75% code reduction if refactored
- *    - STATUS: Kept for now due to stability, could be migrated to direct autocxx calls
- * 
+ *    - STATUS: Kept for now due to stability, could be migrated to direct
+ * autocxx calls
+ *
  * ## Why Not Full autocxx?
- * 
+ *
  * We TRIED to use autocxx for everything but encountered:
  * - Type mismatches (autocxx::c_void vs std::ffi::c_void)
  * - Reference parameter handling issues
  * - Virtual method/callback complications
- * 
+ *
  * ## See Also
  * - docs/LOGGER_BRIDGE_ANALYSIS.md - Detailed analysis of each function
  * - docs/REFACTORING_SUMMARY.md - Test results and recommendations
@@ -51,6 +54,7 @@
  */
 
 #include "logger_bridge.hpp"
+#include <NvInferRuntime.h>
 #include <NvOnnxParser.h>
 #include <cstdint>
 #include <cstring>
@@ -64,50 +68,51 @@
 // C++ implementation of ILogger that bridges to Rust
 class RustLoggerImpl : public nvinfer1::ILogger {
 public:
-    RustLoggerImpl(RustLogCallback callback, void* user_data)
-        : callback_(callback), user_data_(user_data) {}
+  RustLoggerImpl(RustLogCallback callback, void *user_data)
+      : callback_(callback), user_data_(user_data) {}
 
-    void log(Severity severity, const char* msg) noexcept override {
-        if (callback_) {
-            callback_(user_data_, static_cast<int32_t>(severity), msg);
-        }
+  void log(int32_t severity, const char *msg) noexcept override {
+    if (callback_) {
+      callback_(user_data_, static_cast<int32_t>(severity), msg);
     }
+  }
 
 private:
-    RustLogCallback callback_;
-    void* user_data_;
+  RustLogCallback callback_;
+  void *user_data_;
 };
 
 // Opaque struct that holds the logger implementation
 struct RustLoggerBridge {
-    RustLoggerImpl* impl;
+  RustLoggerImpl *impl;
 };
 
 extern "C" {
 
-RustLoggerBridge* create_rust_logger_bridge(RustLogCallback callback, void* user_data) {
-    if (!callback) {
-        return nullptr;
-    }
-    
-    try {
-        auto* bridge = new RustLoggerBridge();
-        bridge->impl = new RustLoggerImpl(callback, user_data);
-        return bridge;
-    } catch (...) {
-        return nullptr;
-    }
+RustLoggerBridge *create_rust_logger_bridge(RustLogCallback callback,
+                                            void *user_data) {
+  if (!callback) {
+    return nullptr;
+  }
+
+  try {
+    auto *bridge = new RustLoggerBridge();
+    bridge->impl = new RustLoggerImpl(callback, user_data);
+    return bridge;
+  } catch (...) {
+    return nullptr;
+  }
 }
 
-void destroy_rust_logger_bridge(RustLoggerBridge* logger) {
-    if (logger) {
-        delete logger->impl;
-        delete logger;
-    }
+void destroy_rust_logger_bridge(RustLoggerBridge *logger) {
+  if (logger) {
+    delete logger->impl;
+    delete logger;
+  }
 }
 
-nvinfer1::ILogger* get_logger_interface(RustLoggerBridge* logger) {
-    return logger ? logger->impl : nullptr;
+nvinfer1::ILogger *get_logger_interface(RustLoggerBridge *logger) {
+  return logger ? logger->impl : nullptr;
 }
 
 //==============================================================================
@@ -118,316 +123,389 @@ nvinfer1::ILogger* get_logger_interface(RustLoggerBridge* logger) {
 
 // Factory functions for TensorRT
 #ifdef TRTX_LINK_TENSORRT_RTX
-void* create_infer_builder(void* logger) {
-    if (!logger) {
-        return nullptr;
-    }
-    try {
-        auto* ilogger = static_cast<nvinfer1::ILogger*>(logger);
-        return nvinfer1::createInferBuilder(*ilogger);
-    } catch (...) {
-        return nullptr;
-    }
+void *create_infer_builder(void *logger) {
+  if (!logger) {
+    return nullptr;
+  }
+  try {
+    auto *ilogger = static_cast<nvinfer1::ILogger *>(logger);
+    return nvinfer1::createInferBuilder(*ilogger);
+  } catch (...) {
+    return nullptr;
+  }
 }
 
-void* create_infer_runtime(void* logger) {
-    if (!logger) {
-        return nullptr;
-    }
-    try {
-        auto* ilogger = static_cast<nvinfer1::ILogger*>(logger);
-        return nvinfer1::createInferRuntime(*ilogger);
-    } catch (...) {
-        return nullptr;
-    }
+void *create_infer_runtime(void *logger) {
+  if (!logger) {
+    return nullptr;
+  }
+  try {
+    auto *ilogger = static_cast<nvinfer1::ILogger *>(logger);
+    return nvinfer1::createInferRuntime(*ilogger);
+  } catch (...) {
+    return nullptr;
+  }
+}
+void *create_infer_refitter(void *engine, void *logger) {
+  if (!engine || !logger) {
+    return nullptr;
+  }
+  try {
+    auto *iengine = static_cast<nvinfer1::ICudaEngine *>(engine);
+    auto *ilogger = static_cast<nvinfer1::ILogger *>(logger);
+    return nvinfer1::createInferRefitter(*iengine, *ilogger);
+  } catch (...) {
+    return nullptr;
+  }
 }
 #endif
 
 #ifdef TRTX_LINK_TENSORRT_ONNXPARSER
 // ONNX Parser factory function
-void* create_onnx_parser(void* network, void* logger) {
-    if (!network || !logger) {
-        return nullptr;
-    }
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        auto* ilogger = static_cast<nvinfer1::ILogger*>(logger);
-        return nvonnxparser::createParser(*inetwork, *ilogger);
-    } catch (...) {
-        return nullptr;
-    }
+void *create_onnx_parser(void *network, void *logger) {
+  if (!network || !logger) {
+    return nullptr;
+  }
+  try {
+    auto *inetwork = static_cast<nvinfer1::INetworkDefinition *>(network);
+    auto *ilogger = static_cast<nvinfer1::ILogger *>(logger);
+    return nvonnxparser::createParser(*inetwork, *ilogger);
+  } catch (...) {
+    return nullptr;
+  }
 }
 #endif
 
-//==============================================================================
-// SECTION 3: BUILDER & CONFIG METHODS (POTENTIALLY REDUNDANT)
-//==============================================================================
-// These wrap IBuilder and IBuilderConfig methods.
-// autocxx CAN generate these with generate!("nvinfer1::IBuilder").
-// FUTURE: Consider migrating to direct autocxx calls (see REFACTORING_SUMMARY.md)
-
-// Builder methods
-void builder_config_set_memory_pool_limit(void* config, int32_t pool_type, size_t limit) {
-    if (!config) return;
-    try {
-        auto* iconfig = static_cast<nvinfer1::IBuilderConfig*>(config);
-        iconfig->setMemoryPoolLimit(static_cast<nvinfer1::MemoryPoolType>(pool_type), limit);
-    } catch (...) {
-        // Ignore errors
-    }
+// Refitter methods that use char const** (pointer-to-pointer); autocxx cannot
+// bind these.
+int32_t trtx_refitter_get_missing(void *refitter, int32_t size,
+                                  char const **layer_names, int32_t *roles) {
+  if (!refitter || !layer_names || !roles)
+    return 0;
+  try {
+    auto *ir = static_cast<nvinfer1::IRefitter *>(refitter);
+    return ir->getMissing(size, layer_names,
+                          reinterpret_cast<nvinfer1::WeightsRole *>(roles));
+  } catch (...) {
+    return 0;
+  }
 }
 
-//==============================================================================
-// SECTION 4: NETWORK DEFINITION METHODS (POTENTIALLY REDUNDANT)
-//==============================================================================
-// These wrap INetworkDefinition layer building methods.
-// autocxx CAN generate these with generate!("nvinfer1::INetworkDefinition").
-// FUTURE: Consider migrating to direct autocxx calls
-// NOTE: This is the largest section (~350 lines) and biggest refactoring opportunity
-
-// Network methods
-// network_add_input - REMOVED - Now using direct autocxx call in network.rs
-
-// network_add_convolution - REMOVED - Using direct autocxx
-
-// network_add_activation - REMOVED - Now using direct autocxx call in network.rs
-
-// network_add_pooling - REMOVED - Now using direct autocxx call in network.rs
-
-// network_add_matrix_multiply - REMOVED - Using direct autocxx
-
-// network_add_constant - REMOVED - Using direct autocxx
-
-// network_add_elementwise - REMOVED - Now using direct autocxx call in network.rs
-
-// network_add_shuffle - REMOVED - Now using direct autocxx call in network.rs
-
-void* network_add_concatenation(void* network, void** inputs, int32_t nb_inputs) {
-    if (!network || !inputs || nb_inputs <= 0) return nullptr;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        std::vector<nvinfer1::ITensor*> tensors;
-        tensors.reserve(nb_inputs);
-        for (int32_t i = 0; i < nb_inputs; ++i) {
-            tensors.push_back(static_cast<nvinfer1::ITensor*>(inputs[i]));
-        }
-        auto* layer = inetwork->addConcatenation(tensors.data(), nb_inputs);
-        return layer; // Return layer, not output tensor
-    } catch (...) {
-        return nullptr;
-    }
+int32_t trtx_refitter_get_all(void *refitter, int32_t size,
+                              char const **layer_names, int32_t *roles) {
+  if (!refitter || !layer_names || !roles)
+    return 0;
+  try {
+    auto *ir = static_cast<nvinfer1::IRefitter *>(refitter);
+    return ir->getAll(size, layer_names,
+                      reinterpret_cast<nvinfer1::WeightsRole *>(roles));
+  } catch (...) {
+    return 0;
+  }
 }
 
-// network_add_softmax - REMOVED - Using direct autocxx
-
-// network_add_scale - REMOVED - Using direct autocxx
-
-// network_add_reduce - REMOVED - Using direct autocxx
-
-// network_add_slice - REMOVED - Now using direct autocxx call in network.rs
-
-// network_add_resize - REMOVED - Using direct autocxx
-
-// network_add_topk - REMOVED - Using direct autocxx
-
-// network_add_gather - REMOVED - Using direct autocxx
-
-// network_add_select - REMOVED - Using direct autocxx
-
-void* network_add_assertion(void* network, void* condition, const char* message) {
-    if (!network || !condition) return nullptr;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        auto* condition_tensor = static_cast<nvinfer1::ITensor*>(condition);
-        auto* layer = inetwork->addAssertion(*condition_tensor, message ? message : "");
-        // Assertion layers don't have outputs, return the layer itself
-        return layer;
-    } catch (...) {
-        return nullptr;
-    }
+int32_t trtx_refitter_get_missing_weights(void *refitter, int32_t size,
+                                          char const **weights_names) {
+  if (!refitter || !weights_names)
+    return 0;
+  try {
+    auto *ir = static_cast<nvinfer1::IRefitter *>(refitter);
+    return ir->getMissingWeights(size, weights_names);
+  } catch (...) {
+    return 0;
+  }
 }
 
-void* network_add_loop(void* network) {
-    if (!network) return nullptr;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        return inetwork->addLoop();
-    } catch (...) {
-        return nullptr;
-    }
+int32_t trtx_refitter_get_all_weights(void *refitter, int32_t size,
+                                      char const **weights_names) {
+  if (!refitter || !weights_names)
+    return 0;
+  try {
+    auto *ir = static_cast<nvinfer1::IRefitter *>(refitter);
+    return ir->getAllWeights(size, weights_names);
+  } catch (...) {
+    return 0;
+  }
 }
 
-void* network_add_if_conditional(void* network) {
-    if (!network) return nullptr;
-    try {
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        return inetwork->addIfConditional();
-    } catch (...) {
-        return nullptr;
-    }
+bool parser_parse(void *parser, const void *data, size_t size) {
+  if (!parser || !data)
+    return false;
+  try {
+    auto *iparser = static_cast<nvonnxparser::IParser *>(parser);
+    return iparser->parse(data, size);
+  } catch (...) {
+    return false;
+  }
 }
 
-//==============================================================================
-// SECTION 5: TENSOR METHODS (POTENTIALLY REDUNDANT)
-//==============================================================================
-// Wrap ITensor getter/setter methods.
-// autocxx CAN generate with generate!("nvinfer1::ITensor")
-
-// Tensor methods
-void* tensor_get_dimensions(void* tensor, int32_t* dims, int32_t* nb_dims) {
-    if (!tensor || !dims || !nb_dims) return nullptr;
-    try {
-        auto* itensor = static_cast<nvinfer1::ITensor*>(tensor);
-        nvinfer1::Dims dimensions = itensor->getDimensions();
-        *nb_dims = dimensions.nbDims;
-        for (int32_t i = 0; i < dimensions.nbDims && i < nvinfer1::Dims::MAX_DIMS; ++i) {
-            dims[i] = dimensions.d[i];
-        }
-        return tensor; // Return success
-    } catch (...) {
-        return nullptr;
-    }
+int32_t parser_get_nb_errors(void *parser) {
+  if (!parser)
+    return 0;
+  try {
+    auto *iparser = static_cast<nvonnxparser::IParser *>(parser);
+    return iparser->getNbErrors();
+  } catch (...) {
+    return 0;
+  }
 }
 
-int32_t tensor_get_type(void* tensor) {
-    if (!tensor) return -1;
-    try {
-        auto* itensor = static_cast<nvinfer1::ITensor*>(tensor);
-        return static_cast<int32_t>(itensor->getType());
-    } catch (...) {
-        return -1;
-    }
+void *parser_get_error(void *parser, int32_t index) {
+  if (!parser)
+    return nullptr;
+  try {
+    auto *iparser = static_cast<nvonnxparser::IParser *>(parser);
+    return const_cast<nvonnxparser::IParserError *>(iparser->getError(index));
+  } catch (...) {
+    return nullptr;
+  }
 }
 
-void* builder_build_serialized_network(void* builder, void* network, void* config, size_t* out_size) {
-    if (!builder || !network || !config || !out_size) return nullptr;
-    try {
-        auto* ibuilder = static_cast<nvinfer1::IBuilder*>(builder);
-        auto* inetwork = static_cast<nvinfer1::INetworkDefinition*>(network);
-        auto* iconfig = static_cast<nvinfer1::IBuilderConfig*>(config);
-        
-        auto* serialized = ibuilder->buildSerializedNetwork(*inetwork, *iconfig);
-        if (!serialized) return nullptr;
-        
-        *out_size = serialized->size();
-        // Allocate and copy data
-        void* data = malloc(*out_size);
-        if (data) {
-            memcpy(data, serialized->data(), *out_size);
-        }
-        delete serialized;
-        return data;
-    } catch (...) {
-        return nullptr;
-    }
+const char *parser_error_desc(void *error) {
+  if (!error)
+    return nullptr;
+  try {
+    auto *ierror = static_cast<nvonnxparser::IParserError *>(error);
+    return ierror->desc();
+  } catch (...) {
+    return nullptr;
+  }
 }
 
-// Runtime methods
-void* runtime_deserialize_cuda_engine(void* runtime, const void* data, size_t size) {
-    if (!runtime || !data) return nullptr;
-    try {
-        auto* iruntime = static_cast<nvinfer1::IRuntime*>(runtime);
-        return iruntime->deserializeCudaEngine(data, size);
-    } catch (...) {
-        return nullptr;
+void *network_add_concatenation(void *network, void **inputs,
+                                int32_t nb_inputs) {
+  if (!network || !inputs || nb_inputs <= 0)
+    return nullptr;
+  try {
+    auto *inetwork = static_cast<nvinfer1::INetworkDefinition *>(network);
+    std::vector<nvinfer1::ITensor *> tensors;
+    tensors.reserve(nb_inputs);
+    for (int32_t i = 0; i < nb_inputs; ++i) {
+      tensors.push_back(static_cast<nvinfer1::ITensor *>(inputs[i]));
     }
+    auto *layer = inetwork->addConcatenation(tensors.data(), nb_inputs);
+    return layer; // Return layer, not output tensor
+  } catch (...) {
+    return nullptr;
+  }
 }
 
-// Engine methods
-// ExecutionContext methods
-// Parser methods
-bool parser_parse(void* parser, const void* data, size_t size) {
-    if (!parser || !data) return false;
-    try {
-        auto* iparser = static_cast<nvonnxparser::IParser*>(parser);
-        return iparser->parse(data, size);
-    } catch (...) {
-        return false;
-    }
-}
+uint32_t get_tensorrt_version() { return NV_TENSORRT_VERSION; }
 
-int32_t parser_get_nb_errors(void* parser) {
-    if (!parser) return 0;
-    try {
-        auto* iparser = static_cast<nvonnxparser::IParser*>(parser);
-        return iparser->getNbErrors();
-    } catch (...) {
-        return 0;
-    }
-}
+namespace nvinfer1 {
+class ProgressMonitor : public IProgressMonitor {
+public:
+  ProgressMonitor(void *self, void *phaseStart, void *stepComplete,
+                  void *phaseFinish)
+      : self(self), m_phaseStart((decltype(m_phaseStart))phaseStart),
+        m_stepComplete((decltype(m_stepComplete))stepComplete),
+        m_phaseFinish((decltype(m_phaseFinish))phaseFinish) {}
+  ~ProgressMonitor() = default;
+  void *self;
+  void (*m_phaseStart)(void *self, char const *phaseName,
+                       char const *parentPhase, int32_t nbSteps);
+  bool (*m_stepComplete)(void *self, char const *phaseName, int32_t step);
+  void (*m_phaseFinish)(void *self, char const *phaseName);
 
-void* parser_get_error(void* parser, int32_t index) {
-    if (!parser) return nullptr;
-    try {
-        auto* iparser = static_cast<nvonnxparser::IParser*>(parser);
-        return const_cast<nvonnxparser::IParserError*>(iparser->getError(index));
-    } catch (...) {
-        return nullptr;
-    }
-}
+  void phaseStart(char const *phaseName, char const *parentPhase,
+                  int32_t nbSteps) noexcept override {
+    m_phaseStart(self, phaseName, parentPhase, nbSteps);
+  };
+  bool stepComplete(char const *phaseName, int32_t step) noexcept override {
+    return m_stepComplete(self, phaseName, step);
+  };
+  void phaseFinish(char const *phaseName) noexcept override {
+    m_phaseFinish(self, phaseName);
+  };
+};
+} // namespace nvinfer1
 
-const char* parser_error_desc(void* error) {
-    if (!error) return nullptr;
-    try {
-        auto* ierror = static_cast<nvonnxparser::IParserError*>(error);
-        return ierror->desc();
-    } catch (...) {
-        return nullptr;
-    }
+void *trtx_create_progress_monitor(void *self, void *phaseStart,
+                                   void *stepComplete, void *phaseFinish) {
+  try {
+    return new nvinfer1::ProgressMonitor(self, phaseStart, stepComplete,
+                                         phaseFinish);
+  } catch (...) {
+    return nullptr;
+  }
+}
+void trtx_destroy_progress_monitor(void *self) {
+  delete (nvinfer1::ProgressMonitor *)(self);
 }
 
 //==============================================================================
-// SECTION 6: DESTRUCTION METHODS (POTENTIALLY REDUNDANT)
+// ErrorRecorder subclass (bridge to Rust RecordError)
 //==============================================================================
-// These wrap TensorRT object deletion.
-// autocxx CAN handle C++ destructors with RAII wrappers.
-// FUTURE: Consider using UniquePtr or Drop trait implementations
+namespace nvinfer1 {
+class ErrorRecorderSubclass : public IErrorRecorder {
+public:
+  using ErrorCode = nvinfer1::ErrorCode;
+  ErrorRecorderSubclass(void *self, int32_t (*getNbErrors)(void *),
+                        int32_t (*getErrorCode)(void *, int32_t),
+                        void (*getErrorDesc)(void *, int32_t, char *, size_t),
+                        bool (*hasOverflowed)(void *), void (*clear)(void *),
+                        bool (*reportError)(void *, int32_t, char const *),
+                        int32_t (*incRefCount)(void *),
+                        int32_t (*decRefCount)(void *))
+      : self(self), m_getNbErrors(getNbErrors), m_getErrorCode(getErrorCode),
+        m_getErrorDesc(getErrorDesc), m_hasOverflowed(hasOverflowed),
+        m_clear(clear), m_reportError(reportError), m_incRefCount(incRefCount),
+        m_decRefCount(decRefCount) {}
+  ~ErrorRecorderSubclass() = default;
 
-// Destruction methods
-void delete_builder(void* builder) {
-    if (builder) {
-        delete static_cast<nvinfer1::IBuilder*>(builder);
-    }
+  void *self;
+  int32_t (*m_getNbErrors)(void *);
+  int32_t (*m_getErrorCode)(void *, int32_t);
+  void (*m_getErrorDesc)(void *, int32_t, char *, size_t);
+  bool (*m_hasOverflowed)(void *);
+  void (*m_clear)(void *);
+  bool (*m_reportError)(void *, int32_t, char const *);
+  int32_t (*m_incRefCount)(void *);
+  int32_t (*m_decRefCount)(void *);
+
+  mutable std::string m_lastDesc;
+
+  int32_t getNbErrors() const noexcept override { return m_getNbErrors(self); }
+  int32_t getErrorCode(int32_t errorIdx) const noexcept override {
+    return m_getErrorCode(self, errorIdx);
+  }
+  ErrorDesc getErrorDesc(int32_t errorIdx) const noexcept override {
+    char buf[128];
+    m_getErrorDesc(self, errorIdx, buf, sizeof(buf));
+    m_lastDesc = buf;
+    return m_lastDesc.c_str();
+  }
+  bool hasOverflowed() const noexcept override { return m_hasOverflowed(self); }
+  void clear() noexcept override { m_clear(self); }
+  bool reportError(int32_t val, ErrorDesc desc) noexcept override {
+    return m_reportError(self, val, desc);
+  }
+  RefCount incRefCount() noexcept override { return m_incRefCount(self); }
+  RefCount decRefCount() noexcept override { return m_decRefCount(self); }
+};
+} // namespace nvinfer1
+
+void *trtx_create_error_recorder(void *self, void *getNbErrors,
+                                 void *getErrorCode, void *getErrorDesc,
+                                 void *hasOverflowed, void *clear,
+                                 void *reportError, void *incRefCount,
+                                 void *decRefCount) {
+  try {
+    return new nvinfer1::ErrorRecorderSubclass(
+        self, (int32_t (*)(void *))getNbErrors,
+        (int32_t (*)(void *, int32_t))getErrorCode,
+        (void (*)(void *, int32_t, char *, size_t))getErrorDesc,
+        (bool (*)(void *))hasOverflowed, (void (*)(void *))clear,
+        (bool (*)(void *, int32_t, char const *))reportError,
+        (int32_t (*)(void *))incRefCount, (int32_t (*)(void *))decRefCount);
+  } catch (...) {
+    return nullptr;
+  }
+}
+void trtx_destroy_error_recorder(void *obj) {
+  delete static_cast<nvinfer1::ErrorRecorderSubclass *>(obj);
 }
 
-void delete_network(void* network) {
-    if (network) {
-        delete static_cast<nvinfer1::INetworkDefinition*>(network);
-    }
+//==============================================================================
+// GpuAllocator subclass (bridge to Rust AllocateGpu)
+//==============================================================================
+namespace nvinfer1 {
+class GpuAllocatorSubclass : public IGpuAllocator {
+public:
+  GpuAllocatorSubclass(void *self,
+                       void *(*allocateAsync)(void *, uint64_t, uint64_t,
+                                              uint32_t, void *),
+                       void *(*reallocate)(void *, void *, uint64_t, uint64_t),
+                       bool (*deallocateAsync)(void *, void *, void *))
+      : self(self), m_allocateAsync((decltype(m_allocateAsync))allocateAsync),
+        m_reallocate((decltype(m_reallocate))reallocate),
+        m_deallocateAsync((decltype(m_deallocateAsync))deallocateAsync) {}
+  ~GpuAllocatorSubclass() = default;
+
+  void *self;
+  void *(*m_allocateAsync)(void *, uint64_t, uint64_t, uint32_t, void *);
+  void *(*m_reallocate)(void *, void *, uint64_t, uint64_t);
+  bool (*m_deallocateAsync)(void *, void *, void *);
+
+  void *allocate(uint64_t size, uint64_t alignment,
+                 AllocatorFlags flags) noexcept override {
+    return m_allocateAsync(self, size, alignment, static_cast<uint32_t>(flags),
+                           nullptr);
+  }
+  void *reallocate(void *baseAddr, uint64_t alignment,
+                   uint64_t newSize) noexcept override {
+    return m_reallocate(self, baseAddr, alignment, newSize);
+  }
+  bool deallocate(void *memory) noexcept override {
+    return m_deallocateAsync(self, memory, nullptr);
+  }
+  void *allocateAsync(uint64_t size, uint64_t alignment, AllocatorFlags flags,
+                      cudaStream_t stream) noexcept override {
+    return m_allocateAsync(self, size, alignment, static_cast<uint32_t>(flags),
+                           stream);
+  }
+  bool deallocateAsync(void *memory, cudaStream_t stream) noexcept override {
+    return m_deallocateAsync(self, memory, stream);
+  }
+};
+} // namespace nvinfer1
+
+void *trtx_create_gpu_allocator(void *self, void *allocateAsync,
+                                void *reallocate, void *deallocateAsync) {
+
+  try {
+    return new nvinfer1::GpuAllocatorSubclass(
+        self,
+        (void *(*)(void *, uint64_t, uint64_t, uint32_t, void *))allocateAsync,
+        (void *(*)(void *, void *, uint64_t, uint64_t))reallocate,
+        (bool (*)(void *, void *, void *))deallocateAsync);
+  } catch (...) {
+    return nullptr;
+  }
+}
+void trtx_destroy_gpu_allocator(void *obj) {
+  delete static_cast<nvinfer1::GpuAllocatorSubclass *>(obj);
+}
 }
 
-void delete_config(void* config) {
-    if (config) {
-        delete static_cast<nvinfer1::IBuilderConfig*>(config);
-    }
-}
+namespace nvinfer1 {
+class DebugListener : public IDebugListener {
+public:
+  DebugListener(void *self,
+                bool (*processDebugTensor)(void *self, void const *addr,
+                                           TensorLocation location,
+                                           DataType type, Dims const *shape,
+                                           char const *name,
+                                           cudaStream_t stream))
+      : self(self), m_processDebugTensor(
+                        (decltype(m_processDebugTensor))processDebugTensor) {}
+  ~DebugListener() = default;
 
-void delete_runtime(void* runtime) {
-    if (runtime) {
-        delete static_cast<nvinfer1::IRuntime*>(runtime);
-    }
-}
+  void *self;
+  bool (*m_processDebugTensor)(void *self, void const *addr,
+                               TensorLocation location, DataType type,
+                               Dims const *shape, char const *name,
+                               cudaStream_t stream);
 
-void delete_engine(void* engine) {
-    if (engine) {
-        delete static_cast<nvinfer1::ICudaEngine*>(engine);
-    }
-}
+  bool processDebugTensor(void const *addr, TensorLocation location,
+                          DataType type, Dims const &shape, char const *name,
+                          cudaStream_t stream) noexcept override {
+    return m_processDebugTensor(self, addr, location, type, &shape, name,
+                                stream);
+  };
+};
 
-void delete_context(void* context) {
-    if (context) {
-        delete static_cast<nvinfer1::IExecutionContext*>(context);
-    }
+extern "C" {
+void *trtx_create_debug_listener(
+    nvinfer1::IDebugListener *self,
+    bool (*processDebugTensor)(void *self, void const *addr,
+                               TensorLocation location, DataType type,
+                               Dims const *shape, char const *name,
+                               cudaStream_t stream)) {
+  return new DebugListener(self, processDebugTensor);
 }
-
-void delete_parser(void* parser) {
-    if (parser) {
-        delete static_cast<nvonnxparser::IParser*>(parser);
-    }
+void trtx_destroy_debug_listener(nvinfer1::IDebugListener *self) {
+  delete self;
 }
-
-uint32_t get_tensorrt_version() {
-    return NV_TENSORRT_VERSION;
 }
-
-} // extern "C"
+} // namespace nvinfer1

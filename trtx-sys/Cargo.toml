@@ -13,20 +13,19 @@ categories = ["external-ffi-bindings"]
 
 [build-dependencies]
 autocxx-build = "0.30"
-bindgen = "0.69"
+bindgen = "0.72"
 cc = "1.0"
 regex = "1.0"
 
 [features]
-default = ["v_1_3"]
-# Mock mode for development without TensorRT-RTX installed
-mock = []
+default = ["v_1_4"]
 onnxparser = []
 link_tensorrt_rtx = []
 link_tensorrt_onnxparser = ["onnxparser"]
 
 # versions
 v_1_3 = []
+v_1_4 = []
 
 [dependencies]
 autocxx = "0.30"

@@ -17,8 +17,7 @@ By default, trtx builds with real TensorRT-RTX and cudarc for CUDA operations:
 
 ```bash
 # Set environment
-export TENSORRT_RTX_DIR=/path/to/tensorrt-rtx
-export CUDA_ROOT=/usr/local/cuda
+export LD_LIBRARY_PATH=/path/to/tensorrt-rtx/lib
 
 # Build (uses real TensorRT-RTX)
 make build                    # Debug build
@@ -69,29 +68,6 @@ make publish                # Publish to crates.io
 
 ## Architecture
 
-### Three-Layer FFI Design
-
-```
-┌─────────────────────────┐
-│  Rust Safe API (trtx)   │  <- RAII, Result<T, Error>, lifetimes
-├─────────────────────────┤
-│  Raw FFI (trtx-sys)     │  <- Bindgen-generated from wrapper.hpp
-├─────────────────────────┤
-│  C Wrapper Layer        │  <- wrapper.hpp/cpp (exception handling)
-├─────────────────────────┤
-│  TensorRT-RTX C++ API   │  <- NVIDIA library
-└─────────────────────────┘
-```
-
-**Why three layers?**
-- TensorRT-RTX is C++ with exceptions and classes
-- C wrapper provides `extern "C"` interface with opaque pointers
-- C wrapper catches exceptions and converts to error codes
-- Bindgen generates Rust FFI from C wrapper
-- trtx crate provides safe Rust abstractions
-
-See `docs/FFI_GUIDE.md` for detailed FFI development workflow.
-
 ### Two-Phase Workflow
 
 **Build Phase (AOT):**
@@ -113,57 +89,6 @@ Runtime → Deserialize Engine → ExecutionContext → Bind Tensors → Execute
 - `trtx/src/cuda.rs`: CUDA memory management wrappers
 - `trtx/src/executor.rs`: High-level executor API (rustnn-compatible)
 - `trtx/src/error.rs`: Error types
-
-## FFI Bindings
-
-### When Modifying FFI
-
-1. **Update C wrapper** in `trtx-sys/wrapper.hpp` and `trtx-sys/wrapper.cpp`
-2. **Rebuild** to regenerate bindings: `cargo clean -p trtx-sys && cargo build`
-3. **Update mock** in `trtx-sys/build.rs` (`generate_mock_bindings`) and `trtx-sys/mock.c`
-4. **Add safe wrapper** in appropriate `trtx/src/*.rs` file
-
-### Naming Conventions
-
-- C functions: `trtx_<class>_<method>` (e.g., `trtx_cuda_engine_get_tensor_name`)
-- Types: `Trtx<ClassName>` (e.g., `TrtxCudaEngine`)
-- Constants: `TRTX_<NAME>` (e.g., `TRTX_SUCCESS`)
-
-### Error Handling Pattern
-
-All FFI functions follow this signature:
-```c
-int32_t trtx_function_name(
-    // ... input parameters ...
-    char* error_msg,        // Always second-to-last
-    size_t error_msg_len    // Always last
-);
-```
-
-Return `TRTX_SUCCESS` (0) on success, error code on failure.
-
-## Mock Mode
-
-Mock mode provides stub implementations for development without TensorRT-RTX:
-- Development on machines without TensorRT-RTX (e.g., macOS)
-- CI/CD on any platform
-- API validation without GPU
-
-**Use `--features mock`** when TensorRT-RTX is not available. When adding new FFI functions, update both real bindings AND mock implementations in `trtx-sys/build.rs` and `trtx-sys/mock.c`.
-
-### Mock Implementation Files
-
-- `trtx-sys/build.rs`: `generate_mock_bindings()` function defines Rust FFI stubs
-- `trtx-sys/mock.c`: C implementations that return `TRTX_SUCCESS` with dummy data
-
-## Important Notes
-
-### Build System
-
-- `trtx-sys/build.rs` uses bindgen to auto-generate `bindings.rs` from `wrapper.hpp`
-- Generated file: `target/debug/build/trtx-sys-*/out/bindings.rs`
-- Manual edits to generated files are **overwritten** on rebuild
-- Changes must go in source files (`wrapper.hpp`, `wrapper.cpp`, `build.rs`)
 
 ### Memory Management
 

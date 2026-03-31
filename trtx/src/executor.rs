@@ -64,13 +64,13 @@ fn build_engine_from_onnx(logger: &Logger, onnx_bytes: &[u8]) -> Result<Vec<u8>>
     // Create builder
 
     use crate::builder::MemoryPoolType;
-    let builder = Builder::new(logger)?;
+    let mut builder = Builder::new(logger)?;
 
     // Create network with explicit batch
     let mut network = builder.create_network(network_flags::EXPLICIT_BATCH)?;
 
     // Parse ONNX model
-    let parser = OnnxParser::new(&mut network, logger)?;
+    let mut parser = OnnxParser::new(&mut network, logger)?;
     parser.parse(onnx_bytes)?;
 
     // Configure builder
@@ -93,8 +93,8 @@ fn execute_engine(
     inputs: &[TensorInput],
 ) -> Result<Vec<TensorOutput>> {
     // Create runtime and deserialize engine
-    let runtime = Runtime::new(logger)?;
-    let engine = runtime.deserialize_cuda_engine(engine_data)?;
+    let mut runtime = Runtime::new(logger)?;
+    let mut engine = runtime.deserialize_cuda_engine(engine_data)?;
     let mut context = engine.create_execution_context()?;
 
     // Get tensor information
@@ -251,7 +251,7 @@ mod tests {
 
         let _result = run_onnx_zeroed(&dummy_onnx, &inputs);
         // In mock mode, this should succeed
-        #[cfg(feature = "mock")]
+        #[cfg(feature = "mock_runtime")]
         assert!(_result.is_ok());
     }
 }
