@@ -191,7 +191,7 @@ pub fn dynamically_load_tensorrt(_filename: Option<impl AsFilename>) -> Result<(
 pub(crate) static TRT_ONNXPARSER_LIB: std::sync::RwLock<Option<libloading::Library>> =
     std::sync::RwLock::new(None);
 
-#[cfg(feature = "dlopen_tensorrt_rtx")]
+#[cfg(feature = "dlopen_tensorrt_onnxparser")]
 pub fn dynamically_load_tensorrt_onnxparser(_filename: Option<impl AsFilename>) -> Result<()> {
     #[cfg(not(any(feature = "link_tensorrt_onnxparser", feature = "mock")))]
     {
