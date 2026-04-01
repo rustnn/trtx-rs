@@ -6,7 +6,7 @@ use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 use std::pin::Pin;
 use trtx_sys::nvinfer1::{IConcatenationLayer, INetworkDefinition, ITensor};
-use trtx_sys::{nvinfer1, LayerType};
+use trtx_sys::{nvinfer1, LayerType, Weights};
 use trtx_sys::{AsLayer, AsLayerTyped};
 use trtx_sys::{DataType, MatrixOperation, ScaleMode, TopKOperation};
 
@@ -29,12 +29,33 @@ use crate::error::{Error, Result};
 use crate::interfaces::ErrorRecorder;
 
 /// Kernel and optional bias weights for convolution and deconvolution layers.
-#[derive(Clone)]
 pub struct ConvWeights<'a> {
     pub kernel_weights: &'a [u8],
     pub kernel_dtype: crate::DataType,
     pub bias_weights: Option<&'a [u8]>,
     pub bias_dtype: Option<crate::DataType>,
+}
+
+pub struct OwnedWeights {
+    pub shape: Vec<i64>,
+    pub data_type: DataType,
+    pub values: Vec<u8>,
+}
+
+pub struct OwnedConvWeights {
+    pub kernel: OwnedWeights,
+    pub bias: Option<OwnedWeights>,
+}
+
+impl OwnedConvWeights {
+    pub fn as_weights(&self) -> ConvWeights<'_> {
+        ConvWeights {
+            kernel_weights: &self.kernel.values,
+            kernel_dtype: self.kernel.data_type,
+            bias_weights: self.bias.as_ref().map(|b| b.values.as_slice()),
+            bias_dtype: self.bias.as_ref().map(|b| b.data_type),
+        }
+    }
 }
 
 /// Tensor handle (opaque pointer)
@@ -732,6 +753,65 @@ impl<'network> NetworkDefinition<'network> {
         MatrixMultiplyLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
+    /// Same as [`Self::add_convolution`] but allows to set weights later (e.g. dynamic kernel and bias)
+    ///
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConvolutionNd`].
+    pub fn add_convolution_deferrred_weights(
+        &'_ mut self,
+        input: &'_ Tensor,
+        nb_output_maps: i32,
+        kernel_size: &[i32; 2],
+    ) -> Result<ConvolutionLayer<'network>> {
+        let kernel_dims = trtx_sys::Dims::new_2d(kernel_size[0] as i64, kernel_size[1] as i64);
+        let layer_ptr = self.inner.pin_mut().addConvolutionNd(
+            input.pin_mut(),
+            nb_output_maps as i64,
+            &kernel_dims,
+            Weights {
+                type_: nvinfer1::DataType::kFLOAT,
+                values: std::ptr::null(),
+                count: 0,
+            },
+            Weights {
+                type_: nvinfer1::DataType::kFLOAT,
+                values: std::ptr::null(),
+                count: 0,
+            },
+        );
+        ConvolutionLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
+    /// Same as [`Self::add_convolution`] but takes ownership of weights
+    ///
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConvolutionNd`].
+    pub fn add_convolution_owned_weights(
+        &'_ mut self,
+        input: &'_ Tensor,
+        nb_output_maps: i32,
+        kernel_size: &[i32; 2],
+        weights: OwnedConvWeights,
+    ) -> Result<ConvolutionLayer<'network>> {
+        let mut layer =
+            self.add_convolution_deferrred_weights(input, nb_output_maps, kernel_size)?;
+        let kernel = self
+            .add_constant_owned(
+                &weights.kernel.shape,
+                weights.kernel.values,
+                weights.kernel.data_type,
+            )?
+            .get_output(self, 0)?;
+        layer.set_input(self, 1, &kernel)?;
+
+        if let Some(bias) = weights.bias {
+            let bias = self
+                .add_constant_owned(&bias.shape, bias.values, bias.data_type)?
+                .get_output(self, 0)?;
+            layer.set_input(self, 2, &bias)?;
+        }
+
+        Ok(layer)
+    }
+
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConvolutionNd`].
     pub fn add_convolution(
         &'_ mut self,
@@ -836,6 +916,68 @@ impl<'network> NetworkDefinition<'network> {
         DeconvolutionLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
+    /// Add a 2D deconvolution layer. Same input semantics as convolution: input 0 = activation,
+    /// input 1 = kernel tensor (use set_input(1, tensor) when kernel_weights is empty),
+    /// input 2 = bias tensor (use set_input(2, tensor) when bias_weights is None/empty).
+    ///
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addDeconvolutionNd`].
+    pub fn add_deconvolution_deferred_weights(
+        &mut self,
+        input: &'_ Tensor,
+        nb_output_maps: i64,
+        kernel_size: &[i64; 2],
+    ) -> Result<DeconvolutionLayer<'network>> {
+        crate::check_network!(self, input);
+        let kernel_dims = trtx_sys::Dims::new_2d(kernel_size[0], kernel_size[1]);
+        let layer_ptr = self.inner.pin_mut().addDeconvolutionNd(
+            input.pin_mut(),
+            nb_output_maps,
+            kernel_dims,
+            Weights {
+                type_: nvinfer1::DataType::kFLOAT,
+                values: std::ptr::null(),
+                count: 0,
+            },
+            Weights {
+                type_: nvinfer1::DataType::kFLOAT,
+                values: std::ptr::null(),
+                count: 0,
+            },
+        );
+        DeconvolutionLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
+    /// Same as [`Self::add_deconvolution`] but takes ownership of weights
+    ///
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addDeconvolutionNd`].
+    pub fn add_deconvolution_owned_weights(
+        &'_ mut self,
+        input: &'_ Tensor,
+        nb_output_maps: i64,
+        kernel_size: &[i64; 2],
+        weights: OwnedConvWeights,
+    ) -> Result<DeconvolutionLayer<'network>> {
+        let mut layer =
+            self.add_deconvolution_deferred_weights(input, nb_output_maps, kernel_size)?;
+        let kernel = self
+            .add_constant_owned(
+                &weights.kernel.shape,
+                weights.kernel.values,
+                weights.kernel.data_type,
+            )?
+            .get_output(self, 0)?;
+        layer.set_input(self, 1, &kernel)?;
+
+        if let Some(bias) = weights.bias {
+            let bias = self
+                .add_constant_owned(&bias.shape, bias.values, bias.data_type)?
+                .get_output(self, 0)?;
+            layer.set_input(self, 2, &bias)?;
+        }
+
+        Ok(layer)
+    }
+
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConcatenation`].
     pub fn add_concatenation(&self, inputs: &[&'_ Tensor]) -> Result<ConcatenationLayer<'network>> {
         for t in inputs.iter() {
@@ -864,6 +1006,41 @@ impl<'network> NetworkDefinition<'network> {
         data_type: trtx_sys::DataType,
     ) -> Result<ConstantLayer<'network>> {
         unsafe { self.add_constant_unsafe(dims, weights, data_type, true) }
+    }
+
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConstant`].
+    /// Same as [`Self::add_constant`] but takes ownership of weights
+    pub fn add_constant_owned(
+        &mut self,
+        dims: &[i64],
+        weights: Vec<u8>,
+        data_type: trtx_sys::DataType,
+    ) -> Result<ConstantLayer<'network>> {
+        let element_count: i64 = dims.iter().product();
+        let expected_bytes = element_count * data_type.size_bits() as i64 / 8;
+        if weights.len() as i64 != expected_bytes {
+            panic!(
+                "Weight size mismatch: expected {expected_bytes} bytes, got {} bytes",
+                weights.len()
+            );
+        }
+        let dims_struct = trtx_sys::Dims::from_slice(dims);
+        let weights_struct = trtx_sys::nvinfer1::Weights::new_with_type(
+            data_type.into(),
+            {
+                self.small_copied_weights.push(weights);
+                self.small_copied_weights
+                    .last()
+                    .expect("can't be empty. we just pushed")
+                    .as_ptr()
+            } as *const std::ffi::c_void,
+            element_count,
+        );
+        let layer_ptr = self
+            .inner
+            .pin_mut()
+            .addConstant(&dims_struct, weights_struct);
+        ConstantLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
     unsafe fn add_constant_unsafe(
