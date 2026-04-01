@@ -645,7 +645,7 @@ impl<'network> NetworkDefinition<'network> {
     pub fn add_unary(
         &mut self,
         input: &'_ Tensor,
-        op: trtx_sys::UnaryOperation,
+        op: trtx::UnaryOperation,
     ) -> Result<UnaryLayer<'network>> {
         crate::check_network!(self, input);
         let layer_ptr = self.inner.pin_mut().addUnary(input.pin_mut(), op.into());
