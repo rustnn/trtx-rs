@@ -273,6 +273,7 @@ pub struct IfConditional<'network> {
     pub(crate) network: *const nvinfer1::INetworkDefinition,
 }
 impl ShuffleLayer<'_> {
+    /// See [nvinfer1::IShuffleLayer::setReshapeDimensions]
     pub fn set_reshape_dimensions(
         &mut self,
         network: &mut NetworkDefinition,
@@ -284,6 +285,7 @@ impl ShuffleLayer<'_> {
         Ok(())
     }
 
+    /// See [nvinfer1::IShuffleLayer::setFirstTranspose]
     pub fn set_first_transpose(
         &mut self,
         network: &mut NetworkDefinition,
@@ -295,6 +297,21 @@ impl ShuffleLayer<'_> {
         order_arr[..n].copy_from_slice(&order[..n]);
         let perm = trtx_sys::nvinfer1::Permutation { order: order_arr };
         self.inner.as_mut().setFirstTranspose(perm);
+        Ok(())
+    }
+
+    /// See [nvinfer1::IShuffleLayer::setSecondTranspose]
+    pub fn set_second_transpose(
+        &mut self,
+        network: &mut NetworkDefinition,
+        order: &[i32],
+    ) -> Result<()> {
+        crate::check_network!(network, self);
+        let mut order_arr = [0i32; 8];
+        let n = order.len().min(8);
+        order_arr[..n].copy_from_slice(&order[..n]);
+        let perm = trtx_sys::nvinfer1::Permutation { order: order_arr };
+        self.inner.as_mut().setSecondTranspose(perm);
         Ok(())
     }
 }
