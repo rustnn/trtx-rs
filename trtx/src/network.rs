@@ -300,11 +300,13 @@ impl ShuffleLayer<'_> {
 }
 
 impl ResizeLayer<'_> {
+    /// See [nvinfer1::IResizeLayer::setOutputDimensions]
     pub fn set_output_dimensions(&mut self, network: &mut NetworkDefinition, dims: &[i64]) {
         crate::check_network!(network, self);
         let dims_obj = trtx_sys::Dims::from_slice(dims);
         self.inner.as_mut().setOutputDimensions(&dims_obj);
     }
+    /// See [nvinfer1::IResizeLayer::setResizeMode]
     pub fn set_resize_mode(&mut self, network: &mut NetworkDefinition, mode: trtx_sys::ResizeMode) {
         crate::check_network!(network, self);
         self.inner.as_mut().setResizeMode(mode.into());
@@ -312,6 +314,7 @@ impl ResizeLayer<'_> {
 }
 
 impl GatherLayer<'_> {
+    /// See [nvinfer1::IGatherLayer::setMode]
     pub fn set_gather_mode(&mut self, network: &mut NetworkDefinition, mode: trtx_sys::GatherMode) {
         crate::check_network!(network, self);
         self.inner.as_mut().setMode(mode.into());
@@ -319,6 +322,7 @@ impl GatherLayer<'_> {
 }
 
 impl<'network> ScatterLayer<'network> {
+    /// See [nvinfer1::IScatterLayer::setMode]
     pub fn set_scatter_mode(
         &mut self,
         network: &mut NetworkDefinition,
@@ -327,6 +331,7 @@ impl<'network> ScatterLayer<'network> {
         crate::check_network!(network, self);
         self.inner.as_mut().setMode(mode.into());
     }
+    /// See [nvinfer1::IScatterLayer::setAxis]
     pub fn set_axis(&mut self, network: &'_ mut NetworkDefinition, axis: i32) {
         crate::check_network!(network, self);
         self.inner.as_mut().setAxis(axis);
@@ -334,46 +339,33 @@ impl<'network> ScatterLayer<'network> {
 }
 
 impl<'network> ConvolutionLayer<'network> {
+    /// See [nvinfer1::IConvolutionLayer::setStrideNd]
     pub fn set_stride(&mut self, network: &mut NetworkDefinition, stride: &[i64; 2]) {
         crate::check_network!(network, self);
         let dims_obj = trtx_sys::Dims::from_slice(stride);
         self.inner.as_mut().setStrideNd(&dims_obj);
     }
+    /// See [nvinfer1::IConvolutionLayer::setPaddingNd]
     pub fn set_padding(&mut self, network: &mut NetworkDefinition, padding: &[i64; 2]) {
         crate::check_network!(network, self);
         let dims_obj = trtx_sys::Dims::from_slice(padding);
         self.inner.as_mut().setPaddingNd(&dims_obj);
     }
+    /// See [nvinfer1::IConvolutionLayer::setDilationNd]
     pub fn set_dilation(&mut self, network: &mut NetworkDefinition, dilation: &[i64; 2]) {
         crate::check_network!(network, self);
         let dims_obj = trtx_sys::Dims::from_slice(dilation);
         self.inner.as_mut().setDilationNd(&dims_obj);
     }
+    /// See [nvinfer1::IConvolutionLayer::setNbGroups]
     pub fn set_num_groups(&mut self, network: &mut NetworkDefinition, num_groups: i64) {
         crate::check_network!(network, self);
         self.inner.as_mut().setNbGroups(num_groups);
     }
-
-    /// Set an input tensor by index. Input 0 is the activation; 1 is the kernel tensor; 2 is the bias tensor.
-    /// When using input 1 or 2, the layer must have been created with empty weights for that slot.
-    pub fn set_input(
-        &mut self,
-        network: &mut NetworkDefinition,
-        index: i32,
-        tensor: &'_ Tensor<'network>,
-    ) -> Result<()> {
-        crate::check_network!(network, self);
-        crate::check_network!(network, tensor);
-
-        self.inner
-            .as_layer_pin_mut()
-            .as_mut()
-            .setInput(index, tensor.pin_mut());
-        Ok(())
-    }
 }
 
 impl<'network> DeconvolutionLayer<'network> {
+    /// See [nvinfer1::IDeconvolutionLayer::setStrideNd]
     pub fn set_stride(&mut self, network: &mut NetworkDefinition, stride: &[i64; 2]) -> Result<()> {
         crate::check_network!(network, self);
         let dims_obj = trtx_sys::Dims::from_slice(stride);
@@ -383,6 +375,8 @@ impl<'network> DeconvolutionLayer<'network> {
 
     /// Set pre-padding (trim this many elements at the start of each spatial dimension of the output).
     /// Pass [pre_h, pre_w] for 2D deconv; TensorRT applies to the spatial dimensions only.
+    ///
+    /// See [nvinfer1::IDeconvolutionLayer::setPrePadding]
     pub fn set_pre_padding(
         &mut self,
         network: &mut NetworkDefinition,
@@ -395,6 +389,8 @@ impl<'network> DeconvolutionLayer<'network> {
     }
     /// Set post-padding (trim this many elements at the end of each spatial dimension of the output).
     /// Pass [post_h, post_w] for 2D deconv; TensorRT applies to the spatial dimensions only.
+    ///
+    /// See [nvinfer1::IDeconvolutionLayer::setPostPadding]
     pub fn set_post_padding(
         &mut self,
         network: &mut NetworkDefinition,
@@ -405,6 +401,8 @@ impl<'network> DeconvolutionLayer<'network> {
         self.inner.as_mut().setPostPadding(&dims_obj);
         Ok(())
     }
+
+    /// See [nvinfer1::IDeconvolutionLayer::setDilationNd]
     pub fn set_dilation(
         &mut self,
         network: &mut NetworkDefinition,
@@ -416,6 +414,7 @@ impl<'network> DeconvolutionLayer<'network> {
         Ok(())
     }
 
+    /// See [nvinfer1::IDeconvolutionLayer::setNbGroups]
     pub fn set_num_groups(
         &mut self,
         network: &mut NetworkDefinition,
@@ -425,62 +424,51 @@ impl<'network> DeconvolutionLayer<'network> {
         self.inner.as_mut().setNbGroups(num_groups);
         Ok(())
     }
-    /// Set an input tensor by index. Input 0 is the activation; 1 is the kernel tensor; 2 is the bias tensor.
-    /// When using input 1 or 2, the layer must have been created with empty weights for that slot.
-    pub fn set_input(
-        &mut self,
-        network: &mut NetworkDefinition,
-        index: i32,
-        tensor: &'_ Tensor<'network>,
-    ) -> Result<()> {
-        crate::check_network!(network, self);
-        crate::check_network!(network, tensor);
-        self.inner
-            .as_layer_pin_mut()
-            .setInput(index, tensor.pin_mut());
-        Ok(())
-    }
 }
 
 impl ConcatenationLayer<'_> {
+    /// See [IConcatenationLayer::setAxis]
     pub fn set_axis(&mut self, network: &mut NetworkDefinition, axis: i32) {
         crate::check_network!(network, self);
         self.inner.as_mut().setAxis(axis);
     }
 }
 impl NormalizationLayer<'_> {
+    /// See [nvinfer1::INormalizationLayer::setEpsilon]
     pub fn set_epsilon(&mut self, network: &mut NetworkDefinition, eps: f32) {
         crate::check_network!(network, self);
         self.inner.as_mut().setEpsilon(eps);
     }
+    /// See [nvinfer1::INormalizationLayer::getEpsilon]
     pub fn get_epsilon(&self, network: &NetworkDefinition) -> f32 {
         crate::check_network!(network, self);
         self.inner.as_ref().getEpsilon()
     }
+    /// See [nvinfer1::INormalizationLayer::setAxes]
     pub fn set_axes(&mut self, network: &mut NetworkDefinition, axes: crate::Axes) {
         crate::check_network!(network, self);
         self.inner.as_mut().setAxes(axes.to_bits());
     }
+    /// See [nvinfer1::INormalizationLayer::getAxes]
     pub fn get_axes(&self, network: &NetworkDefinition) -> crate::Axes {
         crate::check_network!(network, self);
         crate::Axes::from_bits(self.inner.as_ref().getAxes())
     }
+    /// See [nvinfer1::INormalizationLayer::setNbGroups]
     pub fn set_num_groups(&mut self, network: &mut NetworkDefinition, groups: i64) {
         crate::check_network!(network, self);
         self.inner.as_mut().setNbGroups(groups);
     }
+    /// See [nvinfer1::INormalizationLayer::getNbGroups]
     pub fn get_num_groups(&self, network: &NetworkDefinition) -> i64 {
         crate::check_network!(network, self);
         self.inner.as_ref().getNbGroups()
     }
-    pub fn set_compute_precision(&mut self, network: &mut NetworkDefinition, data_type: DataType) {
-        crate::check_network!(network, self);
-        self.inner.as_mut().setComputePrecision(data_type.into());
-    }
-    pub fn get_compute_precision(&self, network: &NetworkDefinition) -> DataType {
-        crate::check_network!(network, self);
-        self.inner.as_ref().getComputePrecision().into()
-    }
+
+    // is removed because deprecated in TRT
+    //pub fn set_compute_precision(&mut self, network: &mut NetworkDefinition, data_type: DataType) {
+    //pub fn get_compute_precision(&self, network: &NetworkDefinition) -> DataType {
+
     pub fn is_v2(&self, network: &NetworkDefinition) -> bool {
         crate::check_network!(network, self);
         self.inner.as_ref().isV2()
