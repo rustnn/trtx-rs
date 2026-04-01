@@ -105,7 +105,12 @@ jobs:
           cargo test -F mock_runtime --verbose
 
       - name: Run tests (mock mode old TensorRT versions)
-        run: cargo test --features mock -F v_1_3 -F dlopen_tensorrt_rtx -F dlopen_tensorrt_onnxparser --no-default-features --verbose
+        run: |
+          cargo test -F mock -F v_1_3 -F dlopen_tensorrt_rtx -F dlopen_tensorrt_onnxparser --no-default-features --verbose
+          cargo check -F v_1_3 -F dlopen_tensorrt_rtx -F dlopen_tensorrt_onnxparser --no-default-features --verbose
+          # onnxparser disabled
+          cargo test -F mock -F v_1_3 -F dlopen_tensorrt_rtx --no-default-features --verbose
+          cargo check -F v_1_3 -F dlopen_tensorrt_rtx --no-default-features --verbose
 
       - name: Build documentation (real mode)
         run: cargo doc --no-deps
