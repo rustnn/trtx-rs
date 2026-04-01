@@ -143,7 +143,7 @@ pub use executor::{TensorInput, TensorOutput};
 #[cfg(feature = "dlopen_tensorrt_rtx")]
 use libloading::AsFilename;
 pub use logger::{LogHandler, Logger, Severity, StderrLogger};
-pub use network::{ConvWeights, NetworkDefinition, Tensor};
+pub use network::{ConvWeights, NetworkDefinition, OwnedConvWeights, OwnedWeights, Tensor};
 #[cfg(feature = "onnxparser")]
 pub use onnx_parser::OnnxParser;
 pub use refitter::Refitter;
