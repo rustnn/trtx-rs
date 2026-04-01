@@ -40,7 +40,7 @@ impl OnnxParser<'_> {
                     trtx_sys::create_onnx_parser(network_ptr, logger_ptr)
                 }
                 #[cfg(not(feature = "link_tensorrt_onnxparser"))]
-                #[cfg(feature = "dlopen_tensorrt_rtx")]
+                #[cfg(feature = "dlopen_tensorrt_onnxparser")]
                 unsafe {
                     use libloading::Symbol;
                     use trtx_sys::nvinfer1::INetworkDefinition;
