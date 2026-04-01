@@ -534,11 +534,10 @@ impl<'network> NetworkDefinition<'network> {
         &mut self,
         name: &str,
         data_type: trtx_sys::DataType,
-        dims: &[i32],
+        dims: &[i64],
     ) -> Result<Tensor<'network>> {
         let name_cstr = std::ffi::CString::new(name)?;
-        let dims_i64: Vec<i64> = dims.iter().map(|&d| d as i64).collect();
-        let dims_struct = trtx_sys::Dims::from_slice(&dims_i64);
+        let dims_struct = trtx_sys::Dims::from_slice(dims);
         let tensor_ptr = unsafe {
             self.inner
                 .pin_mut()
