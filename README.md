@@ -37,7 +37,7 @@ trtx-rs/
 
 TensorRT is by default dynamically loaded. So, the TensorRT SDK is only required for building
 with Cargo features `link_tensorrt_rtx`/ `link_tensorrt_onnxparser` which would link the TensorRT libraries.
-Use `TENSORRT_RTX_DIR` to point to the TensorRT SDK root directory (the path that contains the `lib` folder with the shared libraries).
+Use `TENSORRT_SDK_DIR` to point to the TensorRT SDK root directory (the path that contains the `lib` folder with the shared libraries).
 
 ### Required (GPU execution) 
 
@@ -265,7 +265,8 @@ git clone https://github.com/rustnn/trtx-rs.git
 cd trtx-rs
 
 # Option 1: Build with TensorRT-RTX (requires NVIDIA GPU)
-export TENSORRT_RTX_DIR=/path/to/tensorrt-rtx
+export TENSORRT_SDK_DIR=/path/to/tensorrt-rtx
+export LD_LIBRARY_PATH="$TENSORRT_SDK_DIR/lib"
 cargo build --release
 cargo test
 
@@ -307,7 +308,7 @@ See the `trtx/examples/` directory for complete examples:
 
 **Cannot find TensorRT headers:**
 ```bash
-export TENSORRT_RTX_DIR=/path/to/tensorrt-rtx
+export TENSORRT_SDK_DIR=/path/to/tensorrt-rtx
 ```
 
 **Linking errors:**

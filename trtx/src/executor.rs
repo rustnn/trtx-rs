@@ -5,12 +5,9 @@
 //! [`trtx_sys::nvinfer1::IRuntime`], and [`trtx_sys::nvinfer1::ICudaEngine`]. See the
 //! [TensorRT for RTX C++ API](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/annotated.html).
 
-#[cfg(feature = "onnxparser")]
 use crate::builder::network_flags;
-use crate::cuda::DeviceBuffer;
 use crate::error::Result;
-#[cfg(feature = "onnxparser")]
-use crate::{Builder, OnnxParser};
+use crate::{Builder, DeviceBuffer, OnnxParser};
 use crate::{Logger, Runtime};
 
 /// Input descriptor for TensorRT execution
@@ -45,7 +42,6 @@ pub struct TensorOutput {
 /// # Returns
 ///
 /// Vector of output tensors with names, shapes, and computed data
-#[cfg(feature = "onnxparser")]
 pub fn run_onnx_with_tensorrt(
     onnx_model_bytes: &[u8],
     inputs: &[TensorInput],
@@ -61,7 +57,6 @@ pub fn run_onnx_with_tensorrt(
 }
 
 /// Build TensorRT engine from ONNX model
-#[cfg(feature = "onnxparser")]
 fn build_engine_from_onnx(logger: &Logger, onnx_bytes: &[u8]) -> Result<Vec<u8>> {
     // Create builder
 
@@ -206,7 +201,6 @@ fn execute_engine(
 }
 
 /// Simpler version: Execute with zero-filled inputs (useful for testing/validation)
-#[cfg(feature = "onnxparser")]
 pub fn run_onnx_zeroed(
     onnx_model_bytes: &[u8],
     input_descriptors: &[(String, Vec<usize>)],
@@ -246,7 +240,6 @@ mod tests {
 
     #[test]
     #[ignore] // Requires valid ONNX model
-    #[cfg(feature = "onnxparser")]
     fn test_executor_basic() {
         let dummy_onnx = vec![0u8; 100];
         let inputs = vec![("input".to_string(), vec![1, 3, 224, 224])];

@@ -26,6 +26,8 @@ link_tensorrt_onnxparser = ["onnxparser"]
 # versions
 v_1_3 = []
 v_1_4 = []
+# the non-RTX version of TensorRT (mainly for debugging/validating TensorRT RTX)
+enterprise = []
 
 [dependencies]
 autocxx = "0.30"

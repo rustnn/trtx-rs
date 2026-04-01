@@ -64,6 +64,7 @@ better_enum!(PreviewFeature);
 better_enum!(HardwareCompatibilityLevel);
 better_enum!(RuntimePlatform);
 better_enum!(TilingOptimizationLevel);
+#[cfg(not(feature = "enterprise"))]
 better_enum!(ComputeCapability);
 better_enum!(CumulativeOperation);
 better_enum!(ElementWiseOperation);

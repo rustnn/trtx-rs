@@ -20,9 +20,11 @@ pub mod network_flags {
 }
 
 pub use crate::builder_config::BuilderConfig;
+#[cfg(not(feature = "enterprise"))]
+pub use trtx_sys::ComputeCapability;
 pub use trtx_sys::{
-    BuilderFlag, ComputeCapability, DeviceType, EngineCapability, HardwareCompatibilityLevel,
-    MemoryPoolType, PreviewFeature, ProfilingVerbosity, RuntimePlatform, TilingOptimizationLevel,
+    BuilderFlag, DeviceType, EngineCapability, HardwareCompatibilityLevel, MemoryPoolType,
+    PreviewFeature, ProfilingVerbosity, RuntimePlatform, TilingOptimizationLevel,
 };
 
 /// Builder for creating TensorRT engines
@@ -37,7 +39,7 @@ pub struct Builder<'a> {
 impl<'builder> Builder<'builder> {
     #[cfg(not(feature = "link_tensorrt_rtx"))]
     #[cfg(not(feature = "dlopen_tensorrt_rtx"))]
-    pub fn new(logger: &'builder Logger) -> Result<Self> {
+    pub fn new(_logger: &'builder Logger) -> Result<Self> {
         Err(Error::TrtRtxLibraryNotLoaded)
     }
 

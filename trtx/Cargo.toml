@@ -42,6 +42,8 @@ onnxparser = ["trtx-sys/onnxparser"]
 # versions
 v_1_3 = ["trtx-sys/v_1_3"]
 v_1_4 = ["trtx-sys/v_1_4"]
+# the non-RTX version of TensorRT (mainly for debugging/validating TensorRT RTX)
+enterprise = ["trtx-sys/enterprise"]
 
 [dev-dependencies]
 # For examples and tests
