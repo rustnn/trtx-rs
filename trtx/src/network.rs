@@ -140,6 +140,20 @@ impl<'network> Layer<'network, nvinfer1::ILayer> {
 }
 
 impl<'network, Inner: AsLayer> Layer<'network, Inner> {
+    /// See [nvinfer1::ILayer::setInput]
+    pub fn set_input(
+        &mut self,
+        network: &'_ mut NetworkDefinition,
+        index: i32,
+        tensor: &'_ Tensor,
+    ) -> Result<()> {
+        check_network!(network, self);
+        unsafe { self.inner.as_mut().get_unchecked_mut() }
+            .as_layer_pin_mut()
+            .setInput(index, tensor.pin_mut());
+        Ok(())
+    }
+
     /// See [nvinfer1::ILayer::getInput]
     pub fn get_input(
         &self,
@@ -160,6 +174,17 @@ impl<'network, Inner: AsLayer> Layer<'network, Inner> {
         check_network!(network, self);
         let tensor = self.inner.as_layer().getOutput(index);
         unsafe { Tensor::new(self.network, tensor) }
+    }
+    /// See [nvinfer1::ILayer::getNbInputs]
+    pub fn get_num_inputs(&self, network: &'_ NetworkDefinition) -> i32 {
+        check_network!(network, self);
+        self.inner.as_layer().getNbInputs()
+    }
+
+    /// See [nvinfer1::ILayer::getNbOutputs]
+    pub fn get_num_outputs(&self, network: &'_ NetworkDefinition) -> i32 {
+        check_network!(network, self);
+        self.inner.as_layer().getNbOutputs()
     }
 
     /// See [nvinfer1::ILayer::setName]
@@ -1555,22 +1580,8 @@ impl<'network> IfConditional<'network> {
 
 // --- RecurrenceLayer: set_input(1, tensor) for value from inside loop ---
 
-impl<'network> RecurrenceLayer<'network> {
-    /// See [`trtx_sys::nvinfer1::IRecurrenceLayer`]. Input 0 = initial value (set at creation); input 1 = value from previous iteration (from inside loop).
-    pub fn set_input(
-        &mut self,
-        network: &mut NetworkDefinition,
-        index: i32,
-        tensor: &'_ Tensor<'network>,
-    ) -> Result<()> {
-        crate::check_network!(network, self);
-        crate::check_network!(network, tensor);
-        self.inner
-            .as_layer_pin_mut()
-            .setInput(index, tensor.pin_mut());
-        Ok(())
-    }
-}
+/// See [`trtx_sys::nvinfer1::IRecurrenceLayer`]. Input 0 = initial value (set at creation); input 1 = value from previous iteration (from inside loop).
+impl<'network> RecurrenceLayer<'network> {}
 
 // --- IteratorLayer: set_axis, set_reverse ---
 
