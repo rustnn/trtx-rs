@@ -92,6 +92,7 @@ better_enum!(AttentionNormalizationOp);
 better_enum!(SeekPosition);
 better_enum!(WeightsRole);
 better_enum!(TripLimit);
+better_enum!(LoopOutput);
 #[cfg(feature = "v_1_4")]
 better_enum!(MoEActType);
 #[cfg(feature = "v_1_4")]

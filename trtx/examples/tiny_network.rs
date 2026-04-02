@@ -15,16 +15,12 @@ use trtx::error::Result;
 use trtx::{ActivationType, Builder, DataType, Logger, Runtime};
 
 fn main() -> Result<()> {
-    #[cfg(feature = "dlopen_tensorrt_rtx")]
-    trtx::dynamically_load_tensorrt(None::<String>).unwrap();
-    #[cfg(feature = "dlopen_tensorrt_onnxparser")]
-    trtx::dynamically_load_tensorrt_onnxparser(None::<String>).unwrap();
-
+    pretty_env_logger::init();
     println!("=== Tiny Network Example ===\n");
 
     // 1. Create logger
     println!("1. Creating logger...");
-    let logger = Logger::stderr()?;
+    let logger = Logger::log_crate()?;
 
     // 2. Build the network
     println!("2. Building network...");

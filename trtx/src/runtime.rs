@@ -8,6 +8,7 @@ use std::marker::PhantomData;
 use std::pin::Pin;
 
 use cxx::UniquePtr;
+use log::trace;
 use trtx_sys::nvinfer1;
 
 pub use crate::cuda_engine::CudaEngine;
@@ -177,6 +178,8 @@ impl<'runtime> Runtime<'runtime> {
     pub fn new(logger: &'runtime Logger) -> Result<Self> {
         #[cfg(not(feature = "mock_runtime"))]
         {
+            use log::debug;
+
             let logger_ptr = logger.as_logger_ptr();
             let runtime_ptr = {
                 #[cfg(feature = "link_tensorrt_rtx")]
@@ -205,6 +208,7 @@ impl<'runtime> Runtime<'runtime> {
             if runtime_ptr.is_null() {
                 return Err(Error::Runtime("Failed to create runtime".to_string()));
             }
+            debug!("created TensorRT runtime");
             Ok(Runtime {
                 inner: unsafe { UniquePtr::from_raw(runtime_ptr) },
                 _logger: Default::default(),
@@ -218,6 +222,7 @@ impl<'runtime> Runtime<'runtime> {
     }
 
     pub fn deserialize_cuda_engine(&'_ mut self, data: &[u8]) -> Result<CudaEngine<'runtime>> {
+        trace!("deserializing engine of size {}", data.len());
         if cfg!(feature = "mock_runtime") {
             Ok(unsafe { CudaEngine::from_ptr(std::ptr::null_mut()) })
         } else {
@@ -432,7 +437,8 @@ mod tests {
     #[test]
     #[ignore = "only works on TRT enterprise at the moment"]
     fn set_debug_listener_plus1_chain() {
-        let logger = Logger::stderr().expect("logger");
+        let _ = pretty_env_logger::try_init();
+        let logger = Logger::log_crate().expect("logger");
         let (engine_data, expected_debug_names) =
             build_plus1_chain(&logger).expect("build network");
         assert_eq!(
