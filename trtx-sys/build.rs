@@ -194,17 +194,15 @@ fn main() {
         println!("cargo:warning=Using TENSORRT_INCLUDE_DIR={header_overwrite}");
     }
 
-    if cfg!(feature = "enterprise") && (sdk_overwrite.is_none() && (header_overwrite.is_none())) {
-        panic!("For the enterprise feature either TENSORRT_SDK_DIR or TENSORRT_INCLUDE_DIR (with TENSORRT_LIB_DIR when linking) must be set as environment variable")
-    }
-
     let include_dir = header_overwrite
         .or(sdk_overwrite.clone().map(|p| format!("{p}/include")))
         .map(PathBuf::from)
         .unwrap_or_else(|| {
-            PathBuf::from(format!(
-                "{crate_root}/TensorRT-Headers/TRT-RTX-{trt_version}"
-            ))
+            PathBuf::from(if cfg!(feature = "enterprise") {
+                format!("{crate_root}/TensorRT-Headers/TRT-Enterprise-10.16")
+            } else {
+                format!("{crate_root}/TensorRT-Headers/TRT-RTX-{trt_version}")
+            })
         });
     println!("cargo:rerun-if-changed={}", include_dir.display());
     let cuda_shim_include_dir = format!("{crate_root}/TensorRT-Headers");
