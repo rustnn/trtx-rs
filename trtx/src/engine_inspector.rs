@@ -1,11 +1,14 @@
+//! Engine inspector (layer / engine introspection as text or JSON).
+//!
+//! [`EngineInspector`] wraps [`trtx_sys::nvinfer1::IEngineInspector`] (C++ [`nvinfer1::IEngineInspector`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_engine_inspector.html)).
+
 use crate::{Error, Result};
 use std::{ffi::CStr, marker::PhantomData};
 
 use autocxx::cxx::UniquePtr;
 use trtx_sys::{nvinfer1, LayerInformationFormat};
 
-/// Engine inspector for layer/engine information (real mode).
-/// See [`trtx_sys::nvinfer1::IEngineInspector`].
+/// [`trtx_sys::nvinfer1::IEngineInspector`] — C++ [`nvinfer1::IEngineInspector`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_engine_inspector.html).
 pub struct EngineInspector<'engine> {
     pub(crate) inner: UniquePtr<nvinfer1::IEngineInspector>,
     pub(crate) _engine: PhantomData<&'engine nvinfer1::ICudaEngine>,

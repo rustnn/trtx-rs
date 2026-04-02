@@ -1,6 +1,7 @@
-//! Error types for TensorRT-RTX operations
+//! Error types for TensorRT-RTX operations (Rust-only; no single TensorRT C++ counterpart).
 
 use std::ffi::NulError;
+
 use thiserror::Error;
 use trtx_sys::LayerType;
 

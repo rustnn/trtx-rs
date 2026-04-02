@@ -1,4 +1,6 @@
-//! Real TensorRT builder config implementation
+//! Builder configuration for TensorRT engine builds.
+//!
+//! Wraps [`trtx_sys::nvinfer1::IBuilderConfig`]; C++: [`nvinfer1::IBuilderConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_builder_config.html).
 
 use std::pin::Pin;
 
@@ -15,7 +17,7 @@ use trtx_sys::{
     MemoryPoolType, PreviewFeature, ProfilingVerbosity, RuntimePlatform, TilingOptimizationLevel,
 };
 
-/// Builder configuration (real mode)
+/// [`trtx_sys::nvinfer1::IBuilderConfig`] — C++ [`nvinfer1::IBuilderConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_builder_config.html).
 pub struct BuilderConfig {
     pub(crate) inner: UniquePtr<IBuilderConfig>,
     progress_monitor: Option<Pin<Box<ProgressMonitor>>>,

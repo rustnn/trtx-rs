@@ -1,4 +1,8 @@
-//! Network definition for building TensorRT engines
+//! Network definition for building TensorRT engines.
+//!
+//! [`NetworkDefinition`] holds [`trtx_sys::nvinfer1::INetworkDefinition`] (C++ [`nvinfer1::INetworkDefinition`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_network_definition.html)).
+//! [`Tensor`] wraps [`trtx_sys::nvinfer1::ITensor`] (C++ [`nvinfer1::ITensor`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_tensor.html)).
+//! Layer handles implement [`trtx_sys::AsLayer`] / [`trtx_sys::AsLayerTyped`] over concrete `trtx_sys::nvinfer1::I*Layer` types; C++ index: [annotated](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/annotated.html).
 
 use crate::interfaces::RecordError;
 use cxx::UniquePtr;
@@ -58,7 +62,7 @@ impl OwnedConvWeights {
     }
 }
 
-/// Tensor handle (opaque pointer)
+/// [`trtx_sys::nvinfer1::ITensor`] — C++ [`nvinfer1::ITensor`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_tensor.html).
 pub struct Tensor<'network> {
     pub(crate) inner: *mut nvinfer1::ITensor,
     pub(crate) network: &'network nvinfer1::INetworkDefinition,
@@ -92,6 +96,7 @@ impl Tensor<'_> {
     }
 }
 
+/// `Inner` is a concrete [`trtx_sys::nvinfer1`] `I*Layer` (all implement [`trtx_sys::AsLayer`] toward [`trtx_sys::nvinfer1::ILayer`]); C++ base [`nvinfer1::ILayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_layer.html).
 pub struct Layer<'network, Inner: AsLayer> {
     pub(crate) inner: Pin<&'network mut Inner>,
     pub(crate) network: *const nvinfer1::INetworkDefinition,
@@ -215,66 +220,123 @@ impl<'network, Inner: AsLayer> Layer<'network, Inner> {
     }
 }
 
-// Type aliases for every layer (Layer<_, I*Layer> where I*Layer: TrtLayer)
+/// [`trtx_sys::nvinfer1::IActivationLayer`] — C++ [`nvinfer1::IActivationLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_activation_layer.html).
 pub type ActivationLayer<'layer> = Layer<'layer, nvinfer1::IActivationLayer>;
+/// [`trtx_sys::nvinfer1::IAssertionLayer`] — C++ [`nvinfer1::IAssertionLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_assertion_layer.html).
 pub type AssertionLayer<'layer> = Layer<'layer, nvinfer1::IAssertionLayer>;
+/// [`trtx_sys::nvinfer1::ICastLayer`] — C++ [`nvinfer1::ICastLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_cast_layer.html).
 pub type CastLayer<'layer> = Layer<'layer, nvinfer1::ICastLayer>;
+/// [`trtx_sys::nvinfer1::IConcatenationLayer`] — C++ [`nvinfer1::IConcatenationLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_concatenation_layer.html).
 pub type ConcatenationLayer<'layer> = Layer<'layer, nvinfer1::IConcatenationLayer>;
+/// [`trtx_sys::nvinfer1::IConstantLayer`] — C++ [`nvinfer1::IConstantLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_constant_layer.html).
 pub type ConstantLayer<'layer> = Layer<'layer, nvinfer1::IConstantLayer>;
+/// [`trtx_sys::nvinfer1::IConvolutionLayer`] — C++ [`nvinfer1::IConvolutionLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_convolution_layer.html).
 pub type ConvolutionLayer<'layer> = Layer<'layer, nvinfer1::IConvolutionLayer>;
+/// [`trtx_sys::nvinfer1::ICumulativeLayer`] — C++ [`nvinfer1::ICumulativeLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_cumulative_layer.html).
 pub type CumulativeLayer<'layer> = Layer<'layer, nvinfer1::ICumulativeLayer>;
+/// [`trtx_sys::nvinfer1::IDeconvolutionLayer`] — C++ [`nvinfer1::IDeconvolutionLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_deconvolution_layer.html).
 pub type DeconvolutionLayer<'layer> = Layer<'layer, nvinfer1::IDeconvolutionLayer>;
+/// [`trtx_sys::nvinfer1::IDequantizeLayer`] — C++ [`nvinfer1::IDequantizeLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_dequantize_layer.html).
 pub type DequantizeLayer<'layer> = Layer<'layer, nvinfer1::IDequantizeLayer>;
+/// [`trtx_sys::nvinfer1::IDynamicQuantizeLayer`] — C++ [`nvinfer1::IDynamicQuantizeLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_dynamic_quantize_layer.html).
 pub type DynamicQuantizeLayer<'layer> = Layer<'layer, nvinfer1::IDynamicQuantizeLayer>;
+/// [`trtx_sys::nvinfer1::IElementWiseLayer`] — C++ [`nvinfer1::IElementWiseLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_element_wise_layer.html).
 pub type ElementWiseLayer<'layer> = Layer<'layer, nvinfer1::IElementWiseLayer>;
+/// [`trtx_sys::nvinfer1::IEinsumLayer`] — C++ [`nvinfer1::IEinsumLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_einsum_layer.html).
 pub type EinsumLayer<'layer> = Layer<'layer, nvinfer1::IEinsumLayer>;
+/// [`trtx_sys::nvinfer1::IFillLayer`] — C++ [`nvinfer1::IFillLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_fill_layer.html).
 pub type FillLayer<'layer> = Layer<'layer, nvinfer1::IFillLayer>;
+/// [`trtx_sys::nvinfer1::IGatherLayer`] — C++ [`nvinfer1::IGatherLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_gather_layer.html).
 pub type GatherLayer<'layer> = Layer<'layer, nvinfer1::IGatherLayer>;
+/// [`trtx_sys::nvinfer1::IGridSampleLayer`] — C++ [`nvinfer1::IGridSampleLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_grid_sample_layer.html).
 pub type GridSampleLayer<'layer> = Layer<'layer, nvinfer1::IGridSampleLayer>;
+/// [`trtx_sys::nvinfer1::IIdentityLayer`] — C++ [`nvinfer1::IIdentityLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_identity_layer.html).
 pub type IdentityLayer<'layer> = Layer<'layer, nvinfer1::IIdentityLayer>;
+/// [`trtx_sys::nvinfer1::IMatrixMultiplyLayer`] — C++ [`nvinfer1::IMatrixMultiplyLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_matrix_multiply_layer.html).
 pub type MatrixMultiplyLayer<'layer> = Layer<'layer, nvinfer1::IMatrixMultiplyLayer>;
+/// [`trtx_sys::nvinfer1::INMSLayer`] — C++ [`nvinfer1::INMSLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_n_m_s_layer.html).
 pub type NMSLayer<'layer> = Layer<'layer, nvinfer1::INMSLayer>;
+/// [`trtx_sys::nvinfer1::INonZeroLayer`] — C++ [`nvinfer1::INonZeroLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_non_zero_layer.html).
 pub type NonZeroLayer<'layer> = Layer<'layer, nvinfer1::INonZeroLayer>;
+/// [`trtx_sys::nvinfer1::INormalizationLayer`] — C++ [`nvinfer1::INormalizationLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_normalization_layer.html).
 pub type NormalizationLayer<'layer> = Layer<'layer, nvinfer1::INormalizationLayer>;
+/// [`trtx_sys::nvinfer1::IPaddingLayer`] — C++ [`nvinfer1::IPaddingLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_padding_layer.html).
 pub type PaddingLayer<'layer> = Layer<'layer, nvinfer1::IPaddingLayer>;
+/// [`trtx_sys::nvinfer1::IParametricReLULayer`] — C++ [`nvinfer1::IParametricReLULayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_parametric_re_l_u_layer.html).
 pub type ParametricReLULayer<'layer> = Layer<'layer, nvinfer1::IParametricReLULayer>;
+/// [`trtx_sys::nvinfer1::IPoolingLayer`] — C++ [`nvinfer1::IPoolingLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_pooling_layer.html).
 pub type PoolingLayer<'layer> = Layer<'layer, nvinfer1::IPoolingLayer>;
+/// [`trtx_sys::nvinfer1::IQuantizeLayer`] — C++ [`nvinfer1::IQuantizeLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_quantize_layer.html).
 pub type QuantizeLayer<'layer> = Layer<'layer, nvinfer1::IQuantizeLayer>;
+/// [`trtx_sys::nvinfer1::IRaggedSoftMaxLayer`] — C++ [`nvinfer1::IRaggedSoftMaxLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_ragged_soft_max_layer.html).
 pub type RaggedSoftMaxLayer<'layer> = Layer<'layer, nvinfer1::IRaggedSoftMaxLayer>;
+/// [`trtx_sys::nvinfer1::IReduceLayer`] — C++ [`nvinfer1::IReduceLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_reduce_layer.html).
 pub type ReduceLayer<'layer> = Layer<'layer, nvinfer1::IReduceLayer>;
+/// [`trtx_sys::nvinfer1::IResizeLayer`] — C++ [`nvinfer1::IResizeLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_resize_layer.html).
 pub type ResizeLayer<'layer> = Layer<'layer, nvinfer1::IResizeLayer>;
+/// [`trtx_sys::nvinfer1::IRotaryEmbeddingLayer`] — C++ [`nvinfer1::IRotaryEmbeddingLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_rotary_embedding_layer.html).
 pub type RotaryEmbeddingLayer<'layer> = Layer<'layer, nvinfer1::IRotaryEmbeddingLayer>;
+/// [`trtx_sys::nvinfer1::IScaleLayer`] — C++ [`nvinfer1::IScaleLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_scale_layer.html).
 pub type ScaleLayer<'layer> = Layer<'layer, nvinfer1::IScaleLayer>;
+/// [`trtx_sys::nvinfer1::IScatterLayer`] — C++ [`nvinfer1::IScatterLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_scatter_layer.html).
 pub type ScatterLayer<'layer> = Layer<'layer, nvinfer1::IScatterLayer>;
+/// [`trtx_sys::nvinfer1::ISelectLayer`] — C++ [`nvinfer1::ISelectLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_select_layer.html).
 pub type SelectLayer<'layer> = Layer<'layer, nvinfer1::ISelectLayer>;
+/// [`trtx_sys::nvinfer1::IShapeLayer`] — C++ [`nvinfer1::IShapeLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_shape_layer.html).
 pub type ShapeLayer<'layer> = Layer<'layer, nvinfer1::IShapeLayer>;
+/// [`trtx_sys::nvinfer1::IShuffleLayer`] — C++ [`nvinfer1::IShuffleLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_shuffle_layer.html).
 pub type ShuffleLayer<'layer> = Layer<'layer, nvinfer1::IShuffleLayer>;
+/// [`trtx_sys::nvinfer1::ISliceLayer`] — C++ [`nvinfer1::ISliceLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_slice_layer.html).
 pub type SliceLayer<'layer> = Layer<'layer, nvinfer1::ISliceLayer>;
+/// [`trtx_sys::nvinfer1::ISoftMaxLayer`] — C++ [`nvinfer1::ISoftMaxLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_soft_max_layer.html).
 pub type SoftMaxLayer<'layer> = Layer<'layer, nvinfer1::ISoftMaxLayer>;
+/// [`trtx_sys::nvinfer1::ISqueezeLayer`] — C++ [`nvinfer1::ISqueezeLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_squeeze_layer.html).
 pub type SqueezeLayer<'layer> = Layer<'layer, nvinfer1::ISqueezeLayer>;
+/// [`trtx_sys::nvinfer1::ITopKLayer`] — C++ [`nvinfer1::ITopKLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_top_k_layer.html).
 pub type TopKLayer<'layer> = Layer<'layer, nvinfer1::ITopKLayer>;
+/// [`trtx_sys::nvinfer1::IUnaryLayer`] — C++ [`nvinfer1::IUnaryLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_unary_layer.html).
 pub type UnaryLayer<'layer> = Layer<'layer, nvinfer1::IUnaryLayer>;
+/// [`trtx_sys::nvinfer1::IUnsqueezeLayer`] — C++ [`nvinfer1::IUnsqueezeLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_unsqueeze_layer.html).
 pub type UnsqueezeLayer<'layer> = Layer<'layer, nvinfer1::IUnsqueezeLayer>;
+/// [`trtx_sys::nvinfer1::IReverseSequenceLayer`] — C++ [`nvinfer1::IReverseSequenceLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_reverse_sequence_layer.html).
 pub type ReverseSequenceLayer<'layer> = Layer<'layer, nvinfer1::IReverseSequenceLayer>;
+/// [`trtx_sys::nvinfer1::IKVCacheUpdateLayer`] — C++ [`nvinfer1::IKVCacheUpdateLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_k_v_cache_update_layer.html).
 pub type KVCacheUpdateLayer<'layer> = Layer<'layer, nvinfer1::IKVCacheUpdateLayer>;
+/// [`trtx_sys::nvinfer1::ILRNLayer`] — C++ [`nvinfer1::ILRNLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_l_r_n_layer.html).
 pub type LrnLayer<'layer> = Layer<'layer, nvinfer1::ILRNLayer>;
+/// [`trtx_sys::nvinfer1::IOneHotLayer`] — C++ [`nvinfer1::IOneHotLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_one_hot_layer.html).
 pub type OneHotLayer<'layer> = Layer<'layer, nvinfer1::IOneHotLayer>;
 #[cfg(feature = "v_1_4")]
+/// [`trtx_sys::nvinfer1::IMoELayer`] — C++ [`nvinfer1::IMoELayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_mo_e_layer.html).
+#[cfg(feature = "v_1_4")]
 pub type MoELayer<'layer> = Layer<'layer, nvinfer1::IMoELayer>;
+#[cfg(feature = "v_1_4")]
+/// [`trtx_sys::nvinfer1::IDistCollectiveLayer`] — C++ [`nvinfer1::IDistCollectiveLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_dist_collective_layer.html).
 #[cfg(feature = "v_1_4")]
 pub type DistCollectiveLayer<'layer> = Layer<'layer, nvinfer1::IDistCollectiveLayer>;
 
 // Loop and conditional boundary layers (created via Loop / IfConditional / add_attention)
+/// [`trtx_sys::nvinfer1::IAttentionInputLayer`] — C++ [`nvinfer1::IAttentionInputLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_attention_input_layer.html).
 pub type AttentionInputLayer<'layer> = Layer<'layer, nvinfer1::IAttentionInputLayer>;
+/// [`trtx_sys::nvinfer1::IAttentionOutputLayer`] — C++ [`nvinfer1::IAttentionOutputLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_attention_output_layer.html).
 pub type AttentionOutputLayer<'layer> = Layer<'layer, nvinfer1::IAttentionOutputLayer>;
+/// [`trtx_sys::nvinfer1::IAttentionBoundaryLayer`] — C++ [`nvinfer1::IAttentionBoundaryLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_attention_boundary_layer.html).
 pub type AttentionBoundaryLayer<'layer> = Layer<'layer, nvinfer1::IAttentionBoundaryLayer>;
+/// [`trtx_sys::nvinfer1::ILoopBoundaryLayer`] — C++ [`nvinfer1::ILoopBoundaryLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_loop_boundary_layer.html).
 pub type LoopBoundaryLayer<'layer> = Layer<'layer, nvinfer1::ILoopBoundaryLayer>;
+/// [`trtx_sys::nvinfer1::IRecurrenceLayer`] — C++ [`nvinfer1::IRecurrenceLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_recurrence_layer.html).
 pub type RecurrenceLayer<'layer> = Layer<'layer, nvinfer1::IRecurrenceLayer>;
+/// [`trtx_sys::nvinfer1::ILoopOutputLayer`] — C++ [`nvinfer1::ILoopOutputLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_loop_output_layer.html).
 pub type LoopOutputLayer<'layer> = Layer<'layer, nvinfer1::ILoopOutputLayer>;
+/// [`trtx_sys::nvinfer1::ITripLimitLayer`] — C++ [`nvinfer1::ITripLimitLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_trip_limit_layer.html).
 pub type TripLimitLayer<'layer> = Layer<'layer, nvinfer1::ITripLimitLayer>;
+/// [`trtx_sys::nvinfer1::IIteratorLayer`] — C++ [`nvinfer1::IIteratorLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_iterator_layer.html).
 pub type IteratorLayer<'layer> = Layer<'layer, nvinfer1::IIteratorLayer>;
+/// [`trtx_sys::nvinfer1::IConditionLayer`] — C++ [`nvinfer1::IConditionLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_condition_layer.html).
 pub type ConditionLayer<'layer> = Layer<'layer, nvinfer1::IConditionLayer>;
+/// [`trtx_sys::nvinfer1::IIfConditionalOutputLayer`] — C++ [`nvinfer1::IIfConditionalOutputLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_if_conditional_output_layer.html).
 pub type IfConditionalOutputLayer<'layer> = Layer<'layer, nvinfer1::IIfConditionalOutputLayer>;
+/// [`trtx_sys::nvinfer1::IIfConditionalInputLayer`] — C++ [`nvinfer1::IIfConditionalInputLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_if_conditional_input_layer.html).
 pub type IfConditionalInputLayer<'layer> = Layer<'layer, nvinfer1::IIfConditionalInputLayer>;
 
 pub type DynLayer<'layer> = Layer<'layer, nvinfer1::ILayer>;
@@ -560,7 +622,7 @@ impl Tensor<'_> {
     }
 }
 
-/// Network definition for building TensorRT engines
+/// [`trtx_sys::nvinfer1::INetworkDefinition`] — C++ [`nvinfer1::INetworkDefinition`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_network_definition.html).
 pub struct NetworkDefinition<'builder> {
     //pub(crate) inner: Mutex<Pin<&'builder mut INetworkDefinition>>,
     pub(crate) inner: UniquePtr<INetworkDefinition>,
@@ -604,7 +666,7 @@ impl<'network> NetworkDefinition<'network> {
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::markDebug`].
-    /// Mark a tensor for debugging; [IExecutionContext::setDebugListener] will receive it during execution.
+    /// Mark a tensor for debugging; at runtime use [`crate::ExecutionContext`] ([`trtx_sys::nvinfer1::IExecutionContext`]) — C++ [`setDebugListener`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_execution_context.html).
     pub fn mark_tensor_debug(&mut self, tensor: &'_ Tensor) -> Result<()> {
         crate::check_network!(self, tensor);
         let success = self.inner.pin_mut().markDebug(tensor.pin_mut());
@@ -615,7 +677,7 @@ impl<'network> NetworkDefinition<'network> {
         }
     }
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::isDebugTensor`].
-    /// Mark a tensor for debugging; [nvinfer1::IExecutionContext::setDebugListener] will receive it during execution.
+    /// See [`trtx_sys::nvinfer1::IExecutionContext`] debug APIs (C++ [docs](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_execution_context.html)).
     pub fn is_debug_tensor(&self, tensor: &'_ Tensor) -> bool {
         crate::check_network!(self, tensor);
         self.inner.isDebugTensor(tensor.as_ref())

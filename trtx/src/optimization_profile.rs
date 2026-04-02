@@ -1,9 +1,13 @@
+//! Optimization profile for dynamic input shapes (min / opt / max dimensions).
+//!
+//! [`OptimizationProfile`] wraps [`trtx_sys::nvinfer1::IOptimizationProfile`] (C++ [`nvinfer1::IOptimizationProfile`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_optimization_profile.html)).
+
 use std::{ffi::CString, marker::PhantomData, pin::Pin};
 
 use crate::{error::PropertySetAttempt, Error, Result};
 use trtx_sys::{nvinfer1, Dims64, OptProfileSelector};
 
-/// See [nvinfer1::IOptimizationProfile]
+/// [`trtx_sys::nvinfer1::IOptimizationProfile`] — C++ [`nvinfer1::IOptimizationProfile`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_optimization_profile.html).
 pub struct OptimizationProfile<'builder> {
     pub(crate) inner: Pin<&'builder mut nvinfer1::IOptimizationProfile>,
     _builder: PhantomData<&'builder nvinfer1::IBuilder>,

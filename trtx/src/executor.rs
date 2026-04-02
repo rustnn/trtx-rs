@@ -1,7 +1,9 @@
-//! Executor module providing rustnn-compatible interface
+//! Executor module providing a rustnn-compatible interface.
 //!
-//! This module provides a simplified API for executing ONNX models with TensorRT,
-//! designed to integrate easily with rustnn's executor pattern.
+//! This module orchestrates [`crate::Builder`], [`crate::OnnxParser`], [`crate::Runtime`], and
+//! [`crate::CudaEngine`], which wrap [`trtx_sys::nvinfer1::IBuilder`], [`trtx_sys::nvonnxparser::IParser`],
+//! [`trtx_sys::nvinfer1::IRuntime`], and [`trtx_sys::nvinfer1::ICudaEngine`]. See the
+//! [TensorRT for RTX C++ API](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/annotated.html).
 
 #[cfg(feature = "onnxparser")]
 use crate::builder::network_flags;

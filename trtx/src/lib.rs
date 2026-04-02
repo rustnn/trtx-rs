@@ -101,6 +101,14 @@
 //!        You will also have to either enable `dlopen_tensorrt_rtx` or `link_tensorrt_rtx`.
 //!
 //! 2. **NVIDIA GPU**: Compatible with TensorRT-RTX requirements
+//!
+//! # C++ API reference
+//!
+//! Rust types in this crate wrap TensorRT for RTX C++ interfaces. The authoritative class list and
+//! method documentation is the
+//! [TensorRT for RTX C++ API (annotated)](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/annotated.html).
+//! Each wrapper’s docs also link the Rust FFI type in [`trtx_sys::nvinfer1`] or [`trtx_sys::nvonnxparser`]
+//! alongside the matching C++ class on NVIDIA’s site.
 
 // Allow unnecessary casts - they're needed for real mode (u32) but not mock mode (i32)
 #![cfg_attr(

@@ -1,4 +1,6 @@
-//! Logger interface for TensorRT-RTX
+//! Logger interface for TensorRT-RTX.
+//!
+//! [`Logger`] bridges to [`trtx_sys::nvinfer1::ILogger`] for the C++ API (see C++ [`nvinfer1::ILogger`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_logger.html)).
 
 /// Severity level for log messages
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -47,6 +49,8 @@ impl LogHandler for LogCrateLogger {
 }
 
 /// Logger (uses Rust bridge to TensorRT)
+///
+/// Implements the callback side of [`trtx_sys::nvinfer1::ILogger`] via the Rust bridge; C++ [`nvinfer1::ILogger`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_logger.html).
 pub struct Logger {
     bridge: *mut trtx_sys::RustLoggerBridge,
     user_data: *mut std::ffi::c_void,
