@@ -18,6 +18,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         rust: [stable]
+        features: ["", "-F mock"]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -71,22 +72,22 @@ jobs:
           ln -s $RTX_LIB_DIR/libtensorrt_onnxparser_rtx.so.1{,.4.0}
 
       - name: Check formatting
-        run: cargo fmt --all -- --check
+        run: cargo fmt --all ${{ matrix.features }} -- --check
 
-      - name: Run clippy (real mode)
-        run: cargo clippy --all-targets -- -D warnings
+      - name: Run clippy
+        run: cargo clippy --all-targets ${{ matrix.features }} -- -D warnings
 
-      - name: Build (real mode)
-        run: cargo build --verbose
+      - name: Build
+        run: cargo build --verbose ${{ matrix.features }}
 
       - name: Run tests (real mode with mock_runtime, Linux)
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.features = ''}}
         run: |
           export LD_LIBRARY_PATH="$RTX_LIB_DIR"
           cargo test -F mock_runtime --verbose
 
       - name: Run tests (real mode with mock_runtime, Windows)
-        if: ${{ matrix.os == 'windows-latest' }}
+        if: ${{ matrix.os == 'windows-latest' && matrix.features = ''}}
         run: |
           $env:PATH+=";$env:RTX_LIB_DIR"
           echo "PATH=$PATH"
@@ -101,20 +102,8 @@ jobs:
           cargo check -F v_1_3 -F dlopen_tensorrt_rtx --no-default-features --verbose
 
 
-      - name: Run clippy (mock mode)
-        run: cargo clippy --features mock --all-targets -- -D warnings
-
-      - name: Build (mock mode)
-        run: cargo build --features mock --verbose
-
-      - name: Run tests (mock mode)
-        run: cargo test --features mock --verbose
-
       - name: Build documentation
-        run: cargo doc --features mock --no-deps
-
-      - name: Build documentation (real mode)
-        run: cargo doc --no-deps
+        run: cargo doc --features mock --no-deps ${{ matrix.features }}
 
   examples:
     name: Examples
