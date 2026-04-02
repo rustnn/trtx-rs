@@ -32,6 +32,20 @@ impl LogHandler for StderrLogger {
     }
 }
 
+pub struct LogCrateLogger;
+
+impl LogHandler for LogCrateLogger {
+    fn log(&self, severity: Severity, message: &str) {
+        match severity {
+            Severity::InternalError => log::error!(target: "trtx::tensorrt", "{message}"),
+            Severity::Error => log::error!(target: "trtx::tensorrt", "{message}"),
+            Severity::Warning => log::warn!(target: "trtx::tensorrt", "{message}"),
+            Severity::Info => log::info!(target: "trtx::tensorrt", "{message}"),
+            Severity::Verbose => log::debug!(target: "trtx::tensorrt", "{message}"),
+        }
+    }
+}
+
 /// Logger (uses Rust bridge to TensorRT)
 pub struct Logger {
     bridge: *mut trtx_sys::RustLoggerBridge,
@@ -60,6 +74,10 @@ impl Logger {
 
     pub fn stderr() -> crate::Result<Self> {
         Self::new(StderrLogger)
+    }
+
+    pub fn log_crate() -> crate::Result<Self> {
+        Self::new(LogCrateLogger)
     }
 
     pub(crate) fn as_logger_ptr(&self) -> *mut std::ffi::c_void {
