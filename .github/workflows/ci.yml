@@ -73,18 +73,6 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all -- --check
 
-      - name: Run clippy (mock mode)
-        run: cargo clippy --features mock --all-targets -- -D warnings
-
-      - name: Build (mock mode)
-        run: cargo build --features mock --verbose
-
-      - name: Run tests (mock mode)
-        run: cargo test --features mock --verbose
-
-      - name: Build documentation
-        run: cargo doc --features mock --no-deps
-
       - name: Run clippy (real mode)
         run: cargo clippy --all-targets -- -D warnings
 
@@ -111,6 +99,19 @@ jobs:
           # onnxparser disabled
           cargo test -F mock -F v_1_3 -F dlopen_tensorrt_rtx --no-default-features --verbose
           cargo check -F v_1_3 -F dlopen_tensorrt_rtx --no-default-features --verbose
+
+
+      - name: Run clippy (mock mode)
+        run: cargo clippy --features mock --all-targets -- -D warnings
+
+      - name: Build (mock mode)
+        run: cargo build --features mock --verbose
+
+      - name: Run tests (mock mode)
+        run: cargo test --features mock --verbose
+
+      - name: Build documentation
+        run: cargo doc --features mock --no-deps
 
       - name: Build documentation (real mode)
         run: cargo doc --no-deps
