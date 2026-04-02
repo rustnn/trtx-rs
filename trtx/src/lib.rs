@@ -169,27 +169,29 @@ pub fn dynamically_load_tensorrt(_filename: Option<impl AsFilename>) -> Result<(
         if TRTLIB.read()?.is_some() {
             return Ok(());
         }
-        let lib = if let Some(filename) = _filename {
-            unsafe { libloading::Library::new(filename) }
-        } else {
-            unsafe {
-                libloading::Library::new(if cfg!(unix) {
-                    if cfg!(feature = "v_1_4") {
-                        "libtensorrt_rtx.so.1.4.0"
+        let mut write = TRTLIB.write()?;
+        if write.is_none() {
+            let lib = if let Some(filename) = _filename {
+                unsafe { libloading::Library::new(filename) }
+            } else {
+                unsafe {
+                    libloading::Library::new(if cfg!(unix) {
+                        if cfg!(feature = "v_1_4") {
+                            "libtensorrt_rtx.so.1.4.0"
+                        } else {
+                            "libtensorrt_rtx.so.1.3.0"
+                        }
                     } else {
-                        "libtensorrt_rtx.so.1.3.0"
-                    }
-                } else {
-                    if cfg!(feature = "v_1_4") {
-                        "tensorrt_rtx_1_4.dll"
-                    } else {
-                        "tensorrt_rtx_1_3.dll"
-                    }
-                })
-            }
-        }?;
-
-        *TRTLIB.write()? = Some(lib);
+                        if cfg!(feature = "v_1_4") {
+                            "tensorrt_rtx_1_4.dll"
+                        } else {
+                            "tensorrt_rtx_1_3.dll"
+                        }
+                    })
+                }
+            }?;
+            *write = Some(lib);
+        }
     }
     Ok(())
 }
@@ -206,27 +208,29 @@ pub fn dynamically_load_tensorrt_onnxparser(_filename: Option<impl AsFilename>) 
         if TRT_ONNXPARSER_LIB.read()?.is_some() {
             return Ok(());
         }
-        let lib = if let Some(filename) = _filename {
-            unsafe { libloading::Library::new(filename) }
-        } else {
-            unsafe {
-                libloading::Library::new(if cfg!(unix) {
-                    if cfg!(feature = "v_1_4") {
-                        "libtensorrt_onnxparser_rtx.so.1.4.0"
+        let mut write = TRT_ONNXPARSER_LIB.write()?;
+        if write.is_none() {
+            let lib = if let Some(filename) = _filename {
+                unsafe { libloading::Library::new(filename) }
+            } else {
+                unsafe {
+                    libloading::Library::new(if cfg!(unix) {
+                        if cfg!(feature = "v_1_4") {
+                            "libtensorrt_onnxparser_rtx.so.1.4.0"
+                        } else {
+                            "libtensorrt_onnxparser_rtx.so.1.3.0"
+                        }
                     } else {
-                        "libtensorrt_onnxparser_rtx.so.1.3.0"
-                    }
-                } else {
-                    if cfg!(feature = "v_1_4") {
-                        "tensorrt_onnxparser_rtx_1_4.dll"
-                    } else {
-                        "tensorrt_onnxparser_rtx_1_3.dll"
-                    }
-                })
-            }
-        }?;
-
-        *TRT_ONNXPARSER_LIB.write()? = Some(lib);
+                        if cfg!(feature = "v_1_4") {
+                            "tensorrt_onnxparser_rtx_1_4.dll"
+                        } else {
+                            "tensorrt_onnxparser_rtx_1_3.dll"
+                        }
+                    })
+                }
+            }?;
+            *write = Some(lib);
+        }
     }
     Ok(())
 }
