@@ -17,7 +17,7 @@ use trtx_sys::MoEActType;
 use trtx_sys::ReduceOperation;
 use trtx_sys::{nvinfer1, LayerType, Weights};
 use trtx_sys::{AsLayer, AsLayerTyped};
-use trtx_sys::{DataType, MatrixOperation, ScaleMode, TopKOperation};
+use trtx_sys::{DataType, Dims64, MatrixOperation, ScaleMode, TopKOperation};
 
 /// Panics if the layer or tensor was created from a different network.
 #[macro_export]
@@ -34,7 +34,7 @@ macro_rules! check_network {
     };
 }
 
-use crate::error::{Error, Result};
+use crate::error::{Error, PropertySetAttempt, Result};
 use crate::interfaces::ErrorRecorder;
 
 /// Kernel and optional bias weights for convolution and deconvolution layers.
@@ -669,8 +669,57 @@ impl<'network> PoolingLayer<'network> {
     }
 }
 
+impl<'network> DequantizeLayer<'network> {
+    /// See [nvinfer1::IDequantizeLayer::setAxis]
+    pub fn set_axis(&mut self, network: &mut NetworkDefinition, axis: i32) {
+        crate::check_network!(network, self);
+        self.inner.as_mut().setAxis(axis);
+    }
+
+    /// See [nvinfer1::IDequantizeLayer::getAxis]
+    pub fn axis(&self, network: &NetworkDefinition) -> i32 {
+        crate::check_network!(network, self);
+        self.inner.getAxis()
+    }
+
+    /// See [nvinfer1::IDequantizeLayer::setBlockShape]
+    pub fn set_block_shape(
+        &mut self,
+        network: &mut NetworkDefinition,
+        block_shape: &[i64],
+    ) -> Result<()> {
+        crate::check_network!(network, self);
+        let dims = Dims64::from_slice(block_shape);
+        if self.inner.as_mut().setBlockShape(&dims) {
+            Ok(())
+        } else {
+            Err(Error::FailedToSetProperty(
+                PropertySetAttempt::DequantizeLayerBlockShape,
+            ))
+        }
+    }
+
+    /// See [nvinfer1::IDequantizeLayer::getBlockShape]
+    pub fn block_shape(&self, network: &NetworkDefinition) -> Dims64 {
+        crate::check_network!(network, self);
+        self.inner.getBlockShape()
+    }
+
+    /// See [nvinfer1::IDequantizeLayer::setToType]
+    pub fn set_to_type(&mut self, network: &mut NetworkDefinition, to_type: DataType) {
+        crate::check_network!(network, self);
+        self.inner.as_mut().setToType(to_type.into());
+    }
+
+    /// See [nvinfer1::IDequantizeLayer::getToType]
+    pub fn to_type(&self, network: &NetworkDefinition) -> DataType {
+        crate::check_network!(network, self);
+        self.inner.getToType().into()
+    }
+}
+
 impl ConcatenationLayer<'_> {
-    /// See [IConcatenationLayer::setAxis]
+    /// See [nvinfer1::IConcatenationLayer::setAxis]
     pub fn set_axis(&mut self, network: &mut NetworkDefinition, axis: i32) {
         crate::check_network!(network, self);
         self.inner.as_mut().setAxis(axis);
