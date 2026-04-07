@@ -69,6 +69,7 @@ impl OwnedConvWeights {
 }
 
 /// [`trtx_sys::nvinfer1::ITensor`] — C++ [`nvinfer1::ITensor`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_tensor.html).
+#[derive(Clone, Copy)]
 pub struct Tensor<'network> {
     pub(crate) inner: *mut nvinfer1::ITensor,
     pub(crate) network: &'network nvinfer1::INetworkDefinition,
