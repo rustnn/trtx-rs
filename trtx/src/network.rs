@@ -669,6 +669,69 @@ impl<'network> PoolingLayer<'network> {
     }
 }
 
+impl<'network> DynamicQuantizeLayer<'network> {
+    /// See [nvinfer1::IDynamicQuantizeLayer::setAxis]
+    pub fn set_axis(&mut self, network: &mut NetworkDefinition, axis: i32) {
+        crate::check_network!(network, self);
+        self.inner.as_mut().setAxis(axis);
+    }
+
+    /// See [nvinfer1::IDynamicQuantizeLayer::getAxis]
+    pub fn axis(&self, network: &NetworkDefinition) -> i32 {
+        crate::check_network!(network, self);
+        self.inner.getAxis()
+    }
+
+    /// See [nvinfer1::IDynamicQuantizeLayer::setBlockShape]
+    pub fn set_block_shape(&mut self, network: &mut NetworkDefinition, block_shape: &[i64]) {
+        crate::check_network!(network, self);
+        let dims = Dims64::from_slice(block_shape);
+        self.inner.as_mut().setBlockShape(&dims);
+    }
+
+    /// See [nvinfer1::IDynamicQuantizeLayer::getBlockShape]
+    pub fn block_shape(&self, network: &NetworkDefinition) -> Dims64 {
+        crate::check_network!(network, self);
+        self.inner.getBlockShape()
+    }
+
+    /// See [nvinfer1::IDynamicQuantizeLayer::setBlockSize]
+    pub fn set_block_size(&mut self, network: &mut NetworkDefinition, size: i32) {
+        crate::check_network!(network, self);
+        self.inner.as_mut().setBlockSize(size);
+    }
+
+    /// See [nvinfer1::IDynamicQuantizeLayer::getBlockSize]
+    pub fn block_size(&self, network: &NetworkDefinition) -> i32 {
+        crate::check_network!(network, self);
+        self.inner.getBlockSize()
+    }
+
+    /// See [nvinfer1::IDynamicQuantizeLayer::setToType]
+    pub fn set_to_type(&mut self, network: &mut NetworkDefinition, to_type: DataType) {
+        crate::check_network!(network, self);
+        self.inner.as_mut().setToType(to_type.into());
+    }
+
+    /// See [nvinfer1::IDynamicQuantizeLayer::getToType]
+    pub fn to_type(&self, network: &NetworkDefinition) -> DataType {
+        crate::check_network!(network, self);
+        self.inner.getToType().into()
+    }
+
+    /// See [nvinfer1::IDynamicQuantizeLayer::setScaleType]
+    pub fn set_scale_type(&mut self, network: &mut NetworkDefinition, scale_type: DataType) {
+        crate::check_network!(network, self);
+        self.inner.as_mut().setScaleType(scale_type.into());
+    }
+
+    /// See [nvinfer1::IDynamicQuantizeLayer::getScaleType]
+    pub fn scale_type(&self, network: &NetworkDefinition) -> DataType {
+        crate::check_network!(network, self);
+        self.inner.getScaleType().into()
+    }
+}
+
 impl<'network> QuantizeLayer<'network> {
     /// See [nvinfer1::IQuantizeLayer::setAxis]
     pub fn set_axis(&mut self, network: &mut NetworkDefinition, axis: i32) {
