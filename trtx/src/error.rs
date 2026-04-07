@@ -21,6 +21,7 @@ pub enum PropertySetAttempt {
     BuilderConfigComputeCapability,
     ExecutionContextTensorDebugState,
     DequantizeLayerBlockShape,
+    QuantizeLayerBlockShape,
 }
 
 /// Errors that can occur when using TensorRT-RTX

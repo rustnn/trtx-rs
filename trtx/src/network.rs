@@ -669,6 +669,55 @@ impl<'network> PoolingLayer<'network> {
     }
 }
 
+impl<'network> QuantizeLayer<'network> {
+    /// See [nvinfer1::IQuantizeLayer::setAxis]
+    pub fn set_axis(&mut self, network: &mut NetworkDefinition, axis: i32) {
+        crate::check_network!(network, self);
+        self.inner.as_mut().setAxis(axis);
+    }
+
+    /// See [nvinfer1::IQuantizeLayer::getAxis]
+    pub fn axis(&self, network: &NetworkDefinition) -> i32 {
+        crate::check_network!(network, self);
+        self.inner.getAxis()
+    }
+
+    /// See [nvinfer1::IQuantizeLayer::setBlockShape]
+    pub fn set_block_shape(
+        &mut self,
+        network: &mut NetworkDefinition,
+        block_shape: &[i64],
+    ) -> Result<()> {
+        crate::check_network!(network, self);
+        let dims = Dims64::from_slice(block_shape);
+        if self.inner.as_mut().setBlockShape(&dims) {
+            Ok(())
+        } else {
+            Err(Error::FailedToSetProperty(
+                PropertySetAttempt::QuantizeLayerBlockShape,
+            ))
+        }
+    }
+
+    /// See [nvinfer1::IQuantizeLayer::getBlockShape]
+    pub fn block_shape(&self, network: &NetworkDefinition) -> Dims64 {
+        crate::check_network!(network, self);
+        self.inner.getBlockShape()
+    }
+
+    /// See [nvinfer1::IQuantizeLayer::setToType]
+    pub fn set_to_type(&mut self, network: &mut NetworkDefinition, to_type: DataType) {
+        crate::check_network!(network, self);
+        self.inner.as_mut().setToType(to_type.into());
+    }
+
+    /// See [nvinfer1::IQuantizeLayer::getToType]
+    pub fn to_type(&self, network: &NetworkDefinition) -> DataType {
+        crate::check_network!(network, self);
+        self.inner.getToType().into()
+    }
+}
+
 impl<'network> DequantizeLayer<'network> {
     /// See [nvinfer1::IDequantizeLayer::setAxis]
     pub fn set_axis(&mut self, network: &mut NetworkDefinition, axis: i32) {
