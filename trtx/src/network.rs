@@ -535,6 +535,140 @@ impl<'network> DeconvolutionLayer<'network> {
     }
 }
 
+impl<'network> PoolingLayer<'network> {
+    /// See [nvinfer1::IPoolingLayer::setPoolingType]
+    pub fn set_pooling_type(
+        &mut self,
+        network: &mut NetworkDefinition,
+        pooling_type: trtx_sys::PoolingType,
+    ) {
+        crate::check_network!(network, self);
+        self.inner.as_mut().setPoolingType(pooling_type.into());
+    }
+
+    /// See [nvinfer1::IPoolingLayer::getPoolingType]
+    pub fn pooling_type(&self, network: &NetworkDefinition) -> trtx_sys::PoolingType {
+        crate::check_network!(network, self);
+        self.inner.as_ref().getPoolingType().into()
+    }
+
+    /// See [nvinfer1::IPoolingLayer::setBlendFactor]
+    pub fn set_blend_factor(&mut self, network: &mut NetworkDefinition, blend_factor: f32) {
+        crate::check_network!(network, self);
+        self.inner.as_mut().setBlendFactor(blend_factor);
+    }
+
+    /// See [nvinfer1::IPoolingLayer::getBlendFactor]
+    pub fn blend_factor(&self, network: &NetworkDefinition) -> f32 {
+        crate::check_network!(network, self);
+        self.inner.as_ref().getBlendFactor()
+    }
+
+    /// See [nvinfer1::IPoolingLayer::setAverageCountExcludesPadding]
+    pub fn set_average_count_excludes_padding(
+        &mut self,
+        network: &mut NetworkDefinition,
+        exclusive: bool,
+    ) {
+        crate::check_network!(network, self);
+        self.inner
+            .as_mut()
+            .setAverageCountExcludesPadding(exclusive);
+    }
+
+    /// See [nvinfer1::IPoolingLayer::getAverageCountExcludesPadding]
+    pub fn average_count_excludes_padding(&self, network: &NetworkDefinition) -> bool {
+        crate::check_network!(network, self);
+        self.inner.as_ref().getAverageCountExcludesPadding()
+    }
+
+    /// See [nvinfer1::IPoolingLayer::setPrePadding]
+    pub fn set_pre_padding(&mut self, network: &mut NetworkDefinition, padding: &[i64]) {
+        crate::check_network!(network, self);
+        let dims_obj = trtx_sys::Dims::from_slice(padding);
+        self.inner.as_mut().setPrePadding(&dims_obj);
+    }
+
+    /// See [nvinfer1::IPoolingLayer::getPrePadding]
+    pub fn pre_padding(&self, network: &NetworkDefinition) -> Vec<i64> {
+        crate::check_network!(network, self);
+        let d = self.inner.as_ref().getPrePadding();
+        d.d[..d.nbDims as usize].to_vec()
+    }
+
+    /// See [nvinfer1::IPoolingLayer::setPostPadding]
+    pub fn set_post_padding(&mut self, network: &mut NetworkDefinition, padding: &[i64]) {
+        crate::check_network!(network, self);
+        let dims_obj = trtx_sys::Dims::from_slice(padding);
+        self.inner.as_mut().setPostPadding(&dims_obj);
+    }
+
+    /// See [nvinfer1::IPoolingLayer::getPostPadding]
+    pub fn post_padding(&self, network: &NetworkDefinition) -> Vec<i64> {
+        crate::check_network!(network, self);
+        let d = self.inner.as_ref().getPostPadding();
+        d.d[..d.nbDims as usize].to_vec()
+    }
+
+    /// See [nvinfer1::IPoolingLayer::setPaddingMode]
+    pub fn set_padding_mode(
+        &mut self,
+        network: &mut NetworkDefinition,
+        padding_mode: trtx_sys::PaddingMode,
+    ) {
+        crate::check_network!(network, self);
+        self.inner.as_mut().setPaddingMode(padding_mode.into());
+    }
+
+    /// See [nvinfer1::IPoolingLayer::getPaddingMode]
+    pub fn padding_mode(&self, network: &NetworkDefinition) -> trtx_sys::PaddingMode {
+        crate::check_network!(network, self);
+        self.inner.as_ref().getPaddingMode().into()
+    }
+
+    /// See [nvinfer1::IPoolingLayer::setWindowSizeNd]
+    pub fn set_window_size_nd(&mut self, network: &mut NetworkDefinition, window_size: &[i64]) {
+        crate::check_network!(network, self);
+        let dims_obj = trtx_sys::Dims::from_slice(window_size);
+        self.inner.as_mut().setWindowSizeNd(&dims_obj);
+    }
+
+    /// See [nvinfer1::IPoolingLayer::getWindowSizeNd]
+    pub fn window_size_nd(&self, network: &NetworkDefinition) -> Vec<i64> {
+        crate::check_network!(network, self);
+        let d = self.inner.as_ref().getWindowSizeNd();
+        d.d[..d.nbDims as usize].to_vec()
+    }
+
+    /// See [nvinfer1::IPoolingLayer::setStrideNd]
+    pub fn set_stride_nd(&mut self, network: &mut NetworkDefinition, stride: &[i64]) {
+        crate::check_network!(network, self);
+        let dims_obj = trtx_sys::Dims::from_slice(stride);
+        self.inner.as_mut().setStrideNd(&dims_obj);
+    }
+
+    /// See [nvinfer1::IPoolingLayer::getStrideNd]
+    pub fn stride_nd(&self, network: &NetworkDefinition) -> Vec<i64> {
+        crate::check_network!(network, self);
+        let d = self.inner.as_ref().getStrideNd();
+        d.d[..d.nbDims as usize].to_vec()
+    }
+
+    /// See [nvinfer1::IPoolingLayer::setPaddingNd]
+    pub fn set_padding_nd(&mut self, network: &mut NetworkDefinition, padding: &[i64]) {
+        crate::check_network!(network, self);
+        let dims_obj = trtx_sys::Dims::from_slice(padding);
+        self.inner.as_mut().setPaddingNd(&dims_obj);
+    }
+
+    /// See [nvinfer1::IPoolingLayer::getPaddingNd]
+    pub fn padding_nd(&self, network: &NetworkDefinition) -> Vec<i64> {
+        crate::check_network!(network, self);
+        let d = self.inner.as_ref().getPaddingNd();
+        d.d[..d.nbDims as usize].to_vec()
+    }
+}
+
 impl ConcatenationLayer<'_> {
     /// See [IConcatenationLayer::setAxis]
     pub fn set_axis(&mut self, network: &mut NetworkDefinition, axis: i32) {
