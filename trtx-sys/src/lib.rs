@@ -77,6 +77,7 @@ better_enum!(ResizeSelector);
 better_enum!(ResizeRoundMode);
 better_enum!(ScaleMode);
 better_enum!(ScatterMode);
+better_enum!(PaddingMode);
 better_enum!(UnaryOperation);
 better_enum!(TopKOperation);
 better_enum!(LayerInformationFormat);
@@ -203,6 +204,7 @@ include_cpp! {
     generate_pod!("nvinfer1::NetworkDefinitionCreationFlag")
     generate_pod!("nvinfer1::ActivationType")
     generate_pod!("nvinfer1::PoolingType")
+    generate_pod!("nvinfer1::PaddingMode")
     generate_pod!("nvinfer1::ElementWiseOperation")
     generate_pod!("nvinfer1::MatrixOperation")
     generate_pod!("nvinfer1::UnaryOperation")
