@@ -168,29 +168,36 @@ pub(crate) static TRTLIB: std::sync::RwLock<Option<libloading::Library>> =
 pub fn dynamically_load_tensorrt(_filename: Option<impl AsFilename>) -> Result<()> {
     #[cfg(not(any(feature = "link_tensorrt_rtx", feature = "mock")))]
     {
+        use log::debug;
         if TRTLIB.read()?.is_some() {
             return Ok(());
         }
         let lib = if let Some(filename) = _filename {
+            debug!("Loading library TensorRT library");
             unsafe { libloading::Library::new(filename) }
         } else {
             unsafe {
-                libloading::Library::new(if cfg!(unix) {
-                    if cfg!(feature = "enterprise") {
-                        "libnvinfer.so"
-                    } else if cfg!(feature = "v_1_4") {
-                        "libtensorrt_rtx.so.1.4.0"
+                libloading::Library::new({
+                    let filename = if cfg!(unix) {
+                        if cfg!(feature = "enterprise") {
+                            "libnvinfer.so"
+                        } else if cfg!(feature = "v_1_4") {
+                            "libtensorrt_rtx.so.1.4.0"
+                        } else {
+                            "libtensorrt_rtx.so.1.3.0"
+                        }
                     } else {
-                        "libtensorrt_rtx.so.1.3.0"
-                    }
-                } else {
-                    if cfg!(feature = "enterprise") {
-                        "nvinfer.dll"
-                    } else if cfg!(feature = "v_1_4") {
-                        "tensorrt_rtx_1_4.dll"
-                    } else {
-                        "tensorrt_rtx_1_3.dll"
-                    }
+                        if cfg!(feature = "enterprise") {
+                            "nvinfer.dll"
+                        } else if cfg!(feature = "v_1_4") {
+                            "tensorrt_rtx_1_4.dll"
+                        } else {
+                            "tensorrt_rtx_1_3.dll"
+                        }
+                    };
+
+                    debug!("Loading library {filename} as TensorRT library");
+                    filename
                 })
             }
         }?;
@@ -209,29 +216,36 @@ pub(crate) static TRT_ONNXPARSER_LIB: std::sync::RwLock<Option<libloading::Libra
 pub fn dynamically_load_tensorrt_onnxparser(_filename: Option<impl AsFilename>) -> Result<()> {
     #[cfg(not(any(feature = "link_tensorrt_onnxparser", feature = "mock")))]
     {
+        use log::debug;
         if TRT_ONNXPARSER_LIB.read()?.is_some() {
             return Ok(());
         }
         let lib = if let Some(filename) = _filename {
+            debug!("Loading library TensorRT onnxparser library",);
             unsafe { libloading::Library::new(filename) }
         } else {
             unsafe {
-                libloading::Library::new(if cfg!(unix) {
-                    if cfg!(feature = "enterprise") {
-                        "libnvonnxparser.so"
-                    } else if cfg!(feature = "v_1_4") {
-                        "libtensorrt_onnxparser_rtx.so.1.4.0"
+                libloading::Library::new({
+                    let filename = if cfg!(unix) {
+                        if cfg!(feature = "enterprise") {
+                            "libnvonnxparser.so"
+                        } else if cfg!(feature = "v_1_4") {
+                            "libtensorrt_onnxparser_rtx.so.1.4.0"
+                        } else {
+                            "libtensorrt_onnxparser_rtx.so.1.3.0"
+                        }
                     } else {
-                        "libtensorrt_onnxparser_rtx.so.1.3.0"
-                    }
-                } else {
-                    if cfg!(feature = "enterprise") {
-                        "nvonnxparser.dll"
-                    } else if cfg!(feature = "v_1_4") {
-                        "tensorrt_onnxparser_rtx_1_4.dll"
-                    } else {
-                        "tensorrt_onnxparser_rtx_1_3.dll"
-                    }
+                        if cfg!(feature = "enterprise") {
+                            "nvonnxparser.dll"
+                        } else if cfg!(feature = "v_1_4") {
+                            "tensorrt_onnxparser_rtx_1_4.dll"
+                        } else {
+                            "tensorrt_onnxparser_rtx_1_3.dll"
+                        }
+                    };
+
+                    debug!("Loading library {filename} as TensorRT onnxparser library");
+                    filename
                 })
             }
         }?;

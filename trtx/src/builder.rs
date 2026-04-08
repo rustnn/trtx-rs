@@ -9,6 +9,7 @@ use crate::logger::Logger;
 use crate::network::NetworkDefinition;
 use crate::optimization_profile::OptimizationProfile;
 use autocxx::cxx::memory::UniquePtr;
+use log::{debug, info};
 use std::marker::PhantomData;
 use std::pin::Pin;
 use trtx_sys::nvinfer1::IBuilder;
@@ -47,6 +48,7 @@ impl<'builder> Builder<'builder> {
     pub fn new(logger: &'builder Logger) -> Result<Self> {
         #[cfg(not(feature = "mock"))]
         {
+            use log::info;
             use trtx_sys::nvinfer1::IBuilder;
 
             let logger_ptr = logger.as_logger_ptr();
@@ -77,6 +79,7 @@ impl<'builder> Builder<'builder> {
             if builder_ptr.is_null() {
                 return Err(Error::Runtime("Failed to create builder".to_string()));
             }
+            info!("Created TensorRT builder");
             Ok(Builder {
                 inner: unsafe { UniquePtr::from_raw(builder_ptr) },
                 error_recorder: None,
@@ -92,6 +95,7 @@ impl<'builder> Builder<'builder> {
     }
 
     pub fn create_network(&'_ mut self, flags: u32) -> Result<NetworkDefinition<'builder>> {
+        info!("Create network");
         if cfg!(feature = "mock") {
             Ok(NetworkDefinition::from_ptr(std::ptr::null_mut()))
         } else {
@@ -118,6 +122,7 @@ impl<'builder> Builder<'builder> {
     where
         'output: 'config_borrow + 'builder,
     {
+        debug!("Start build_serialized_network");
         if cfg!(feature = "mock") {
             Ok(unsafe { HostMemory::from_raw(std::ptr::null_mut()) })
         } else {
@@ -129,6 +134,7 @@ impl<'builder> Builder<'builder> {
             }
             .ok_or_else(|| Error::Runtime("Failed to build serialized network".to_string()))?;
 
+            debug!("Build finished");
             Ok(unsafe { HostMemory::from_raw(serialized_engine) })
         }
     }

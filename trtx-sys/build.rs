@@ -129,6 +129,7 @@ fn generate_enum_bindings(crate_root: &str, out_path: &Path, include_dir: &Path)
         ".*Limit",
         ".*AttentionNormalizationOp",
         ".*SeekPosition",
+        ".*LoopOutput",
     ] {
         builder = builder.allowlist_type(pattern);
     }
