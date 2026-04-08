@@ -246,7 +246,7 @@ pub use trtx_sys::{
     ActivationType, CumulativeOperation, DataType, ElementWiseOperation, GatherMode,
     InterpolationMode, LayerInformationFormat, LayerType, MatrixOperation, PaddingMode,
     PoolingType, ReduceOperation, ResizeCoordinateTransformation, ResizeMode, ResizeRoundMode,
-    ResizeSelector, ScaleMode, ScatterMode, TensorFormat, TensorIOMode, TopKOperation,
+    ResizeSelector, SampleMode, ScaleMode, ScatterMode, TensorFormat, TensorIOMode, TopKOperation,
     UnaryOperation,
 };
 

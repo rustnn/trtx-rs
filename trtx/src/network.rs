@@ -14,10 +14,10 @@ use trtx_sys::nvinfer1::{IConcatenationLayer, INetworkDefinition, ITensor};
 use trtx_sys::CollectiveOperation;
 #[cfg(feature = "v_1_4")]
 use trtx_sys::MoEActType;
-use trtx_sys::ReduceOperation;
-use trtx_sys::{nvinfer1, LayerType, Weights};
+use trtx_sys::{nvinfer1, LayerType, SampleMode, Weights};
 use trtx_sys::{AsLayer, AsLayerTyped};
 use trtx_sys::{DataType, Dims64, MatrixOperation, ScaleMode, TopKOperation};
+use trtx_sys::{InterpolationMode, ReduceOperation};
 
 /// Panics if the layer or tensor was created from a different network.
 #[macro_export]
@@ -2456,6 +2456,58 @@ impl<'builder> NetworkDefinition<'builder> {
             self.inner.pin_mut().setErrorRecorder(rec)
         };
         Ok(())
+    }
+
+    pub fn add_grid_sample(
+        &mut self,
+        input: &'_ Tensor,
+        grid: &'_ Tensor,
+    ) -> Result<GridSampleLayer<'builder>> {
+        crate::check_network!(self, input);
+        crate::check_network!(self, grid);
+
+        let ptr = self
+            .inner
+            .pin_mut()
+            .addGridSample(input.pin_mut(), grid.pin_mut());
+        GridSampleLayer::new(self.inner.as_ptr(), ptr)
+    }
+}
+
+impl<'network> GridSampleLayer<'network> {
+    /// See [nvinfer1::IGridSampleLayer::setInterpolationMode]
+    pub fn set_interpolation_mode(
+        &mut self,
+        network: &mut NetworkDefinition,
+        mode: InterpolationMode,
+    ) {
+        crate::check_network!(network, self);
+        self.inner.as_mut().setInterpolationMode(mode.into());
+    }
+    /// See [nvinfer1::IGridSampleLayer::getInterpolationMode]
+    pub fn interpolation_mode(&self, network: &NetworkDefinition) -> InterpolationMode {
+        crate::check_network!(network, self);
+        self.inner.getInterpolationMode().into()
+    }
+    /// See [nvinfer1::IGridSampleLayer::setSampleMode]
+    pub fn set_sample_mode(&mut self, network: &mut NetworkDefinition, mode: SampleMode) {
+        crate::check_network!(network, self);
+        self.inner.as_mut().setSampleMode(mode.into());
+    }
+    /// See [nvinfer1::IGridSampleLayer::getSampleMode]
+    pub fn sample_mode(&self, network: &NetworkDefinition) -> SampleMode {
+        crate::check_network!(network, self);
+        self.inner.getSampleMode().into()
+    }
+    /// See [nvinfer1::IGridSampleLayer::setAlignCorners]
+    pub fn set_align_corners(&mut self, network: &mut NetworkDefinition, align_corners: bool) {
+        crate::check_network!(network, self);
+        self.inner.as_mut().setAlignCorners(align_corners);
+    }
+    /// See [nvinfer1::IGridSampleLayer::getAlignCorners]
+    pub fn align_corners(&self, network: &NetworkDefinition) -> bool {
+        crate::check_network!(network, self);
+        self.inner.getAlignCorners()
     }
 }
 
