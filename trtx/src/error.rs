@@ -1,6 +1,6 @@
 //! Error types for TensorRT-RTX operations (Rust-only; no single TensorRT C++ counterpart).
 
-use std::ffi::NulError;
+use std::{ffi::NulError, path::PathBuf};
 
 use thiserror::Error;
 use trtx_sys::LayerType;
@@ -112,6 +112,9 @@ pub enum Error {
 
     #[error("Failed to set property: {0:?}")]
     FailedToSetProperty(PropertySetAttempt),
+
+    #[error("Failed to set parse ONNX: {0:?}")]
+    FailedToParseOnnx(PathBuf),
 }
 
 impl<T> From<std::sync::PoisonError<T>> for Error {

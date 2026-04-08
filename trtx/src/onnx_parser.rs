@@ -3,9 +3,10 @@
 //! [`OnnxParser`] wraps [`trtx_sys::nvonnxparser::IParser`] (C++ [`nvonnxparser::IParser`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvonnxparser_1_1_i_parser.html)).
 
 use std::marker::PhantomData;
+use std::path::PathBuf;
 
 use cxx::UniquePtr;
-use std::ffi::c_void;
+use std::ffi::{c_void, CString};
 use trtx_sys::{nvinfer1, nvonnxparser};
 
 use crate::error::{Error, Result};
@@ -78,6 +79,21 @@ impl OnnxParser<'_> {
             inner: UniquePtr::null(),
             _network: Default::default(),
         })
+    }
+
+    pub fn parse_from_file(&mut self, path: &str, verbosity: i32) -> Result<()> {
+        let cpath = CString::new(path)?;
+        unsafe {
+            if self
+                .inner
+                .pin_mut()
+                .parseFromFile(cpath.as_ptr(), verbosity.into())
+            {
+                Ok(())
+            } else {
+                Err(Error::FailedToParseOnnx(PathBuf::from(path)))
+            }
+        }
     }
 
     pub fn parse(&mut self, model_bytes: &[u8]) -> Result<()> {

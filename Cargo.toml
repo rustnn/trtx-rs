@@ -1,5 +1,5 @@
 [workspace]
-members = ["trtx-sys", "trtx"]
+members = ["trtx-sys", "trtx", "trtexec-rs"]
 resolver = "2"
 
 [workspace.package]
@@ -11,6 +11,7 @@ repository = "https://github.com/rustnn/trtx-rs"
 
 [workspace.dependencies]
 trtx-sys = { path = "trtx-sys" }
+trtexec-rs = { path = "trtx" }
 
 [profile.release]
 opt-level = 3

@@ -7,6 +7,7 @@ This document defines the release process for `trtx-rs`.
 1. Bump versions using semantic versioning (`MAJOR.MINOR.PATCH`):
    - Update workspace version in `Cargo.toml` (`[workspace.package].version`).
    - Update `trtx/Cargo.toml` dependency version for `trtx-sys` when needed.
+   - Update `trtexec-rs/Cargo.toml` dependency version for `trtx` when needed.
 2. Add all relevant release notes to `CHANGELOG.md`.
 3. Ensure tests pass.
 4. Commit release changes, create tag `vMAJOR.MINOR.PATCH`, and push commit + tag.
