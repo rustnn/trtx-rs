@@ -1900,7 +1900,9 @@ impl<'network> NetworkDefinition<'network> {
         ScatterLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
+    #[cfg(not(feature = "enterprise"))]
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addQuantize`].
+    #[cfg(not(feature = "enterprise"))]
     pub fn add_quantize(
         &'_ mut self,
         input: &'_ Tensor,
@@ -1916,7 +1918,9 @@ impl<'network> NetworkDefinition<'network> {
         QuantizeLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
+    #[cfg(not(feature = "enterprise"))]
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addDequantize`].
+    #[cfg(not(feature = "enterprise"))]
     pub fn add_dequantize(
         &mut self,
         input: &'_ Tensor,

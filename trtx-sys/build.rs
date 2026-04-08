@@ -22,7 +22,7 @@ fn write_if_changed(path: &Path, contents: &[u8]) {
 
 /// Creates a folder in `out_dir`, copies headers from `trt_dir` with transformations applied,
 /// and returns the path to the new folder. Original headers are never modified.
-fn prepare_transformed_headers(trt_dir: &Path, out_dir: &Path) -> PathBuf {
+fn prepare_transformed_headers(header_dir: &Path, out_dir: &Path) -> PathBuf {
     let doxy_regex = Regex::new(r"\\(\w+)").unwrap();
     let warn_regex = Regex::new(r"\\warning (.*)$").unwrap();
     let see_regex = Regex::new(r"\\see ([`\w:()]+)").unwrap();
@@ -33,7 +33,7 @@ fn prepare_transformed_headers(trt_dir: &Path, out_dir: &Path) -> PathBuf {
     let transformed_dir = out_dir.join("trtx_transformed_headers");
     std::fs::create_dir_all(&transformed_dir).expect("Failed to create transformed headers dir");
 
-    for entry in std::fs::read_dir(trt_dir).unwrap() {
+    for entry in std::fs::read_dir(header_dir).unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();
         if path.is_file() {
@@ -62,11 +62,13 @@ fn prepare_transformed_headers(trt_dir: &Path, out_dir: &Path) -> PathBuf {
             let replaced = doxy_regex.replace_all(&replaced, "");
             // We need to declare everything added after v_1_3 because we can't do features for
             // autocxx
-            let replaced = replaced
+            let replaced = "#include <cstdint>\n".to_string()
+                + &replaced
                 + r#"
 namespace nvinfer1 {
     class IMoELayer;
     class IDistCollectiveLayer;
+    enum class ComputeCapability : int32_t;
 }"#;
 
             // trimming of indentation is necessary, so that rustdoc doesn't interpret
@@ -84,15 +86,14 @@ namespace nvinfer1 {
 }
 
 /// Generate enum bindings from NvInfer.h using bindgen (replaces generate_debug_enum.sh).
-fn generate_enum_bindings(crate_root: &str, out_path: &Path, trt_version: &str) {
-    let header = format!("{crate_root}/TensorRT-Headers/TRT-RTX-{trt_version}/NvInfer.h");
-    let include_dir = format!("{crate_root}/TensorRT-Headers/TRT-RTX-{trt_version}");
+fn generate_enum_bindings(crate_root: &str, out_path: &Path, include_dir: &Path) {
+    let header = include_dir.join("NvInfer.h").to_string_lossy().to_string();
     let cuda_shim = format!("{crate_root}/TensorRT-Headers");
 
     println!("cargo:rerun-if-changed={header}");
 
     let mut builder = bindgen::Builder::default()
-        .header(&header)
+        .header(header)
         .default_enum_style(EnumVariation::Rust {
             non_exhaustive: false,
         })
@@ -103,7 +104,7 @@ fn generate_enum_bindings(crate_root: &str, out_path: &Path, trt_version: &str) 
         .blocklist_type("cu.*")
         .clang_arg("-x")
         .clang_arg("c++")
-        .clang_arg(format!("-I{include_dir}"))
+        .clang_arg(format!("-I{}", include_dir.to_string_lossy()))
         .clang_arg(format!("-I{cuda_shim}"));
 
     // Allowlist types matching the script's regex: (.*Type|.*Mode|.*Operation|...)
@@ -167,7 +168,7 @@ fn main() {
     } else {
         panic!("No version feature enabled! Need to at least enable v_1_3 or v_1_4");
     };
-    let trt_version_suffix = if cfg!(unix) {
+    let trt_version_suffix = if cfg!(unix) || cfg!(feature = "enterprise") {
         ""
     } else {
         if cfg!(feature = "v_1_4") {
@@ -177,8 +178,38 @@ fn main() {
         }
     };
 
+    let header_overwrite = env::var("TENSORRT_INCLUDE_DIR").ok();
+    println!("cargo:rerun-if-env-changed=TENSORRT_INCLUDE_DIR");
+    let lib_overwrite = env::var("TENSORRT_LIB_DIR").ok();
+    println!("cargo:rerun-if-env-changed=TENSORRT_LIB_DIR");
+    let sdk_overwrite = env::var("TENSORRT_SDK_DIR").ok();
+    println!("cargo:rerun-if-env-changed=TENSORRT_SDK_DIR");
+    if let Some(sdk_overwrite) = sdk_overwrite.as_ref() {
+        println!("cargo:warning=Using TENSORRT_SDK_DIR={sdk_overwrite}");
+    }
+    if let Some(lib_overwrite) = lib_overwrite.as_ref() {
+        println!("cargo:warning=Using TENSORRT_LIB_DIR={lib_overwrite}");
+    }
+    if let Some(header_overwrite) = header_overwrite.as_ref() {
+        println!("cargo:warning=Using TENSORRT_INCLUDE_DIR={header_overwrite}");
+    }
+
+    let include_dir = header_overwrite
+        .or(sdk_overwrite.clone().map(|p| format!("{p}/include")))
+        .map(PathBuf::from)
+        .unwrap_or_else(|| {
+            PathBuf::from(if cfg!(feature = "enterprise") {
+                format!("{crate_root}/TensorRT-Headers/TRT-Enterprise-10.16")
+            } else {
+                format!("{crate_root}/TensorRT-Headers/TRT-RTX-{trt_version}")
+            })
+        });
+    println!("cargo:rerun-if-changed={}", include_dir.display());
+    let cuda_shim_include_dir = format!("{crate_root}/TensorRT-Headers");
+    let lib_dir = lib_overwrite.or(sdk_overwrite.map(|p| format!("{p}/lib")));
+
     // Generate enum bindings from NvInfer.h (used in both mock and real builds)
-    generate_enum_bindings(&crate_root, &out_path, trt_version);
+    generate_enum_bindings(&crate_root, &out_path, &include_dir);
 
     // Check if we're in mock mode
     let is_mock = env::var("CARGO_FEATURE_MOCK").is_ok();
@@ -186,41 +217,28 @@ fn main() {
     println!("cargo:rerun-if-changed=src/lib.rs");
     println!("cargo:rerun-if-changed=logger_bridge.hpp");
     println!("cargo:rerun-if-changed=logger_bridge.cpp");
-    println!("cargo:rerun-if-env-changed=TENSORRT_RTX_DIR");
     println!("cargo:rerun-if-env-changed=CUDA_ROOT");
     println!("cargo:rerun-if-env-changed=LIBCLANG_PATH");
-
-    // Look for TensorRT-RTX installation
-    // Users can override with TENSORRT_RTX_DIR environment variable
-    let trtx_dir = match env::var("TENSORRT_RTX_DIR") {
-        Ok(dir) => {
-            println!("cargo:warning=Using TENSORRT_RTX_DIR={}", dir);
-            dir
-        }
-        Err(_) => {
-            println!(
-                "cargo:warning=TENSORRT_RTX_DIR not set, using default: /usr/local/tensorrt-rtx"
-            );
-            "/usr/local/tensorrt-rtx".to_string()
-        }
-    };
-
-    let include_dir = PathBuf::from(format!(
-        "{crate_root}/TensorRT-Headers/TRT-RTX-{trt_version}"
-    ));
-    println!("cargo:rerun-if-changed={}", include_dir.display());
-    let cuda_shim_include_dir = format!("{crate_root}/TensorRT-Headers");
-    let lib_dir = format!("{trtx_dir}/lib");
 
     let transformed_include_dir = prepare_transformed_headers(&include_dir, &out_path);
     let transformed_include_dir_str = transformed_include_dir.to_string_lossy();
 
-    println!("cargo:rustc-link-search=native={}", lib_dir);
+    if let Some(lib_dir) = lib_dir {
+        println!("cargo:rustc-link-search=native={}", lib_dir);
+    }
     if link_trt {
-        println!("cargo:rustc-link-lib=dylib=tensorrt_rtx{trt_version_suffix}");
+        if cfg!(feature = "enterprise") {
+            println!("cargo:rustc-link-lib=dylib=nvinfer");
+        } else {
+            println!("cargo:rustc-link-lib=dylib=tensorrt_rtx{trt_version_suffix}");
+        }
     }
     if link_trt_onnxparser {
-        println!("cargo:rustc-link-lib=dylib=tensorrt_onnxparser_rtx{trt_version_suffix}");
+        if cfg!(feature = "enterprise") {
+            println!("cargo:rustc-link-lib=dylib=nvonnxparser");
+        } else {
+            println!("cargo:rustc-link-lib=dylib=tensorrt_onnxparser_rtx{trt_version_suffix}");
+        }
     }
 
     // Build logger bridge C++ wrapper

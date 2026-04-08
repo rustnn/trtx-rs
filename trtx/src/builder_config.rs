@@ -13,9 +13,12 @@ use crate::Result;
 use cxx::UniquePtr;
 use trtx_sys::nvinfer1::{self, IBuilderConfig};
 use trtx_sys::{
-    BuilderFlag, ComputeCapability, DeviceType, EngineCapability, HardwareCompatibilityLevel,
-    MemoryPoolType, PreviewFeature, ProfilingVerbosity, RuntimePlatform, TilingOptimizationLevel,
+    BuilderFlag, DeviceType, EngineCapability, HardwareCompatibilityLevel, MemoryPoolType,
+    PreviewFeature, ProfilingVerbosity, RuntimePlatform, TilingOptimizationLevel,
 };
+
+#[cfg(not(feature = "enterprise"))]
+use trtx_sys::ComputeCapability;
 
 /// [`trtx_sys::nvinfer1::IBuilderConfig`] — C++ [`nvinfer1::IBuilderConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_builder_config.html).
 pub struct BuilderConfig {
@@ -398,6 +401,7 @@ impl BuilderConfig {
     }
 
     /// See [IBuilderConfig::setNbComputeCapabilities]
+    #[cfg(not(feature = "enterprise"))]
     pub fn set_nb_compute_capabilities(
         &mut self,
         max_nb_compute_capabilities: i32,
@@ -420,6 +424,7 @@ impl BuilderConfig {
     }
 
     /// See [IBuilderConfig::getNbComputeCapabilities]
+    #[cfg(not(feature = "enterprise"))]
     pub fn get_nb_compute_capabilities(&self) -> i32 {
         if cfg!(not(feature = "mock")) {
             self.inner.getNbComputeCapabilities()
@@ -428,7 +433,9 @@ impl BuilderConfig {
         }
     }
 
+    #[cfg(not(feature = "enterprise"))]
     /// See [IBuilderConfig::setComputeCapability]
+    #[cfg(not(feature = "enterprise"))]
     pub fn set_compute_capability(
         &mut self,
         compute_capability: ComputeCapability,
@@ -451,7 +458,9 @@ impl BuilderConfig {
         }
     }
 
+    #[cfg(not(feature = "enterprise"))]
     /// See [IBuilderConfig::getComputeCapability]
+    #[cfg(not(feature = "enterprise"))]
     pub fn get_compute_capability(&self, index: i32) -> ComputeCapability {
         if cfg!(not(feature = "mock")) {
             self.inner.getComputeCapability(index).into()
