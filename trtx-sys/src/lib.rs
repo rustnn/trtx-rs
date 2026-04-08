@@ -70,6 +70,7 @@ better_enum!(CumulativeOperation);
 better_enum!(ElementWiseOperation);
 better_enum!(GatherMode);
 better_enum!(InterpolationMode);
+better_enum!(SampleMode);
 better_enum!(MatrixOperation);
 better_enum!(PoolingType);
 better_enum!(ReduceOperation);
