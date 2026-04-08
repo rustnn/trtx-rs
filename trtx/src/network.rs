@@ -34,7 +34,7 @@ macro_rules! check_network {
     };
 }
 
-use crate::error::{Error, PropertySetAttempt, Result};
+use crate::error::{Error, OkOrFailedSettingProperty, PropertySetAttempt, Result};
 use crate::interfaces::ErrorRecorder;
 use log::{debug, trace};
 
@@ -890,13 +890,10 @@ impl<'network> QuantizeLayer<'network> {
     ) -> Result<()> {
         crate::check_network!(network, self);
         let dims = Dims64::from_slice(block_shape);
-        if self.inner.as_mut().setBlockShape(&dims) {
-            Ok(())
-        } else {
-            Err(Error::FailedToSetProperty(
-                PropertySetAttempt::QuantizeLayerBlockShape,
-            ))
-        }
+        self.inner
+            .as_mut()
+            .setBlockShape(&dims)
+            .ok_or_err(PropertySetAttempt::QuantizeLayerBlockShape)
     }
 
     /// See [nvinfer1::IQuantizeLayer::getBlockShape]
@@ -939,13 +936,10 @@ impl<'network> DequantizeLayer<'network> {
     ) -> Result<()> {
         crate::check_network!(network, self);
         let dims = Dims64::from_slice(block_shape);
-        if self.inner.as_mut().setBlockShape(&dims) {
-            Ok(())
-        } else {
-            Err(Error::FailedToSetProperty(
-                PropertySetAttempt::DequantizeLayerBlockShape,
-            ))
-        }
+        self.inner
+            .as_mut()
+            .setBlockShape(&dims)
+            .ok_or_err(PropertySetAttempt::DequantizeLayerBlockShape)
     }
 
     /// See [nvinfer1::IDequantizeLayer::getBlockShape]
@@ -2388,14 +2382,233 @@ impl<'network> NetworkDefinition<'network> {
     }
 }
 
-// --- Attention: get_output ---
+// --- IAttention ---
 
 impl<'network> Attention<'network> {
+    /// See [`trtx_sys::nvinfer1::IAttention::setNormalizationOperation`].
+    pub fn set_normalization_operation(
+        &mut self,
+        network: &mut NetworkDefinition,
+        op: trtx_sys::AttentionNormalizationOp,
+    ) -> Result<()> {
+        crate::check_network!(network, self);
+        self.inner
+            .as_mut()
+            .setNormalizationOperation(op.into())
+            .ok_or_err(PropertySetAttempt::AttentionLayerNormalizationOp)
+    }
+
+    /// See [`trtx_sys::nvinfer1::IAttention::getNormalizationOperation`].
+    pub fn normalization_operation(
+        &self,
+        network: &NetworkDefinition,
+    ) -> trtx_sys::AttentionNormalizationOp {
+        crate::check_network!(network, self);
+        self.inner.getNormalizationOperation().into()
+    }
+
+    /// See [`trtx_sys::nvinfer1::IAttention::setMask`].
+    pub fn set_mask(&mut self, network: &mut NetworkDefinition, mask: &Tensor) -> Result<()> {
+        crate::check_network!(network, self);
+        crate::check_network!(network, mask);
+        self.inner
+            .as_mut()
+            .setMask(mask.pin_mut())
+            .ok_or_err(PropertySetAttempt::AttentionLayerMask)
+    }
+
+    /// See [`trtx_sys::nvinfer1::IAttention::getMask`]. Returns [`None`] if no mask is set.
+    ///
+    /// Note: C++ exposes `getMask` as a non-`const` method; this wrapper takes `&mut self` accordingly.
+    pub fn mask(&mut self, network: &mut NetworkDefinition) -> Option<Tensor<'network>> {
+        crate::check_network!(network, self);
+        let p = self.inner.as_mut().getMask();
+        if p.is_null() {
+            None
+        } else {
+            unsafe { Tensor::new(self.network, p).ok() }
+        }
+    }
+
+    /// See [`trtx_sys::nvinfer1::IAttention::setCausal`].
+    pub fn set_causal(&mut self, network: &mut NetworkDefinition, is_causal: bool) -> Result<()> {
+        crate::check_network!(network, self);
+        self.inner
+            .as_mut()
+            .setCausal(is_causal)
+            .ok_or_err(PropertySetAttempt::AttentionLayerCausal)
+    }
+
+    /// See [`trtx_sys::nvinfer1::IAttention::getCausal`].
+    pub fn causal(&self, network: &NetworkDefinition) -> bool {
+        crate::check_network!(network, self);
+        self.inner.getCausal()
+    }
+
+    /// See [`trtx_sys::nvinfer1::IAttention::setDecomposable`].
+    pub fn set_decomposable(
+        &mut self,
+        network: &mut NetworkDefinition,
+        decomposable: bool,
+    ) -> Result<()> {
+        crate::check_network!(network, self);
+        self.inner
+            .as_mut()
+            .setDecomposable(decomposable)
+            .ok_or_err(PropertySetAttempt::AttentionLayerDecomposable)
+    }
+
+    /// See [`trtx_sys::nvinfer1::IAttention::getDecomposable`].
+    pub fn decomposable(&self, network: &NetworkDefinition) -> bool {
+        crate::check_network!(network, self);
+        self.inner.getDecomposable()
+    }
+
+    /// See [`trtx_sys::nvinfer1::IAttention::setInput`].
+    pub fn set_input(
+        &mut self,
+        network: &mut NetworkDefinition,
+        index: i32,
+        input: &Tensor,
+    ) -> Result<()> {
+        crate::check_network!(network, self);
+        crate::check_network!(network, input);
+        self.inner
+            .as_mut()
+            .setInput(index, input.pin_mut())
+            .ok_or_err(PropertySetAttempt::AttentionLayerInput)
+    }
+
+    /// See [`trtx_sys::nvinfer1::IAttention::getNbInputs`].
+    pub fn num_inputs(&self, network: &NetworkDefinition) -> i32 {
+        crate::check_network!(network, self);
+        self.inner.getNbInputs()
+    }
+
+    /// See [`trtx_sys::nvinfer1::IAttention::getInput`].
+    pub fn get_input(&self, network: &NetworkDefinition, index: i32) -> Result<Tensor<'network>> {
+        crate::check_network!(network, self);
+        let tensor_ptr = self.inner.getInput(index);
+        unsafe { Tensor::new(self.network, tensor_ptr) }
+    }
+
+    /// See [`trtx_sys::nvinfer1::IAttention::getNbOutputs`].
+    pub fn num_outputs(&self, network: &NetworkDefinition) -> i32 {
+        crate::check_network!(network, self);
+        self.inner.getNbOutputs()
+    }
+
     /// See [`trtx_sys::nvinfer1::IAttention::getOutput`]. IAttention has one output (index 0).
     pub fn get_output(&self, network: &NetworkDefinition, index: i32) -> Result<Tensor<'network>> {
         crate::check_network!(network, self);
         let tensor_ptr = self.inner.getOutput(index);
         unsafe { Tensor::new(self.network, tensor_ptr) }
+    }
+
+    /// See [`trtx_sys::nvinfer1::IAttention::setName`].
+    ///
+    /// The C++ API requires a null-terminated name of at most 4096 bytes including the terminator.
+    pub fn set_name(&mut self, network: &mut NetworkDefinition, name: &str) -> Result<()> {
+        crate::check_network!(network, self);
+        let name = CString::new(name)?;
+        unsafe { self.inner.as_mut().setName(name.as_ptr()) }
+            .ok_or_err(PropertySetAttempt::AttentionLayerName)
+    }
+
+    /// See [`trtx_sys::nvinfer1::IAttention::getName`].
+    pub fn name(&self, network: &NetworkDefinition) -> String {
+        crate::check_network!(network, self);
+        let name = self.inner.getName();
+        if name.is_null() {
+            "(unamed)".to_string()
+        } else {
+            unsafe { CStr::from_ptr(name).to_string_lossy().to_string() }
+        }
+    }
+
+    /// See [`trtx_sys::nvinfer1::IAttention::setNormalizationQuantizeScale`].
+    pub fn set_normalization_quantize_scale(
+        &mut self,
+        network: &mut NetworkDefinition,
+        tensor: &Tensor,
+    ) -> Result<()> {
+        crate::check_network!(network, self);
+        crate::check_network!(network, tensor);
+        self.inner
+            .as_mut()
+            .setNormalizationQuantizeScale(tensor.pin_mut())
+            .ok_or_err(PropertySetAttempt::AttentionLayerQuantizeScale)
+    }
+
+    /// See [`trtx_sys::nvinfer1::IAttention::getNormalizationQuantizeScale`].
+    pub fn normalization_quantize_scale(
+        &self,
+        network: &NetworkDefinition,
+    ) -> Option<Tensor<'network>> {
+        crate::check_network!(network, self);
+        let p = self.inner.getNormalizationQuantizeScale();
+        if p.is_null() {
+            None
+        } else {
+            unsafe { Tensor::new(self.network, p).ok() }
+        }
+    }
+
+    /// See [`trtx_sys::nvinfer1::IAttention::setNormalizationQuantizeToType`].
+    pub fn set_normalization_quantize_to_type(
+        &mut self,
+        network: &mut NetworkDefinition,
+        type_: DataType,
+    ) -> Result<()> {
+        crate::check_network!(network, self);
+        self.inner
+            .as_mut()
+            .setNormalizationQuantizeToType(type_.into())
+            .ok_or_err(PropertySetAttempt::AttentionLayerQuantizeToType)
+    }
+
+    /// See [`trtx_sys::nvinfer1::IAttention::getNormalizationQuantizeToType`].
+    pub fn get_normalization_quantize_to_type(&self, network: &NetworkDefinition) -> DataType {
+        crate::check_network!(network, self);
+        self.inner.getNormalizationQuantizeToType().into()
+    }
+
+    /// See [`trtx_sys::nvinfer1::IAttention::setMetadata`].
+    pub fn set_metadata(&mut self, network: &mut NetworkDefinition, metadata: &str) -> Result<()> {
+        crate::check_network!(network, self);
+        let metadata_cstr = CString::new(metadata)?;
+        unsafe { self.inner.as_mut().setMetadata(metadata_cstr.as_ptr()) }
+            .ok_or_err(PropertySetAttempt::AttentionLayerMetadata)
+    }
+
+    /// See [`trtx_sys::nvinfer1::IAttention::getMetadata`].
+    pub fn metadata(&self, network: &NetworkDefinition) -> String {
+        crate::check_network!(network, self);
+        let p = self.inner.getMetadata();
+        if p.is_null() {
+            String::new()
+        } else {
+            unsafe { CStr::from_ptr(p).to_string_lossy().to_string() }
+        }
+    }
+
+    #[cfg(feature = "v_1_4")]
+    /// See [`trtx_sys::nvinfer1::IAttention::setNbRanks`].
+    #[cfg(feature = "v_1_4")]
+    pub fn set_nb_ranks(&mut self, network: &mut NetworkDefinition, nb_ranks: i32) -> Result<()> {
+        crate::check_network!(network, self);
+        self.inner
+            .as_mut()
+            .setNbRanks(nb_ranks)
+            .ok_or_err(PropertySetAttempt::AttentionLayerNumRanks)
+    }
+
+    #[cfg(feature = "v_1_4")]
+    /// See [`trtx_sys::nvinfer1::IAttention::getNbRanks`].
+    #[cfg(feature = "v_1_4")]
+    pub fn get_nb_ranks(&self, network: &NetworkDefinition) -> i32 {
+        crate::check_network!(network, self);
+        self.inner.getNbRanks()
     }
 }
 

@@ -22,7 +22,30 @@ pub enum PropertySetAttempt {
     ExecutionContextTensorDebugState,
     DequantizeLayerBlockShape,
     QuantizeLayerBlockShape,
+    AttentionLayerInput,
+    AttentionLayerNumRanks,
+    AttentionLayerName,
+    AttentionLayerQuantizeToType,
+    AttentionLayerQuantizeScale,
+    AttentionLayerMetadata,
+    AttentionLayerMask,
+    AttentionLayerCausal,
+    AttentionLayerNormalizationOp,
+    AttentionLayerDecomposable,
 }
+
+// can be replaced once https://github.com/rust-lang/rust/issues/142748 becomes stable
+pub(crate) trait OkOrFailedSettingProperty: Into<bool> {
+    fn ok_or_err(self, e: PropertySetAttempt) -> Result<()> {
+        if self.into() {
+            Ok(())
+        } else {
+            Err(Error::FailedToSetProperty(e))
+        }
+    }
+}
+
+impl OkOrFailedSettingProperty for bool {}
 
 /// Errors that can occur when using TensorRT-RTX
 #[derive(Debug, Error)]
