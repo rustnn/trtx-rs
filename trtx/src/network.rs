@@ -409,16 +409,147 @@ impl ShuffleLayer<'_> {
 }
 
 impl ResizeLayer<'_> {
+    // --- IResizeLayer (full) ---
+    // `setInput` / `getInput` / `getOutput` / `getNbInputs` / `getNbOutputs` / name accessors:
+    // [`Layer::set_input`], [`Layer::get_input`], [`Layer::get_output`], etc.
+
     /// See [nvinfer1::IResizeLayer::setOutputDimensions]
     pub fn set_output_dimensions(&mut self, network: &mut NetworkDefinition, dims: &[i64]) {
         crate::check_network!(network, self);
         let dims_obj = trtx_sys::Dims::from_slice(dims);
         self.inner.as_mut().setOutputDimensions(&dims_obj);
     }
+
+    /// See [nvinfer1::IResizeLayer::getOutputDimensions]
+    pub fn output_dimensions(&self, network: &NetworkDefinition) -> Vec<i64> {
+        crate::check_network!(network, self);
+        let d = self.inner.as_ref().getOutputDimensions();
+        d.d[..d.nbDims as usize].to_vec()
+    }
+
+    /// See [nvinfer1::IResizeLayer::setScales]
+    pub fn set_scales(&mut self, network: &mut NetworkDefinition, scales: &[f32]) {
+        crate::check_network!(network, self);
+        // SAFETY: `scales.as_ptr()` is valid for `scales.len()` elements. TensorRT copies scale values
+        // into the layer definition during this call (same contract as other INetworkDefinition setters).
+        unsafe {
+            self.inner
+                .as_mut()
+                .setScales(scales.as_ptr(), scales.len() as i32);
+        }
+    }
+
+    /// See [nvinfer1::IResizeLayer::getScales]
+    ///
+    /// Returns `None` if no scales were set or the resize layer is dynamic (per TensorRT).
+    pub fn scales(&self, network: &NetworkDefinition) -> Option<Vec<f32>> {
+        crate::check_network!(network, self);
+        // SAFETY: TensorRT API allows `size == 0` and `scales == nullptr` to return the scale count only.
+        let n = unsafe { self.inner.as_ref().getScales(0, std::ptr::null_mut()) };
+        if n <= 0 {
+            return None;
+        }
+        let mut buf = vec![0.0_f32; n as usize];
+        // SAFETY: `buf` has length `n` (from `getScales` above); pointer is valid for `n` writes.
+        let n2 = unsafe { self.inner.as_ref().getScales(n, buf.as_mut_ptr()) };
+        if n2 != n {
+            return None;
+        }
+        Some(buf)
+    }
+
     /// See [nvinfer1::IResizeLayer::setResizeMode]
     pub fn set_resize_mode(&mut self, network: &mut NetworkDefinition, mode: trtx_sys::ResizeMode) {
         crate::check_network!(network, self);
         self.inner.as_mut().setResizeMode(mode.into());
+    }
+
+    /// See [nvinfer1::IResizeLayer::getResizeMode]
+    pub fn resize_mode(&self, network: &NetworkDefinition) -> trtx_sys::ResizeMode {
+        crate::check_network!(network, self);
+        self.inner.as_ref().getResizeMode().into()
+    }
+
+    /// See [nvinfer1::IResizeLayer::setCoordinateTransformation]
+    pub fn set_coordinate_transformation(
+        &mut self,
+        network: &mut NetworkDefinition,
+        transform: trtx_sys::ResizeCoordinateTransformation,
+    ) {
+        crate::check_network!(network, self);
+        self.inner
+            .as_mut()
+            .setCoordinateTransformation(transform.into());
+    }
+
+    /// See [nvinfer1::IResizeLayer::getCoordinateTransformation]
+    pub fn coordinate_transformation(
+        &self,
+        network: &NetworkDefinition,
+    ) -> trtx_sys::ResizeCoordinateTransformation {
+        crate::check_network!(network, self);
+        self.inner.as_ref().getCoordinateTransformation().into()
+    }
+
+    /// See [nvinfer1::IResizeLayer::setSelectorForSinglePixel]
+    pub fn set_selector_for_single_pixel(
+        &mut self,
+        network: &mut NetworkDefinition,
+        selector: trtx_sys::ResizeSelector,
+    ) {
+        crate::check_network!(network, self);
+        self.inner
+            .as_mut()
+            .setSelectorForSinglePixel(selector.into());
+    }
+
+    /// See [nvinfer1::IResizeLayer::getSelectorForSinglePixel]
+    pub fn selector_for_single_pixel(
+        &self,
+        network: &NetworkDefinition,
+    ) -> trtx_sys::ResizeSelector {
+        crate::check_network!(network, self);
+        self.inner.as_ref().getSelectorForSinglePixel().into()
+    }
+
+    /// See [nvinfer1::IResizeLayer::setNearestRounding]
+    pub fn set_nearest_rounding(
+        &mut self,
+        network: &mut NetworkDefinition,
+        mode: trtx_sys::ResizeRoundMode,
+    ) {
+        crate::check_network!(network, self);
+        self.inner.as_mut().setNearestRounding(mode.into());
+    }
+
+    /// See [nvinfer1::IResizeLayer::getNearestRounding]
+    pub fn nearest_rounding(&self, network: &NetworkDefinition) -> trtx_sys::ResizeRoundMode {
+        crate::check_network!(network, self);
+        self.inner.as_ref().getNearestRounding().into()
+    }
+
+    /// See [nvinfer1::IResizeLayer::setCubicCoeff]
+    pub fn set_cubic_coeff(&mut self, network: &mut NetworkDefinition, a: f32) {
+        crate::check_network!(network, self);
+        self.inner.as_mut().setCubicCoeff(a);
+    }
+
+    /// See [nvinfer1::IResizeLayer::getCubicCoeff]
+    pub fn cubic_coeff(&self, network: &NetworkDefinition) -> f32 {
+        crate::check_network!(network, self);
+        self.inner.as_ref().getCubicCoeff()
+    }
+
+    /// See [nvinfer1::IResizeLayer::setExcludeOutside]
+    pub fn set_exclude_outside(&mut self, network: &mut NetworkDefinition, exclude: bool) {
+        crate::check_network!(network, self);
+        self.inner.as_mut().setExcludeOutside(exclude);
+    }
+
+    /// See [nvinfer1::IResizeLayer::getExcludeOutside]
+    pub fn exclude_outside(&self, network: &NetworkDefinition) -> bool {
+        crate::check_network!(network, self);
+        self.inner.as_ref().getExcludeOutside()
     }
 }
 
