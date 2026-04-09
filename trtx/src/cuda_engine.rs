@@ -21,10 +21,10 @@ pub struct SerializationConfig<'cuda_engine> {
     _runtime: PhantomData<&'cuda_engine nvinfer1::ICudaEngine>,
 }
 impl SerializationConfig<'_> {
-    pub fn get_flag(&self, flag: SerializationFlag) -> bool {
+    pub fn flag(&self, flag: SerializationFlag) -> bool {
         self.inner.getFlag(flag.into())
     }
-    pub fn get_flags(&self) -> u32 {
+    pub fn flags(&self) -> u32 {
         self.inner.getFlags()
     }
     pub fn set_flag(&mut self, flag: SerializationFlag) -> Result<()> {
@@ -71,7 +71,7 @@ impl<'engine> CudaEngine<'engine> {
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getNbIOTensors`].
-    pub fn get_nb_io_tensors(&self) -> Result<i32> {
+    pub fn nb_io_tensors(&self) -> Result<i32> {
         if cfg!(feature = "mock_runtime") {
             Ok(0)
         } else {
@@ -79,7 +79,7 @@ impl<'engine> CudaEngine<'engine> {
         }
     }
 
-    pub fn get_tensor_name(&self, index: i32) -> Result<String> {
+    pub fn tensor_name(&self, index: i32) -> Result<String> {
         if cfg!(feature = "mock_runtime") {
             Ok("mock_runtime".to_string())
         } else {
@@ -92,7 +92,7 @@ impl<'engine> CudaEngine<'engine> {
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorShape`].
-    pub fn get_tensor_shape(&self, name: &str) -> Result<Vec<i64>> {
+    pub fn tensor_shape(&self, name: &str) -> Result<Vec<i64>> {
         let name_cstr = std::ffi::CString::new(name)?;
         let dims = unsafe { self.inner.getTensorShape(name_cstr.as_ptr()) };
         let nb_dims = dims.nbDims as usize;
@@ -103,46 +103,46 @@ impl<'engine> CudaEngine<'engine> {
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorDataType`].
-    pub fn get_tensor_data_type(&self, name: &str) -> Result<DataType> {
+    pub fn tensor_data_type(&self, name: &str) -> Result<DataType> {
         let name_cstr = std::ffi::CString::new(name)?;
         Ok(unsafe { self.inner.getTensorDataType(name_cstr.as_ptr()) }.into())
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getNbLayers`].
-    pub fn get_nb_layers(&self) -> Result<i32> {
+    pub fn nb_layers(&self) -> Result<i32> {
         Ok(self.inner.getNbLayers())
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getNbOptimizationProfiles`].
-    pub fn get_nb_optimization_profiles(&self) -> Result<i32> {
+    pub fn nb_optimization_profiles(&self) -> Result<i32> {
         Ok(self.inner.getNbOptimizationProfiles())
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getNbAuxStreams`].
-    pub fn get_nb_aux_streams(&self) -> Result<i32> {
+    pub fn nb_aux_streams(&self) -> Result<i32> {
         Ok(self.inner.getNbAuxStreams())
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorIOMode`].
-    pub fn get_tensor_io_mode(&self, name: &str) -> Result<TensorIOMode> {
+    pub fn tensor_io_mode(&self, name: &str) -> Result<TensorIOMode> {
         let name_cstr = std::ffi::CString::new(name)?;
         Ok(unsafe { self.inner.getTensorIOMode(name_cstr.as_ptr()).into() })
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorLocation`].
-    pub fn get_tensor_location(&self, name: &str) -> Result<trtx_sys::TensorLocation> {
+    pub fn tensor_location(&self, name: &str) -> Result<trtx_sys::TensorLocation> {
         let name_cstr = std::ffi::CString::new(name)?;
         Ok(unsafe { self.inner.getTensorLocation(name_cstr.as_ptr()).into() })
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorFormat`].
-    pub fn get_tensor_format(&self, name: &str) -> Result<trtx_sys::TensorFormat> {
+    pub fn tensor_format(&self, name: &str) -> Result<trtx_sys::TensorFormat> {
         let name_cstr = std::ffi::CString::new(name)?;
         Ok(unsafe { self.inner.getTensorFormat(name_cstr.as_ptr()).into() })
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorFormat`] (profile variant).
-    pub fn get_tensor_format_for_profile(
+    pub fn tensor_format_for_profile(
         &self,
         name: &str,
         profile_index: i32,
@@ -155,7 +155,7 @@ impl<'engine> CudaEngine<'engine> {
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorFormatDesc`].
-    pub fn get_tensor_format_desc(&self, name: &str) -> Result<String> {
+    pub fn tensor_format_desc(&self, name: &str) -> Result<String> {
         let name_cstr = std::ffi::CString::new(name)?;
         let ptr = unsafe { self.inner.getTensorFormatDesc(name_cstr.as_ptr()) };
         if ptr.is_null() {
@@ -165,11 +165,7 @@ impl<'engine> CudaEngine<'engine> {
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorFormatDesc`] (profile variant).
-    pub fn get_tensor_format_desc_for_profile(
-        &self,
-        name: &str,
-        profile_index: i32,
-    ) -> Result<String> {
+    pub fn tensor_format_desc_for_profile(&self, name: &str, profile_index: i32) -> Result<String> {
         let name_cstr = std::ffi::CString::new(name)?;
         let ptr = unsafe {
             self.inner
@@ -182,17 +178,13 @@ impl<'engine> CudaEngine<'engine> {
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorVectorizedDim`].
-    pub fn get_tensor_vectorized_dim(&self, name: &str) -> Result<i32> {
+    pub fn tensor_vectorized_dim(&self, name: &str) -> Result<i32> {
         let name_cstr = std::ffi::CString::new(name)?;
         Ok(unsafe { self.inner.getTensorVectorizedDim(name_cstr.as_ptr()) })
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorVectorizedDim`] (profile variant).
-    pub fn get_tensor_vectorized_dim_for_profile(
-        &self,
-        name: &str,
-        profile_index: i32,
-    ) -> Result<i32> {
+    pub fn tensor_vectorized_dim_for_profile(&self, name: &str, profile_index: i32) -> Result<i32> {
         let name_cstr = std::ffi::CString::new(name)?;
         Ok(unsafe {
             self.inner
@@ -201,7 +193,7 @@ impl<'engine> CudaEngine<'engine> {
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorBytesPerComponent`].
-    pub fn get_tensor_bytes_per_component(&self, name: &str) -> Result<i32> {
+    pub fn tensor_bytes_per_component(&self, name: &str) -> Result<i32> {
         #[cfg(not(feature = "mock_runtime"))]
         {
             let name_cstr = std::ffi::CString::new(name)?;
@@ -212,7 +204,7 @@ impl<'engine> CudaEngine<'engine> {
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorBytesPerComponent`] (profile variant).
-    pub fn get_tensor_bytes_per_component_for_profile(
+    pub fn tensor_bytes_per_component_for_profile(
         &self,
         name: &str,
         profile_index: i32,
@@ -229,7 +221,7 @@ impl<'engine> CudaEngine<'engine> {
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorComponentsPerElement`].
-    pub fn get_tensor_components_per_element(&self, name: &str) -> Result<i32> {
+    pub fn tensor_components_per_element(&self, name: &str) -> Result<i32> {
         #[cfg(not(feature = "mock_runtime"))]
         {
             let name_cstr = std::ffi::CString::new(name)?;
@@ -242,7 +234,7 @@ impl<'engine> CudaEngine<'engine> {
     }
 
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getTensorComponentsPerElement`] (profile variant).
-    pub fn get_tensor_components_per_element_for_profile(
+    pub fn tensor_components_per_element_for_profile(
         &self,
         name: &str,
         profile_index: i32,
@@ -290,7 +282,7 @@ impl<'engine> CudaEngine<'engine> {
 
     /// Returns the data type of the tensor (e.g. kFLOAT, kHALF).
     /// Required for correct buffer sizing and f32/f16 conversion when I/O uses half precision.
-    pub fn get_tensor_dtype(&self, name: &str) -> Result<trtx_sys::DataType> {
+    pub fn tensor_dtype(&self, name: &str) -> Result<trtx_sys::DataType> {
         #[cfg(not(feature = "mock_runtime"))]
         {
             let name_cstr = std::ffi::CString::new(name)?;
