@@ -339,6 +339,12 @@ impl<'engine> CudaEngine<'engine> {
             Ok(unsafe { HostMemory::from_raw(std::ptr::null_mut()) })
         }
     }
+
+    /// See [`trtx_sys::nvinfer1::ICudaEngine::isShapeInferenceIO`].
+    pub fn is_shape_inference_io(&self, name: &str) -> Result<bool> {
+        let name_cstr = std::ffi::CString::new(name)?;
+        Ok(unsafe { self.inner.isShapeInferenceIO(name_cstr.as_ptr()) })
+    }
 }
 
 #[cfg(test)]
