@@ -120,6 +120,21 @@ impl Tensor<'_> {
         Ok(())
     }
 
+    /// See [nvinfer1::ITensor::setDimensionName]
+    pub fn set_dimension_name(
+        &self,
+        network: &'_ mut NetworkDefinition,
+        index: i32,
+        name: &str,
+    ) -> Result<()> {
+        crate::check_network!(network, self);
+        let name_cstr = std::ffi::CString::new(name)?;
+        unsafe {
+            self.pin_mut().setDimensionName(index, name_cstr.as_ptr());
+        }
+        Ok(())
+    }
+
     /// See [nvinfer1::ITensor::getDimensions]
     pub fn dimensions(&self, network: &NetworkDefinition) -> Result<Vec<i64>> {
         crate::check_network!(network, self);
