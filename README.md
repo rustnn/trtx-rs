@@ -96,7 +96,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-trtx = "0.3"
+trtx = "0.4"
 ```
 
 ## Usage
