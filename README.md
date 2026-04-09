@@ -393,12 +393,12 @@ This project is in early development. APIs may change before 1.0 release.
 - ✅ **CUDA**: cudarc integration for memory management and device sync
 - ✅ **rustnn-compatible executor API** (ready for integration)
 - ✅ RAII-based resource management
+- ✅ Optimization profiles
+- ✅ Weight refitting
 
 ### Planned
 
 - ⬜ Dynamic shape support
-- ⬜ Optimization profiles
-- ⬜ Weight refitting
 - ⬜ INT8 quantization support
 - ⬜ Comprehensive examples with real models
 - ⬜ Performance benchmarking
