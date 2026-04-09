@@ -31,17 +31,17 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run clippy
-        run: cargo clippy --features mock --all-targets -- -D warnings
+        run: cargo clippy --all-targets -- -D warnings
 
       - name: Run tests
-        run: cargo test --features mock --verbose
+        run: cargo test --verbose
 
       - name: Publish trtx-sys to crates.io
         if: |
           github.event_name == 'release' ||
           (github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true')
         run: |
-          cargo publish --features mock -p trtx-sys --token ${{ secrets.CRATES_IO_TOKEN }}
+          cargo publish -p trtx-sys --token ${{ secrets.CRATES_IO_TOKEN }}
         continue-on-error: false
 
       - name: Wait for crates.io to index trtx-sys
@@ -55,5 +55,5 @@ jobs:
           github.event_name == 'release' ||
           (github.event_name == 'workflow_dispatch' && github.event.inputs.publish == 'true')
         run: |
-          cargo publish --features mock -p trtx --token ${{ secrets.CRATES_IO_TOKEN }}
+          cargo publish -p trtx --token ${{ secrets.CRATES_IO_TOKEN }}
         continue-on-error: false
