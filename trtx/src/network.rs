@@ -10,14 +10,12 @@ use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 use std::pin::Pin;
 use trtx_sys::nvinfer1::{IConcatenationLayer, INetworkDefinition, ITensor};
-#[cfg(feature = "v_1_4")]
-use trtx_sys::CollectiveOperation;
-#[cfg(feature = "v_1_4")]
-use trtx_sys::MoEActType;
+use trtx_sys::InterpolationMode;
 use trtx_sys::{nvinfer1, LayerType, SampleMode, Weights};
 use trtx_sys::{AsLayer, AsLayerTyped};
+#[cfg(feature = "v_1_4")]
+use trtx_sys::{CollectiveOperation, MoEActType, ReduceOperation};
 use trtx_sys::{DataType, Dims64, MatrixOperation, ScaleMode, TopKOperation};
-use trtx_sys::{InterpolationMode, ReduceOperation};
 
 /// Panics if the layer or tensor was created from a different network.
 #[macro_export]
