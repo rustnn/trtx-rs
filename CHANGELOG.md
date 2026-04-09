@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-09
+
+### Added
+- Support for TensorRT RTX 1.4 (see https://docs.nvidia.com/deeplearning/tensorrt-rtx/1.4/index.html#what-s-new-in-tensorrt-rtx-1-4)
+- Refitter API
+- IProgressMonitor, IErrorRecorder, IDebug, IGpuAllocator, IDebugListener exposed
+- More layers and layer methods exposed
+
+### Changed
+- trtx now enforces with lifetimes correct usage of API
+- autocxx is now used for almost everything, even mock
+- mock now uses the same API as real mode, builder API now has limited mock coverage
+
+
+### Fixed
+- fixed one SEGFAULT in `add_comulative` (now prevented by lifetimes in API)
+
 ## [0.3.1] - 2026-02-26
 
 ### Added
@@ -47,5 +64,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CUDA Integration**: Migrated CUDA memory and stream management to cudarc to align with modern Rust GPU tooling.
 - **Improved Portability**: Expanded the mock mode to include stubbed TensorRT types, allowing the library to be compiled non-NVIDIA platforms (e.g., macOS).
 
+[0.4.0]: https://github.com/rustnn/trtx-rs/releases/tag/v0.4.0
 [0.3.0]: https://github.com/rustnn/trtx-rs/releases/tag/v0.3.0
 [0.3.1]: https://github.com/rustnn/trtx-rs/releases/tag/v0.3.1
