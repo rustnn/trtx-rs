@@ -34,7 +34,7 @@ jobs:
         run: cargo clippy --all-targets -- -D warnings
 
       - name: Run tests
-        run: cargo test --verbose
+        run: cargo test --features mock --verbose
 
       - name: Publish trtx-sys to crates.io
         if: |
