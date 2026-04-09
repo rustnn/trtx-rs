@@ -91,6 +91,18 @@ impl Tensor<'_> {
         self.as_ref().isShapeTensor()
     }
 
+    /// See [nvinfer1::ITensor::isNetworkInput]
+    pub fn is_network_input(&self, network: &NetworkDefinition) -> bool {
+        crate::check_network!(network, self);
+        self.as_ref().isNetworkInput()
+    }
+
+    /// See [nvinfer1::ITensor::isNetworkOutput]
+    pub fn is_network_output(&self, network: &NetworkDefinition) -> bool {
+        crate::check_network!(network, self);
+        self.as_ref().isNetworkOutput()
+    }
+
     /// See [nvinfer1::ITensor::getType]
     pub fn get_type(&self, network: &NetworkDefinition) -> DataType {
         crate::check_network!(network, self);
