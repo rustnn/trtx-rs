@@ -132,6 +132,17 @@ fn main() -> Result<()> {
         let mut parser = OnnxParser::new(&mut network, &logger)?;
         parser.parse_from_file(&onnx_path.to_string_lossy().clone(), 5)?;
 
+        for i in 0..network.get_nb_inputs() {
+            let input = network.get_input(i)?;
+            let shape = input.dimensions(&network)?;
+            if shape.iter().any(|&i| i < 0) {
+                let name = input.name(&network)?;
+                bail!(
+                    "Dynamic shapes are not supported. {name:?} requires dynamic shapes: {shape:?}"
+                );
+            }
+        }
+
         let serialized = builder
             .build_serialized_network(&mut network, &mut config)
             .with_context(|| format!("Fail to build {onnx_path:?}"))?;
@@ -159,15 +170,19 @@ fn main() -> Result<()> {
 
         let mut io_tensors = Vec::<CudaSlice<u8>>::new();
 
-        for i in 0..engine.get_nb_io_tensors()? {
-            let name = engine.get_tensor_name(i)?;
-            let dtype = engine.get_tensor_dtype(&name)?;
-            let shape = engine.get_tensor_shape(&name)?;
+        for i in 0..engine.nb_io_tensors()? {
+            let name = engine.tensor_name(i)?;
+            if engine.is_shape_inference_io(&name)? {
+                bail!("Dynamic shapes are not supported. {name:?} requires dynamic shapes");
+            }
+
+            let dtype = engine.tensor_dtype(&name)?;
+            let shape = engine.tensor_shape(&name)?;
             let num_elements = shape.iter().product::<i64>();
             // only correct for non-vectorized layouts
             let size = (num_elements as usize * dtype.size_bits()) / 8;
-            //let bytes = engine.get_tensor_components_per_element(&name)?;
-            //let comp_per_element = engine.get_tensor_components_per_element(&name)?;
+            //let bytes = engine.tensor_components_per_element(&name)?;
+            //let comp_per_element = engine.tensor_components_per_element(&name)?;
             let mut buffer = stream.alloc_zeros(size)?;
             let (ptr, _) = buffer.device_ptr_mut(&stream);
             unsafe { ctx.set_tensor_address(&name, ptr as *mut c_void)? };
