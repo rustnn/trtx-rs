@@ -99,6 +99,65 @@ impl Tensor<'_> {
     fn as_mut(&self) -> &mut nvinfer1::ITensor {
         unsafe { self.inner.as_mut().unwrap() }
     }
+
+    /// See [nvinfer1::ITensor::getName]
+    pub fn name(&self, network: &NetworkDefinition) -> Result<String> {
+        crate::check_network!(network, self);
+        let name_ptr = self.as_ref().getName();
+        if name_ptr.is_null() {
+            return Err(Error::Runtime("Failed to get tensor name".to_string()));
+        }
+        unsafe { Ok(std::ffi::CStr::from_ptr(name_ptr).to_str()?.to_string()) }
+    }
+
+    /// See [nvinfer1::ITensor::setName]
+    pub fn set_name(&self, network: &'_ mut NetworkDefinition, name: &str) -> Result<()> {
+        crate::check_network!(network, self);
+        let name_cstr = std::ffi::CString::new(name)?;
+        unsafe {
+            self.pin_mut().setName(name_cstr.as_ptr());
+        }
+        Ok(())
+    }
+
+    /// See [nvinfer1::ITensor::getDimensions]
+    pub fn dimensions(&self, network: &NetworkDefinition) -> Result<Vec<i64>> {
+        crate::check_network!(network, self);
+        let result = self.as_ref().getDimensions();
+        Ok(result.d[..result.nbDims as usize].to_vec())
+    }
+
+    /// See [nvinfer1::ITensor::isExecutionTensor]
+    pub fn is_execution_tensor(&self, network: &NetworkDefinition) -> bool {
+        crate::check_network!(network, self);
+        self.as_ref().isExecutionTensor()
+    }
+
+    /// See [nvinfer1::ITensor::isShapeTensor]
+    pub fn is_shape_tensor(&self, network: &NetworkDefinition) -> bool {
+        crate::check_network!(network, self);
+        self.as_ref().isShapeTensor()
+    }
+
+    /// See [nvinfer1::ITensor::getType]
+    pub fn get_type(&self, network: &NetworkDefinition) -> DataType {
+        crate::check_network!(network, self);
+        self.as_ref().getType().into()
+    }
+
+    /// Set allowed tensor formats (bitmask of TensorFormat). E.g. 1u32 << TensorFormat::kHWC for channels-last.
+    /// TensorRT may insert reformat layers when connecting tensors with different formats.
+    ///
+    /// See [nvinfer1::ITensor::setAllowedFormats]
+    pub fn set_allowed_formats(
+        &mut self,
+        network: &mut NetworkDefinition,
+        formats: u32,
+    ) -> Result<()> {
+        crate::check_network!(network, self);
+        self.pin_mut().setAllowedFormats(formats);
+        Ok(())
+    }
 }
 
 /// `Inner` is a concrete [`trtx_sys::nvinfer1`] `I*Layer` (all implement [`trtx_sys::AsLayer`] toward [`trtx_sys::nvinfer1::ILayer`]); C++ base [`nvinfer1::ILayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_layer.html).
@@ -1229,49 +1288,6 @@ impl MoELayer<'_> {
 /// `IDistCollectiveLayer` adds no methods beyond [`ILayer`](trtx_sys::nvinfer1::ILayer); use [`Layer`] helpers.
 #[cfg(feature = "v_1_4")]
 impl DistCollectiveLayer<'_> {}
-
-impl Tensor<'_> {
-    pub fn name(&self, network: &NetworkDefinition) -> Result<String> {
-        crate::check_network!(network, self);
-        let name_ptr = self.as_ref().getName();
-        if name_ptr.is_null() {
-            return Err(Error::Runtime("Failed to get tensor name".to_string()));
-        }
-        unsafe { Ok(std::ffi::CStr::from_ptr(name_ptr).to_str()?.to_string()) }
-    }
-
-    pub fn set_name(&self, network: &'_ mut NetworkDefinition, name: &str) -> Result<()> {
-        crate::check_network!(network, self);
-        let name_cstr = std::ffi::CString::new(name)?;
-        unsafe {
-            self.pin_mut().setName(name_cstr.as_ptr());
-        }
-        Ok(())
-    }
-
-    pub fn dimensions(&self, network: &NetworkDefinition) -> Result<Vec<i64>> {
-        crate::check_network!(network, self);
-        let result = self.as_ref().getDimensions();
-        Ok(result.d[..result.nbDims as usize].to_vec())
-    }
-
-    pub fn get_type(&self, network: &NetworkDefinition) -> DataType {
-        crate::check_network!(network, self);
-        self.as_ref().getType().into()
-    }
-
-    /// Set allowed tensor formats (bitmask of TensorFormat). E.g. 1u32 << TensorFormat::kHWC for channels-last.
-    /// TensorRT may insert reformat layers when connecting tensors with different formats.
-    pub fn set_allowed_formats(
-        &mut self,
-        network: &mut NetworkDefinition,
-        formats: u32,
-    ) -> Result<()> {
-        crate::check_network!(network, self);
-        self.pin_mut().setAllowedFormats(formats);
-        Ok(())
-    }
-}
 
 /// [`trtx_sys::nvinfer1::INetworkDefinition`] — C++ [`nvinfer1::INetworkDefinition`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_network_definition.html).
 pub struct NetworkDefinition<'builder> {
