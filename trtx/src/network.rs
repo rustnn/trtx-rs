@@ -2148,9 +2148,7 @@ impl<'network> NetworkDefinition<'network> {
         ScatterLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
-    #[cfg(not(feature = "enterprise"))]
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addQuantize`].
-    #[cfg(not(feature = "enterprise"))]
     pub fn add_quantize(
         &'_ mut self,
         input: &'_ Tensor,
@@ -2164,16 +2162,20 @@ impl<'network> NetworkDefinition<'network> {
             tensor_dbg(self, input),
             tensor_dbg(self, scale)
         );
+        #[cfg(not(feature = "enterprise"))]
         let layer_ptr =
             self.inner
                 .pin_mut()
                 .addQuantize(input.pin_mut(), scale.pin_mut(), output_type.into());
+        #[cfg(feature = "enterprise")]
+        let layer_ptr =
+            self.inner
+                .pin_mut()
+                .addQuantize1(input.pin_mut(), scale.pin_mut(), output_type.into());
         QuantizeLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
-    #[cfg(not(feature = "enterprise"))]
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addDequantize`].
-    #[cfg(not(feature = "enterprise"))]
     pub fn add_dequantize(
         &mut self,
         input: &'_ Tensor,
@@ -2187,7 +2189,14 @@ impl<'network> NetworkDefinition<'network> {
             tensor_dbg(self, input),
             tensor_dbg(self, scale)
         );
+        #[cfg(not(feature = "enterprise"))]
         let layer_ptr = self.inner.pin_mut().addDequantize(
+            input.pin_mut(),
+            scale.pin_mut(),
+            output_type.into(),
+        );
+        #[cfg(feature = "enterprise")]
+        let layer_ptr = self.inner.pin_mut().addDequantize1(
             input.pin_mut(),
             scale.pin_mut(),
             output_type.into(),
