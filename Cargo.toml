@@ -17,3 +17,10 @@ trtexec-rs = { path = "trtx" }
 opt-level = 3
 lto = true
 codegen-units = 1
+
+[patch.crates-io]
+trtx = { path = "trtx" }
+trtx-sys = { path = "trtx-sys" }
+[patch."https://github.com/rustnn/rustnn/"]
+trtx = { path = "trtx" }
+trtx-sys = { path = "trtx-sys" }

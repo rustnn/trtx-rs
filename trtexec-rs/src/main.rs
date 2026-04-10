@@ -5,7 +5,9 @@ use clap::Parser;
 use cudarc::driver::CudaContext;
 use cudarc::driver::CudaSlice;
 use cudarc::driver::DevicePtrMut;
-use std::ffi::c_void;
+use log::{debug, info};
+use rustnn::{load_graph_from_path, GraphConverter};
+use std::ffi::{c_void, OsString};
 use std::fs::File;
 use std::io::Read;
 use std::ops::Deref;
@@ -103,6 +105,7 @@ fn main() -> Result<()> {
 
     let mut engine_bytes = Vec::<HostMemoryOrVec>::new();
     for onnx_path in args.onnx.iter() {
+        info!("Processing {onnx_path:?}");
         let _span = tracing::info_span!(
             "Building engine",
             onnx_path = onnx_path.to_string_lossy().to_string()
@@ -127,6 +130,24 @@ fn main() -> Result<()> {
             engine_bytes.push(buffer.into());
             continue;
         }
+
+        let file_extension = onnx_path.extension();
+        if file_extension == Some(&OsString::from("json"))
+            || file_extension == Some(&OsString::from("webnn"))
+        {
+            info!("Processing as RustNN file: {onnx_path:?}");
+            let _span = tracing::info_span!(
+                "RustNN conversion",
+                graph_path = onnx_path.to_string_lossy().to_string()
+            );
+            let _enter = _span.enter();
+            let graph = load_graph_from_path(onnx_path)?;
+            let converted = rustnn::converters::TrtxConverter.convert(&graph)?;
+            engine_bytes.push(converted.data.into());
+
+            continue;
+        }
+        debug!("Processing as ONNX file: {onnx_path:?}");
 
         let mut network = builder.create_network(0)?;
         let mut parser = OnnxParser::new(&mut network, &logger)?;

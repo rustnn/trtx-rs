@@ -6,7 +6,7 @@ use clap_complete::Shell;
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct Args {
-    /// ONNX files to compile and execute
+    /// ONNX files or WebNN files to compile and execute
     pub onnx: Vec<PathBuf>,
 
     /// Directory to store/cache engines

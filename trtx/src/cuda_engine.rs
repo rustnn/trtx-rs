@@ -70,6 +70,23 @@ impl<'engine> CudaEngine<'engine> {
         }
     }
 
+    #[deprecated = "use nb_io_tensors"]
+    pub fn get_nb_io_tensors(&self) -> Result<i32> {
+        self.nb_io_tensors()
+    }
+    #[deprecated = "use tensor_shape"]
+    pub fn get_tensor_shape(&self, name: &str) -> Result<Vec<i64>> {
+        self.tensor_shape(name)
+    }
+    #[deprecated = "use tensor_name"]
+    pub fn get_tensor_name(&self, index: i32) -> Result<String> {
+        self.tensor_name(index)
+    }
+    #[deprecated = "use tensor_data_type"]
+    pub fn get_tensor_dtype(&self, name: &str) -> Result<DataType> {
+        self.tensor_data_type(name)
+    }
+
     /// See [`trtx_sys::nvinfer1::ICudaEngine::getNbIOTensors`].
     pub fn nb_io_tensors(&self) -> Result<i32> {
         if cfg!(feature = "mock_runtime") {
