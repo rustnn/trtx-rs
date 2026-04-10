@@ -1,7 +1,7 @@
 use std::pin::Pin;
 
 use crate::{network::check_network, Error, NetworkDefinition, Result};
-use trtx_sys::{nvinfer1, DataType};
+use trtx_sys::{nvinfer1, DataType, Dims64};
 
 /// [`trtx_sys::nvinfer1::ITensor`] — C++ [`nvinfer1::ITensor`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_tensor.html).
 #[derive(Clone, Copy)]
@@ -70,6 +70,13 @@ impl Tensor<'_> {
             self.pin_mut().setDimensionName(index, name_cstr.as_ptr());
         }
         Ok(())
+    }
+
+    /// See [nvinfer1::ITensor::setDimensions]
+    pub fn set_dimensions(&mut self, network: &mut NetworkDefinition, dims: &[i64]) {
+        check_network!(network, self);
+        let dims = Dims64::from_slice(dims);
+        self.pin_mut().setDimensions(&dims);
     }
 
     /// See [nvinfer1::ITensor::getDimensions]
