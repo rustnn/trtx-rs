@@ -62,8 +62,13 @@ jobs:
 
       - name: Install protobuf compiler
         if: ${{ matrix.os == 'windows-latest' }}
-        run: |
-          winget install google.protobuf --accept-package-agreements --accept-source-agreements --disable-interactivity
+        # This is what Prost uses https://github.com/tokio-rs/prost/blob/master/.github/workflows/ci.yml#L63C1-L66C49
+        uses: taiki-e/install-action@v2
+        with:
+          tool: protoc
+        #run: |
+          #winget install google.protobuf --accept-package-agreements --accept-source-agreements --disable-interactivity
+          # need to bring into PATH somehow
 
       - name: Install TensorRT RTX libs via pip
         if: ${{ matrix.os != 'macos-latest' }}
