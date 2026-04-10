@@ -52,6 +52,19 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-target-${{ matrix.rust }}-
 
+      # Protoc currently needed for rustnn
+      - name: Install protobuf compiler
+        if: ${{ matrix.os != 'windows-latest' }}
+        run: |
+          export PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"
+          echo "PATH=/home/linuxbrew/.linuxbrew/bin:$PATH" >> $GITHUB_ENV
+          brew install protobuf
+
+      - name: Install protobuf compiler
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          winget install google.protobuf --accept-package-agreements --accept-source-agreements --disable-interactivity
+
       - name: Install TensorRT RTX libs via pip
         if: ${{ matrix.os != 'macos-latest' }}
         shell: bash
