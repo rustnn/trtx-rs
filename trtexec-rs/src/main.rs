@@ -39,7 +39,7 @@ fn resolve_dynamic_input_shape(
     if non_interactive {
         bail!(
             "Dynamic shapes are not supported in non-interactive mode. \
-             {tensor_name:?} has shape {shape:?}; use an interactive terminal or fix the model."
+             {tensor_name:?} has shape {shape:?}; use an interactive terminal or set static shapes on the model."
         );
     }
 
@@ -196,12 +196,14 @@ fn main() -> Result<()> {
         let mut parser = OnnxParser::new(&mut network, &logger)?;
         parser.parse_from_file(&onnx_path.to_string_lossy().clone(), 5)?;
 
+        let mut shape_changed = false;
         for i in 0..network.get_nb_inputs() {
             let mut input = network.get_input(i)?;
             let shape = input.dimensions(&network)?;
             let name = input.name(&network)?;
             let resolved = resolve_dynamic_input_shape(args.non_interactive, &name, &shape)?;
             if resolved != shape {
+                shape_changed = true;
                 input.set_dimensions(&mut network, &resolved);
             }
         }
@@ -210,10 +212,12 @@ fn main() -> Result<()> {
             .build_serialized_network(&mut network, &mut config)
             .with_context(|| format!("Fail to build {onnx_path:?}"))?;
 
-        std::fs::write(&cache_path, serialized.as_ref())
-            .with_context(|| format!("Failed to write engine cache {cache_path:?}"))?;
-        log::info!("Wrote engine cache {cache_path:?} ({hex_id})");
-        println!("Wrote engine cache {cache_path:?} ({hex_id})");
+        if !shape_changed {
+            std::fs::write(&cache_path, serialized.as_ref())
+                .with_context(|| format!("Failed to write engine cache {cache_path:?}"))?;
+            log::info!("Wrote engine cache {cache_path:?} ({hex_id})");
+            println!("Wrote engine cache {cache_path:?} ({hex_id})");
+        }
 
         engine_bytes.push(serialized.into());
     }
