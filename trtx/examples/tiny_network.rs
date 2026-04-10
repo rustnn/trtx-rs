@@ -34,11 +34,11 @@ fn main() -> Result<()> {
 
     // 4. Inspect engine
     println!("4. Engine information:");
-    let num_io_tensors = engine.get_nb_io_tensors()?;
+    let num_io_tensors = engine.nb_io_tensors()?;
     println!("   Number of I/O tensors: {}", num_io_tensors);
 
     for i in 0..num_io_tensors {
-        let name = engine.get_tensor_name(i)?;
+        let name = engine.tensor_name(i)?;
         println!("   Tensor {}: {}", i, name);
     }
 
