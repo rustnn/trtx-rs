@@ -9,7 +9,7 @@ use log::{debug, info};
 use rustnn::{load_graph_from_path, GraphConverter};
 use std::ffi::{c_void, OsString};
 use std::fs::File;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::ops::Deref;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
@@ -18,8 +18,8 @@ use std::time::Instant;
 use tracing_subscriber::prelude::*;
 //use tracing_log::LogTracer;
 use trtx::host_memory::HostMemory;
-use trtx::Runtime;
-use trtx::{Builder, Logger, OnnxParser};
+use trtx::{Builder, Logger, OnnxParser, ProfilingVerbosity};
+use trtx::{LayerInformationFormat, Runtime};
 
 use crate::cli::Args;
 use crate::progress_monitor::ProgressMonitor;
@@ -102,6 +102,7 @@ fn main() -> Result<()> {
     config
         .set_progress_monitor(Box::new(ProgressMonitor::new(Arc::clone(&abort))))
         .with_context(|| "Failed to set ProgressMonitor")?;
+    config.set_profiling_verbosity(ProfilingVerbosity::kDETAILED);
 
     let mut engine_bytes = Vec::<HostMemoryOrVec>::new();
     for onnx_path in args.inputs.iter() {
@@ -185,9 +186,26 @@ fn main() -> Result<()> {
         Runtime::new(&logger).with_context(|| "Failed to create TensorRT runtime for inference")?;
     let stream = cuda_ctx.new_stream()?;
 
-    for bytes in engine_bytes.drain(..) {
+    for (bytes, input_path) in engine_bytes.drain(..).zip(args.inputs.iter()) {
         let mut engine = runtime.deserialize_cuda_engine(&bytes)?;
         let mut ctx = engine.create_execution_context()?;
+
+        let inspector = engine.create_engine_inspector()?;
+        let engine_layer_info_json =
+            inspector.get_engine_information(LayerInformationFormat::kJSON)?;
+        let layer_json_path = args.engine_dir.join(format!(
+            "{}.graph.json",
+            input_path
+                .file_name()
+                .ok_or_else(|| anyhow!("could not get filename fore {input_path:?}"))?
+                .to_string_lossy()
+        ));
+        File::create(&layer_json_path)
+            .with_context(|| {
+                format!("Failed to create file for engine layer information at {layer_json_path:?}")
+            })?
+            .write_all(engine_layer_info_json.as_bytes())?;
+        info!("Wrote {layer_json_path:?}");
 
         let mut io_tensors = Vec::<CudaSlice<u8>>::new();
 

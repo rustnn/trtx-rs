@@ -18,6 +18,7 @@ opt-level = 3
 lto = true
 codegen-units = 1
 
+# Ignored on crates.io allows to test RustNN with local trtx (so we don't break them accidentally)
 [patch.crates-io]
 trtx = { path = "trtx" }
 trtx-sys = { path = "trtx-sys" }
