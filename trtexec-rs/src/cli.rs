@@ -36,4 +36,8 @@ pub struct Args {
     /// Don't run inference
     #[arg(long, short)]
     pub skip_inference: bool,
+
+    /// Which CUDA device index to use
+    #[arg(long, default_value_t = 0)]
+    pub cuda_device_idx: usize,
 }

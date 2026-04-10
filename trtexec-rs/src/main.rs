@@ -159,7 +159,7 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    let cuda_ctx = CudaContext::new(0)?;
+    let cuda_ctx = CudaContext::new(args.cuda_device_idx)?;
     let mut runtime =
         Runtime::new(&logger).with_context(|| "Failed to create TensorRT runtime for inference")?;
     let stream = cuda_ctx.new_stream()?;
