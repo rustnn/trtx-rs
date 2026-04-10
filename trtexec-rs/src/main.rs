@@ -9,7 +9,7 @@ use log::{debug, info};
 use rustnn::{load_graph_from_path, GraphConverter};
 use std::ffi::{c_void, OsString};
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::{BufRead, Read, Write};
 use std::ops::Deref;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
@@ -26,6 +26,48 @@ use crate::progress_monitor::ProgressMonitor;
 
 mod cli;
 mod progress_monitor;
+
+/// If any dimension is negative (dynamic), either bail (`non_interactive`) or read concrete sizes from stdin.
+fn resolve_dynamic_input_shape(
+    non_interactive: bool,
+    tensor_name: &str,
+    shape: &[i64],
+) -> Result<Vec<i64>> {
+    if !shape.iter().any(|&d| d < 0) {
+        return Ok(shape.to_vec());
+    }
+    if non_interactive {
+        bail!(
+            "Dynamic shapes are not supported in non-interactive mode. \
+             {tensor_name:?} has shape {shape:?}; use an interactive terminal or fix the model."
+        );
+    }
+
+    println!("Input tensor {tensor_name:?} has dynamic dimensions. Current shape: {shape:?}");
+    println!("Enter a positive integer for each dynamic dimension (index in brackets):");
+    let stdin = std::io::stdin();
+    let mut reader = std::io::BufReader::new(stdin.lock());
+    let mut resolved = shape.to_vec();
+
+    for (idx, dim) in resolved.iter_mut().enumerate() {
+        if *dim >= 0 {
+            continue;
+        }
+        print!("  dimension[{idx}] (dynamic, was {dim}): ");
+        std::io::stdout().flush()?;
+        let mut line = String::new();
+        reader.read_line(&mut line)?;
+        let value: i64 = line.trim().parse().with_context(|| {
+            format!("invalid integer for dimension[{idx}] of tensor {tensor_name:?}")
+        })?;
+        if value <= 0 {
+            bail!("dimension[{idx}] of {tensor_name:?} must be positive, got {value}");
+        }
+        *dim = value;
+    }
+
+    Ok(resolved)
+}
 
 fn digest_hex(digest: &md5::Digest) -> String {
     format!("{digest:x}")
@@ -155,13 +197,12 @@ fn main() -> Result<()> {
         parser.parse_from_file(&onnx_path.to_string_lossy().clone(), 5)?;
 
         for i in 0..network.get_nb_inputs() {
-            let input = network.get_input(i)?;
+            let mut input = network.get_input(i)?;
             let shape = input.dimensions(&network)?;
-            if shape.iter().any(|&i| i < 0) {
-                let name = input.name(&network)?;
-                bail!(
-                    "Dynamic shapes are not supported. {name:?} requires dynamic shapes: {shape:?}"
-                );
+            let name = input.name(&network)?;
+            let resolved = resolve_dynamic_input_shape(args.non_interactive, &name, &shape)?;
+            if resolved != shape {
+                input.set_dimensions(&mut network, &resolved);
             }
         }
 

@@ -40,4 +40,8 @@ pub struct Args {
     /// Which CUDA device index to use
     #[arg(long, default_value_t = 0)]
     pub cuda_device_idx: usize,
+
+    /// Fail on dynamic input shapes instead of prompting (for scripts/CI)
+    #[arg(long)]
+    pub non_interactive: bool,
 }
