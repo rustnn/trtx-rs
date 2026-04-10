@@ -7,7 +7,7 @@ use clap_complete::Shell;
 #[command(version, about, long_about = None)]
 pub struct Args {
     /// ONNX files or WebNN files to compile and execute
-    pub onnx: Vec<PathBuf>,
+    pub inputs: Vec<PathBuf>,
 
     /// Directory to store/cache engines
     #[arg(long, value_enum)]

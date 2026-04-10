@@ -104,7 +104,7 @@ fn main() -> Result<()> {
         .with_context(|| "Failed to set ProgressMonitor")?;
 
     let mut engine_bytes = Vec::<HostMemoryOrVec>::new();
-    for onnx_path in args.onnx.iter() {
+    for onnx_path in args.inputs.iter() {
         info!("Processing {onnx_path:?}");
         let _span = tracing::info_span!(
             "Building engine",
