@@ -7,6 +7,10 @@ authors.workspace = true
 repository.workspace = true
 
 [dependencies]
+rustnn = { git = "https://github.com/rustnn/rustnn/", features = [
+	"trtx-runtime",
+], default-features = false }
+
 nvidia-nvtx = { version = "0.2", git = "https://github.com/NVIDIA/NVTX", branch = "release-v3" }
 log = "0.4"
 pretty_env_logger = "0.5"
@@ -21,6 +25,3 @@ md5 = "0.8.0"
 cudarc = { version = "0.19", features = ["cuda-13020"] }
 tracing = { version = "0.1.44", features = ["attributes"] }
 tracing-subscriber = "0.3.23"
-rustnn = { git = "https://github.com/rustnn/rustnn/", features = [
-	"trtx-runtime",
-] }
