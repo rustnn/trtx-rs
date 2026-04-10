@@ -13,6 +13,10 @@ pub struct Args {
     #[arg(long, value_enum)]
     pub engine_dir: PathBuf,
 
+    /// Save engine to file path
+    #[arg(long, short)]
+    pub save_engine: Vec<PathBuf>,
+
     /// Generate shell completion to stdout
     #[arg(long, value_enum)]
     pub shell_completion: Option<Shell>,
@@ -34,7 +38,7 @@ pub struct Args {
     pub no_cache: bool,
 
     /// Don't run inference
-    #[arg(long, short)]
+    #[arg(long)]
     pub skip_inference: bool,
 
     /// Which CUDA device index to use

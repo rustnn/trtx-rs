@@ -147,7 +147,7 @@ fn main() -> Result<()> {
     config.set_profiling_verbosity(ProfilingVerbosity::kDETAILED);
 
     let mut engine_bytes = Vec::<HostMemoryOrVec>::new();
-    for onnx_path in args.inputs.iter() {
+    for (i, onnx_path) in args.inputs.iter().enumerate() {
         info!("Processing {onnx_path:?}");
         let _span = tracing::info_span!(
             "Building engine",
@@ -217,6 +217,11 @@ fn main() -> Result<()> {
                 .with_context(|| format!("Failed to write engine cache {cache_path:?}"))?;
             log::info!("Wrote engine cache {cache_path:?} ({hex_id})");
             println!("Wrote engine cache {cache_path:?} ({hex_id})");
+        }
+        if let Some(save_path) = args.save_engine.get(i) {
+            println!("Saving engine to  {save_path:?}");
+            std::fs::write(save_path, serialized.as_ref())
+                .with_context(|| format!("Failed to write engine cache {cache_path:?}"))?;
         }
 
         engine_bytes.push(serialized.into());
