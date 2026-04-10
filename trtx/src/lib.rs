@@ -140,6 +140,7 @@ pub mod onnx_parser;
 pub mod optimization_profile;
 pub mod refitter;
 pub mod runtime;
+pub mod tensor;
 
 // Re-export commonly used types
 pub use axes::Axes;
