@@ -1,6 +1,6 @@
 use std::pin::Pin;
 
-use crate::{Error, NetworkDefinition, Result};
+use crate::{network::check_network, Error, NetworkDefinition, Result};
 use trtx_sys::{nvinfer1, DataType};
 
 /// [`trtx_sys::nvinfer1::ITensor`] — C++ [`nvinfer1::ITensor`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_tensor.html).
@@ -39,7 +39,7 @@ impl Tensor<'_> {
 
     /// See [nvinfer1::ITensor::getName]
     pub fn name(&self, network: &NetworkDefinition) -> Result<String> {
-        crate::check_network!(network, self);
+        check_network!(network, self);
         let name_ptr = self.as_ref().getName();
         if name_ptr.is_null() {
             return Err(Error::Runtime("Failed to get tensor name".to_string()));
@@ -49,7 +49,7 @@ impl Tensor<'_> {
 
     /// See [nvinfer1::ITensor::setName]
     pub fn set_name(&self, network: &'_ mut NetworkDefinition, name: &str) -> Result<()> {
-        crate::check_network!(network, self);
+        check_network!(network, self);
         let name_cstr = std::ffi::CString::new(name)?;
         unsafe {
             self.pin_mut().setName(name_cstr.as_ptr());
@@ -64,7 +64,7 @@ impl Tensor<'_> {
         index: i32,
         name: &str,
     ) -> Result<()> {
-        crate::check_network!(network, self);
+        check_network!(network, self);
         let name_cstr = std::ffi::CString::new(name)?;
         unsafe {
             self.pin_mut().setDimensionName(index, name_cstr.as_ptr());
@@ -74,38 +74,38 @@ impl Tensor<'_> {
 
     /// See [nvinfer1::ITensor::getDimensions]
     pub fn dimensions(&self, network: &NetworkDefinition) -> Result<Vec<i64>> {
-        crate::check_network!(network, self);
+        check_network!(network, self);
         let result = self.as_ref().getDimensions();
         Ok(result.d[..result.nbDims as usize].to_vec())
     }
 
     /// See [nvinfer1::ITensor::isExecutionTensor]
     pub fn is_execution_tensor(&self, network: &NetworkDefinition) -> bool {
-        crate::check_network!(network, self);
+        check_network!(network, self);
         self.as_ref().isExecutionTensor()
     }
 
     /// See [nvinfer1::ITensor::isShapeTensor]
     pub fn is_shape_tensor(&self, network: &NetworkDefinition) -> bool {
-        crate::check_network!(network, self);
+        check_network!(network, self);
         self.as_ref().isShapeTensor()
     }
 
     /// See [nvinfer1::ITensor::isNetworkInput]
     pub fn is_network_input(&self, network: &NetworkDefinition) -> bool {
-        crate::check_network!(network, self);
+        check_network!(network, self);
         self.as_ref().isNetworkInput()
     }
 
     /// See [nvinfer1::ITensor::isNetworkOutput]
     pub fn is_network_output(&self, network: &NetworkDefinition) -> bool {
-        crate::check_network!(network, self);
+        check_network!(network, self);
         self.as_ref().isNetworkOutput()
     }
 
     /// See [nvinfer1::ITensor::getType]
     pub fn get_type(&self, network: &NetworkDefinition) -> DataType {
-        crate::check_network!(network, self);
+        check_network!(network, self);
         self.as_ref().getType().into()
     }
 
@@ -118,7 +118,7 @@ impl Tensor<'_> {
         network: &mut NetworkDefinition,
         formats: u32,
     ) -> Result<()> {
-        crate::check_network!(network, self);
+        check_network!(network, self);
         self.pin_mut().setAllowedFormats(formats);
         Ok(())
     }
