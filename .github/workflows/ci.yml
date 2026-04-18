@@ -62,13 +62,12 @@ jobs:
 
       - name: Install protobuf compiler
         if: ${{ matrix.os == 'windows-latest' }}
-        # This is what Prost uses https://github.com/tokio-rs/prost/blob/master/.github/workflows/ci.yml#L63C1-L66C49
-        uses: taiki-e/install-action@v2
-        with:
-          tool: protoc
-        #run: |
-          #winget install google.protobuf --accept-package-agreements --accept-source-agreements --disable-interactivity
-          # need to bring into PATH somehow
+        run: |
+          winget upgrade Microsoft.AppInstaller --accept-package-agreements --accept-source-agreements --disable-interactivity --locale US
+          winget install google.protobuf --accept-package-agreements --accept-source-agreements --disable-interactivity
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+          protoc --version
+          echo "PROTOC=$($(get-command protoc).source)" >> $env:GITHUB_ENV
 
       - name: Install TensorRT RTX libs via pip
         if: ${{ matrix.os != 'macos-latest' }}
@@ -92,6 +91,7 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run clippy (real mode)
+        shell: bash
         run: cargo clippy --all-targets -- -D warnings
 
       - name: Build (real mode)
