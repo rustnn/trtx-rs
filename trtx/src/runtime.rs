@@ -119,6 +119,8 @@ impl<'a> ExecutionContext<'a> {
     /// # Safety
     /// `data` must point to valid CUDA memory with at least the tensor's size in bytes,
     /// and remain valid for the duration of inference.
+    ///
+    /// See [nvinfer1::IExecutionContext::setTensorAddress]
     pub unsafe fn set_tensor_address(
         &mut self,
         name: &str,
