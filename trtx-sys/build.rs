@@ -10,6 +10,39 @@ use regex::Regex;
 /// build script re-runs unchanged; autocxx emits `cargo:rerun-if-changed` for headers under
 /// `OUT_DIR`, and rewriting them every run made Cargo think those outputs changed after the
 /// previous fingerprint (perpetual rebuild loop).
+/// Parsed from an RTX SDK `NvInferVersion.h` (`TRT_*_RTX` defines).
+#[derive(Clone, Copy, Debug)]
+struct RtxHeaderVersion {
+    major: u32,
+    minor: u32,
+    patch: u32,
+}
+
+/// Reads `NvInferVersion.h` and matches RTX version lines, e.g.
+/// `#define TRT_MAJOR_RTX 1` / `TRT_MINOR_RTX` / `TRT_PATCH_RTX`.
+fn parse_trt_rtx_version_from_nvinfer_version_h(version_h: &Path) -> Option<RtxHeaderVersion> {
+    let text = std::fs::read_to_string(version_h).ok()?;
+    let major_re = Regex::new(r"(?m)^\s*#define\s+TRT_MAJOR_RTX\s+(\d+)\s*$").ok()?;
+    let minor_re = Regex::new(r"(?m)^\s*#define\s+TRT_MINOR_RTX\s+(\d+)\s*$").ok()?;
+    let patch_re = Regex::new(r"(?m)^\s*#define\s+TRT_PATCH_RTX\s+(\d+)\s*$").ok()?;
+    let major: u32 = major_re.captures(&text)?.get(1)?.as_str().parse().ok()?;
+    let minor: u32 = minor_re.captures(&text)?.get(1)?.as_str().parse().ok()?;
+    let patch: u32 = patch_re.captures(&text)?.get(1)?.as_str().parse().ok()?;
+    Some(RtxHeaderVersion {
+        major,
+        minor,
+        patch,
+    })
+}
+
+fn trt_version_suffix_from_feature_flags() -> &'static str {
+    if cfg!(feature = "v_1_4") {
+        "_1_4"
+    } else {
+        "_1_3"
+    }
+}
+
 fn write_if_changed(path: &Path, contents: &[u8]) {
     let unchanged = std::fs::read(path)
         .map(|existing| existing == contents)
@@ -169,15 +202,6 @@ fn main() {
     } else {
         panic!("No version feature enabled! Need to at least enable v_1_3 or v_1_4");
     };
-    let trt_version_suffix = if cfg!(unix) || cfg!(feature = "enterprise") {
-        ""
-    } else {
-        if cfg!(feature = "v_1_4") {
-            "_1_4"
-        } else {
-            "_1_3"
-        }
-    };
 
     let header_overwrite = env::var("TENSORRT_INCLUDE_DIR").ok();
     println!("cargo:rerun-if-env-changed=TENSORRT_INCLUDE_DIR");
@@ -196,7 +220,8 @@ fn main() {
     }
 
     let include_dir = header_overwrite
-        .or(sdk_overwrite.clone().map(|p| format!("{p}/include")))
+        .clone()
+        .or_else(|| sdk_overwrite.clone().map(|p| format!("{p}/include")))
         .map(PathBuf::from)
         .unwrap_or_else(|| {
             PathBuf::from(if cfg!(feature = "enterprise") {
@@ -206,8 +231,35 @@ fn main() {
             })
         });
     println!("cargo:rerun-if-changed={}", include_dir.display());
+    let nvinfer_version_h = include_dir.join("NvInferVersion.h");
+    println!("cargo:rerun-if-changed={}", nvinfer_version_h.display());
     let cuda_shim_include_dir = format!("{crate_root}/TensorRT-Headers");
-    let lib_dir = lib_overwrite.or(sdk_overwrite.map(|p| format!("{p}/lib")));
+    let lib_dir = lib_overwrite.or_else(|| sdk_overwrite.clone().map(|p| format!("{p}/lib")));
+
+    // Windows link names use a `_major_minor` suffix for RTX (e.g. `tensorrt_rtx_1_4`). When an
+    // SDK root is set, derive the suffix from `include/NvInferVersion.h` instead of Cargo features.
+    let trt_version_suffix: String = if cfg!(unix) || cfg!(feature = "enterprise") {
+        String::new()
+    } else if sdk_overwrite.is_some() {
+        match parse_trt_rtx_version_from_nvinfer_version_h(&nvinfer_version_h) {
+            Some(v) => {
+                println!(
+                    "cargo:warning=Linking tensorrt_rtx_{}_{} / onnxparser (from NvInferVersion.h: {}.{}.{})",
+                    v.major, v.minor, v.major, v.minor, v.patch
+                );
+                format!("_{}_{}", v.major, v.minor)
+            }
+            None => {
+                println!(
+                    "cargo:warning=SDK dir set but could not parse TRT_*_RTX in {}; using Cargo feature suffix",
+                    nvinfer_version_h.display()
+                );
+                trt_version_suffix_from_feature_flags().to_string()
+            }
+        }
+    } else {
+        trt_version_suffix_from_feature_flags().to_string()
+    };
 
     // Generate enum bindings from NvInfer.h (used in both mock and real builds)
     generate_enum_bindings(&crate_root, &out_path, &include_dir);
