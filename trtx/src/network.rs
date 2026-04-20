@@ -2858,6 +2858,20 @@ impl<'network> GridSampleLayer<'network> {
     }
 }
 
+impl<'network> CastLayer<'network> {
+    /// See [nvinfer1::ICastLayer::setToType]
+    pub fn set_to_type(&mut self, network: &mut NetworkDefinition<'_>, data_type: DataType) {
+        check_network!(network, self);
+        self.inner.as_mut().setToType(data_type.into())
+    }
+
+    /// See [nvinfer1::ICastLayer::getToType]
+    pub fn to_type(&self, network: &NetworkDefinition<'_>) -> DataType {
+        check_network!(network, self);
+        self.inner.getToType().into()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use trtx_sys::LayerType;
