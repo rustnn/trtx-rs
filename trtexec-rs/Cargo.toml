@@ -24,4 +24,4 @@ ctrlc = "3.5"
 md5 = "0.8.0"
 cudarc = { version = "0.19", features = ["cuda-13020"] }
 tracing = { version = "0.1.44", features = ["attributes"] }
-tracing-subscriber = "0.3.23"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }

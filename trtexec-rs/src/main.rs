@@ -15,7 +15,8 @@ use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Instant;
-use tracing_subscriber::prelude::*;
+use tracing::level_filters::LevelFilter;
+use tracing_subscriber::{prelude::*, EnvFilter};
 //use tracing_log::LogTracer;
 use trtx::host_memory::HostMemory;
 use trtx::{Builder, Logger, OnnxParser, ProfilingVerbosity};
@@ -118,8 +119,21 @@ fn main() -> Result<()> {
 
     if args.nvtx {
         // Send tracing/log events to nvtx
+        let env_filter =
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                EnvFilter::builder()
+                    .with_default_directive(LevelFilter::WARN.into())
+                    .parse("")
+                    .unwrap()
+            });
+        let fmt = tracing_subscriber::fmt::layer()
+            .compact()
+            .with_writer(std::io::stderr)
+            .without_time()
+            .with_filter(env_filter);
         tracing_subscriber::registry()
             .with(nvtx::tracing::NvtxLayer::default())
+            .with(fmt)
             .init();
     } else {
         pretty_env_logger::init();
