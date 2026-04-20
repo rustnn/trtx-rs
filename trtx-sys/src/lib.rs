@@ -530,10 +530,10 @@ unsafe extern "C" {
     pub unsafe fn get_tensorrt_minor_version() -> u32;
     pub unsafe fn get_tensorrt_patch_version() -> u32;
 
-    pub unsafe fn get_onnx_parser_version() -> u32;
-    pub unsafe fn get_onnx_parser_major_version() -> u32;
-    pub unsafe fn get_onnx_parser_minor_version() -> u32;
-    pub unsafe fn get_onnx_parser_patch_version() -> u32;
+    pub unsafe fn get_nvonnxparser_version() -> u32;
+    pub unsafe fn get_nvonnxparser_major_version() -> u32;
+    pub unsafe fn get_nvonnxparser_minor_version() -> u32;
+    pub unsafe fn get_nvonnxparser_patch_version() -> u32;
 
     pub unsafe fn create_rust_logger_bridge(
         callback: RustLogCallback,

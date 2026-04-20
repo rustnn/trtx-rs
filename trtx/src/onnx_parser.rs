@@ -63,7 +63,11 @@ impl OnnxParser<'_> {
                         .as_ref()
                         .ok_or(Error::TrtOnnxParserLibraryNotLoaded)?
                         .get(b"createNvOnnxParser_INTERNAL")?;
-                    create_onnx_parser(network_ptr, logger_ptr, trtx_sys::get_onnx_parser_version())
+                    create_onnx_parser(
+                        network_ptr,
+                        logger_ptr,
+                        trtx_sys::get_nvonnxparser_version(),
+                    )
                 }
             } as *mut nvonnxparser::IParser;
             if parser_ptr.is_null() {

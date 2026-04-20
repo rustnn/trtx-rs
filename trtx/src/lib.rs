@@ -181,19 +181,33 @@ pub fn dynamically_load_tensorrt(_filename: Option<impl AsFilename>) -> Result<(
                 libloading::Library::new({
                     let filename = if cfg!(unix) {
                         if cfg!(feature = "enterprise") {
-                            "libnvinfer.so"
-                        } else if cfg!(feature = "v_1_4") {
-                            "libtensorrt_rtx.so.1.4.0"
+                            "libnvinfer.so".to_string()
                         } else {
-                            "libtensorrt_rtx.so.1.3.0"
+                            use trtx_sys::{
+                                get_tensorrt_major_version, get_tensorrt_minor_version,
+                                get_tensorrt_patch_version,
+                            };
+                            format!(
+                                "libtensorrt_rtx.so.{}.{}.{}",
+                                get_tensorrt_major_version(),
+                                get_tensorrt_minor_version(),
+                                get_tensorrt_patch_version()
+                            )
                         }
                     } else {
                         if cfg!(feature = "enterprise") {
-                            "nvinfer.dll"
-                        } else if cfg!(feature = "v_1_4") {
-                            "tensorrt_rtx_1_4.dll"
+                            "nvinfer.dll".to_string()
                         } else {
-                            "tensorrt_rtx_1_3.dll"
+                            use trtx_sys::{
+                                get_tensorrt_major_version, get_tensorrt_minor_version,
+                            };
+
+                            // yes, this uses the version from tensort and not nvonnxparser version
+                            format!(
+                                "tensorrt_rtx_{}_{}.dll",
+                                get_tensorrt_major_version(),
+                                get_tensorrt_minor_version()
+                            )
                         }
                     };
 
@@ -229,19 +243,32 @@ pub fn dynamically_load_tensorrt_onnxparser(_filename: Option<impl AsFilename>) 
                 libloading::Library::new({
                     let filename = if cfg!(unix) {
                         if cfg!(feature = "enterprise") {
-                            "libnvonnxparser.so"
-                        } else if cfg!(feature = "v_1_4") {
-                            "libtensorrt_onnxparser_rtx.so.1.4.0"
+                            "libnvonnxparser.so".to_string()
                         } else {
-                            "libtensorrt_onnxparser_rtx.so.1.3.0"
+                            use trtx_sys::{
+                                get_tensorrt_major_version, get_tensorrt_minor_version,
+                                get_tensorrt_patch_version,
+                            };
+                            format!(
+                                "libtensorrt_onnxparser_rtx.so.{}.{}.{}",
+                                get_tensorrt_major_version(),
+                                get_tensorrt_minor_version(),
+                                get_tensorrt_patch_version()
+                            )
                         }
                     } else {
                         if cfg!(feature = "enterprise") {
-                            "nvonnxparser.dll"
-                        } else if cfg!(feature = "v_1_4") {
-                            "tensorrt_onnxparser_rtx_1_4.dll"
+                            "nvonnxparser.dll".to_string()
                         } else {
-                            "tensorrt_onnxparser_rtx_1_3.dll"
+                            use trtx_sys::{
+                                get_tensorrt_major_version, get_tensorrt_minor_version,
+                            };
+
+                            format!(
+                                "tensorrt_onnxparser_rtx_{}_{}.dll",
+                                get_tensorrt_major_version(),
+                                get_tensorrt_minor_version()
+                            )
                         }
                     };
 
