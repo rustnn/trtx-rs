@@ -524,7 +524,17 @@ unsafe impl AsLayerTyped for nvinfer1::IDistCollectiveLayer {
 
 // Logger bridge C functions
 unsafe extern "C" {
+    /// The format is as for TENSORRT_VERSION: (MAJOR * 100 + MINOR) * 100 + PATCH
     pub unsafe fn get_tensorrt_version() -> u32;
+    pub unsafe fn get_tensorrt_major_version() -> u32;
+    pub unsafe fn get_tensorrt_minor_version() -> u32;
+    pub unsafe fn get_tensorrt_patch_version() -> u32;
+
+    pub unsafe fn get_onnx_parser_version() -> u32;
+    pub unsafe fn get_onnx_parser_major_version() -> u32;
+    pub unsafe fn get_onnx_parser_minor_version() -> u32;
+    pub unsafe fn get_onnx_parser_patch_version() -> u32;
+
     pub unsafe fn create_rust_logger_bridge(
         callback: RustLogCallback,
         user_data: *mut std::ffi::c_void,
