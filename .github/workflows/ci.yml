@@ -52,6 +52,23 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-target-${{ matrix.rust }}-
 
+      # Protoc currently needed for rustnn
+      - name: Install protobuf compiler
+        if: ${{ matrix.os != 'windows-latest' }}
+        run: |
+          export PATH="/home/linuxbrew/.linuxbrew/bin:$PATH"
+          echo "PATH=/home/linuxbrew/.linuxbrew/bin:$PATH" >> $GITHUB_ENV
+          brew install protobuf
+
+      - name: Install protobuf compiler
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          winget upgrade Microsoft.AppInstaller --accept-package-agreements --accept-source-agreements --disable-interactivity --locale US
+          winget install google.protobuf --accept-package-agreements --accept-source-agreements --disable-interactivity
+          $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+          protoc --version
+          echo "PROTOC=$($(get-command protoc).source)" >> $env:GITHUB_ENV
+
       - name: Install TensorRT RTX libs via pip
         if: ${{ matrix.os != 'macos-latest' }}
         shell: bash
@@ -74,6 +91,7 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run clippy (real mode)
+        shell: bash
         run: cargo clippy --all-targets -- -D warnings
 
       - name: Build (real mode)

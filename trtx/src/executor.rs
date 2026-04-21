@@ -95,7 +95,7 @@ fn execute_engine(
     let mut context = engine.create_execution_context()?;
 
     // Get tensor information
-    let num_tensors = engine.get_nb_io_tensors()?;
+    let num_tensors = engine.nb_io_tensors()?;
 
     // Prepare CUDA buffers for inputs and outputs
     let mut device_buffers: Vec<(String, DeviceBuffer)> = Vec::new();
@@ -103,12 +103,12 @@ fn execute_engine(
 
     // Process each tensor
     for i in 0..num_tensors {
-        let name = engine.get_tensor_name(i)?;
+        let name = engine.tensor_name(i)?;
 
         // Check if this is an input or output
         if let Some(input) = inputs.iter().find(|inp| inp.name == name) {
             // Input tensor - validate shape matches engine expectations
-            let expected_shape_i64 = engine.get_tensor_shape(&name)?;
+            let expected_shape_i64 = engine.tensor_shape(&name)?;
             let expected_shape: Vec<usize> =
                 expected_shape_i64.iter().map(|&d| d as usize).collect();
             let expected_elements: usize = expected_shape.iter().product();
@@ -149,7 +149,7 @@ fn execute_engine(
             device_buffers.push((name.clone(), buffer));
         } else {
             // Output tensor - query actual shape from engine
-            let shape_i64 = engine.get_tensor_shape(&name)?;
+            let shape_i64 = engine.tensor_shape(&name)?;
             let shape: Vec<usize> = shape_i64.iter().map(|&d| d as usize).collect();
 
             // Calculate actual buffer size needed

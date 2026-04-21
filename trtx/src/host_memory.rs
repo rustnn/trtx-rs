@@ -56,7 +56,6 @@ impl<'builder> Deref for HostMemory<'builder> {
     type Target = [u8];
 
     fn deref(&self) -> &Self::Target {
-        // You can leverage your existing AsRef implementation here
         self.as_ref()
     }
 }
