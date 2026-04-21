@@ -9,7 +9,7 @@ use std::ptr::null_mut;
 use std::{ffi::CStr, pin::Pin};
 use trtx_sys::{
     nvinfer1, trtx_create_debug_listener, trtx_create_error_recorder, trtx_create_gpu_allocator,
-    trtx_create_progress_monitor,
+    trtx_create_profiler, trtx_create_progress_monitor, trtx_destroy_profiler,
 };
 use trtx_sys::{DataType, Dims64, ErrorCode, TensorLocation};
 
@@ -423,6 +423,101 @@ pub trait ProcessDebugTensor: Send + Sync {
         name: Option<&str>,
         stream: *mut std::ffi::c_void,
     ) -> ProcessDebugTensorResult;
+}
+
+#[allow(non_snake_case)]
+unsafe extern "system" fn Profiler_reportLayerTime(
+    this: *mut std::ffi::c_void,
+    layerName: *const ::std::os::raw::c_char,
+    ms: f32,
+) {
+    let this = this as *mut Profiler;
+    let name = if layerName.is_null() {
+        std::borrow::Cow::Borrowed("")
+    } else {
+        CStr::from_ptr(layerName).to_string_lossy()
+    };
+    this.as_ref()
+        .unwrap()
+        .rust_impl
+        .report_layer_time(name.as_ref(), ms);
+}
+
+/// Bridges to [`trtx_sys::nvinfer1::IProfiler`]; C++ [`nvinfer1::v_1_0::IProfiler`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1v__1__0_1_1_i_profiler.html).
+#[repr(C)]
+pub struct Profiler {
+    cpp_obj: *mut nvinfer1::IProfiler,
+    rust_impl: Box<dyn ReportLayerTime>,
+}
+
+impl Profiler {
+    pub fn new(inner: Box<dyn ReportLayerTime>) -> Result<Pin<Box<Self>>> {
+        let mut rust_obj = Box::pin(Self {
+            cpp_obj: null_mut(),
+            rust_impl: inner,
+        });
+        unsafe {
+            let cpp_obj = trtx_create_profiler(
+                rust_obj.as_mut().get_unchecked_mut() as *mut Profiler as *mut std::ffi::c_void,
+                Profiler_reportLayerTime,
+            );
+            if cpp_obj.is_null() {
+                return Err(Error::Runtime(
+                    "Failed to allocate object for IProfiler subclass".to_string(),
+                ));
+            }
+            rust_obj.cpp_obj = cpp_obj;
+        }
+        Ok(rust_obj)
+    }
+
+    pub fn as_raw(&self) -> *mut nvinfer1::IProfiler {
+        self.cpp_obj
+    }
+}
+
+impl Drop for Profiler {
+    fn drop(&mut self) {
+        if !self.cpp_obj.is_null() {
+            unsafe {
+                trtx_destroy_profiler(self.cpp_obj);
+            }
+            self.cpp_obj = null_mut();
+        }
+    }
+}
+
+/// Implemented by [`Profiler`] for [`trtx_sys::nvinfer1::IProfiler`] (`reportLayerTime`); C++ [`nvinfer1::v_1_0::IProfiler`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1v__1__0_1_1_i_profiler.html).
+pub trait ReportLayerTime: Send + Sync {
+    /// Layer name from the network (or a decimal layer index if the engine was built with profiling
+    /// verbosity [`crate::ProfilingVerbosity::kNONE`]). `ms` is execution time for that layer in
+    /// milliseconds.
+    fn report_layer_time(&self, layer_name: &str, ms: f32);
+}
+
+#[cfg(all(test, not(feature = "mock")))]
+mod profiler_tests {
+    use super::*;
+
+    struct CountingProfiler {
+        calls: std::sync::atomic::AtomicU32,
+    }
+
+    impl ReportLayerTime for CountingProfiler {
+        fn report_layer_time(&self, _layer_name: &str, _ms: f32) {
+            self.calls
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
+    }
+
+    #[test]
+    fn profiler_cpp_bridge_allocates() {
+        let inner = Box::new(CountingProfiler {
+            calls: std::sync::atomic::AtomicU32::new(0),
+        });
+        let profiler = Profiler::new(inner).expect("profiler");
+        assert!(!profiler.as_raw().is_null());
+    }
 }
 
 //#[subclass]

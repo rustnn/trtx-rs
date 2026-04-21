@@ -611,6 +611,17 @@ unsafe extern "C" {
         ) -> bool,
     ) -> *mut nvinfer1::IDebugListener;
 
+    pub unsafe fn trtx_create_profiler(
+        rust_impl: *mut std::ffi::c_void,
+        reportLayerTime: unsafe extern "system" fn(
+            this: *mut std::ffi::c_void,
+            layerName: *const ::std::os::raw::c_char,
+            ms: f32,
+        ),
+    ) -> *mut nvinfer1::IProfiler;
+
+    pub unsafe fn trtx_destroy_profiler(profiler: *mut nvinfer1::IProfiler);
+
     // TensorRT factory functions (wrapped as simple C functions)
     #[cfg(feature = "link_tensorrt_rtx")]
     pub unsafe fn create_infer_builder(logger: *mut std::ffi::c_void) -> *mut nvinfer1::IBuilder;

@@ -19,6 +19,7 @@ use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{prelude::*, EnvFilter};
 //use tracing_log::LogTracer;
 use trtx::host_memory::HostMemory;
+use trtx::interfaces::ReportLayerTime;
 use trtx::{Builder, Logger, OnnxParser, ProfilingVerbosity};
 use trtx::{LayerInformationFormat, Runtime};
 
@@ -27,6 +28,17 @@ use crate::progress_monitor::ProgressMonitor;
 
 mod cli;
 mod progress_monitor;
+
+/// Forwards TensorRT per-layer timings to the application log (see `IExecutionContext::setProfiler`).
+/// To get a JSON like trtexec one would need to implement samples/common/sampleReporting.h in
+/// particular     void exportJSONProfile(std::string const& fileName) const noexcept;
+struct LayerTimingLogger;
+
+impl ReportLayerTime for LayerTimingLogger {
+    fn report_layer_time(&self, layer_name: &str, ms: f32) {
+        info!("TensorRT layer {layer_name:?}: {ms:.4} ms");
+    }
+}
 
 /// If any dimension is negative (dynamic), either bail (`non_interactive`) or read concrete sizes from stdin.
 fn resolve_dynamic_input_shape(
@@ -263,6 +275,10 @@ fn main() -> Result<()> {
     for (bytes, input_path) in engine_bytes.drain(..).zip(args.inputs.iter()) {
         let mut engine = runtime.deserialize_cuda_engine(&bytes)?;
         let mut ctx = engine.create_execution_context()?;
+        if args.report_layer_time {
+            ctx.set_profiler(Box::new(LayerTimingLogger))
+                .with_context(|| "Failed to set TensorRT layer profiler")?;
+        }
 
         let inspector = engine.create_engine_inspector()?;
         let engine_layer_info_json =
@@ -330,6 +346,8 @@ fn main() -> Result<()> {
             let after_cpu = Instant::now();
             let duration_cpu = after_cpu - before_cpu;
             let duration_gpu = before_gpu.elapsed_ms(&after_gpu)?;
+            ctx.report_to_profiler()
+                .with_context(|| "reportToProfiler after CUDA graph launch")?;
 
             (duration_cpu, duration_gpu)
         } else {
@@ -352,6 +370,8 @@ fn main() -> Result<()> {
 
             let duration_cpu = after_cpu - before_cpu;
             let duration_gpu = before_gpu.elapsed_ms(&after_gpu)?;
+            ctx.report_to_profiler()
+                .with_context(|| "reportToProfiler after enqueue")?;
 
             (duration_cpu, duration_gpu)
         };

@@ -14,14 +14,19 @@ use trtx_sys::nvinfer1;
 pub use crate::cuda_engine::CudaEngine;
 pub use crate::engine_inspector::EngineInspector;
 use crate::error::{Error, Result};
-use crate::interfaces::{DebugListener, ProcessDebugTensor};
+use crate::interfaces::{DebugListener, ProcessDebugTensor, Profiler, ReportLayerTime};
 use crate::logger::Logger;
 
 /// [`trtx_sys::nvinfer1::IExecutionContext`] — C++ [`nvinfer1::IExecutionContext`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_execution_context.html).
+///
+/// `inner` is declared last so it is dropped first (see [`Drop`]): TensorRT must release
+/// [`DebugListener`](crate::interfaces::DebugListener) / [`Profiler`](crate::interfaces::Profiler)
+/// pointers before their Rust wrappers run destructors.
 pub struct ExecutionContext<'a> {
-    inner: UniquePtr<nvinfer1::IExecutionContext>,
     _engine: std::marker::PhantomData<&'a CudaEngine<'a>>,
     debug_listener: Option<Pin<Box<DebugListener>>>,
+    profiler: Option<Pin<Box<Profiler>>>,
+    inner: UniquePtr<nvinfer1::IExecutionContext>,
 }
 
 impl<'a> ExecutionContext<'a> {
@@ -35,10 +40,56 @@ impl<'a> ExecutionContext<'a> {
             ));
         }
         Ok(ExecutionContext {
-            inner: UniquePtr::from_raw(execution_context),
             _engine: Default::default(),
             debug_listener: None,
+            profiler: None,
+            inner: UniquePtr::from_raw(execution_context),
         })
+    }
+
+    /// See [nvinfer1::IExecutionContext::setProfiler].
+    ///
+    /// Only one profiler may be set for the lifetime of this context (same restriction as
+    /// [`Self::set_debug_listener`]).
+    pub fn set_profiler(&mut self, profiler: Box<dyn ReportLayerTime>) -> Result<()> {
+        let profiler = Profiler::new(profiler)?;
+        if self.profiler.is_some() {
+            panic!("Setting a profiler more than once not supported at the moment");
+        }
+        self.profiler = Some(profiler);
+        #[cfg(not(feature = "mock_runtime"))]
+        {
+            if !self.inner.is_null() {
+                unsafe {
+                    self.inner.pin_mut().setProfiler(
+                        self.profiler
+                            .as_ref()
+                            .expect("profiler can't be empty, we just set it")
+                            .as_raw(),
+                    );
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// See [nvinfer1::IExecutionContext::reportToProfiler].
+    ///
+    /// When enqueue does not emit the profile (see C++ `setEnqueueEmitsProfile(false)`), call this
+    /// after [`Self::enqueue_v3`] (or after a captured CUDA graph launch) while the same stream is
+    /// still valid.
+    pub fn report_to_profiler(&self) -> Result<bool> {
+        #[cfg(not(feature = "mock_runtime"))]
+        {
+            if self.inner.is_null() {
+                return Err(Error::Runtime("Invalid execution context".to_string()));
+            }
+            Ok(self.inner.reportToProfiler())
+        }
+        #[cfg(feature = "mock_runtime")]
+        {
+            Ok(true)
+        }
     }
 
     /// See [nvinfer1::IExecutionContext::setDebugListener].
