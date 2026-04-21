@@ -48,4 +48,9 @@ pub struct Args {
     /// Fail on dynamic input shapes instead of prompting (for scripts/CI)
     #[arg(long)]
     pub non_interactive: bool,
+
+    #[cfg(unix)]
+    #[arg(short, long)]
+    /// Capture TensorRT API to JSON
+    pub api_capture: Option<PathBuf>,
 }

@@ -141,6 +141,16 @@ fn main() -> Result<()> {
     let span = tracing::info_span!("trtexec-rs");
     let _enter = span.enter();
 
+    #[cfg(unix)]
+    if let Some(json) = args.api_capture {
+        // SAFETY: no threads launched yet, save to set env
+        unsafe {
+            std::env::set_var("TRT_SHIM_OUTPUT_JSON_FILE", json);
+        }
+        trtx::dynamically_load_tensorrt(Some("libtensorrt_shim.so"))
+            .with_context(|| "Failed to load libtensorrt_shim.so for TensorRT API capture")?;
+    }
+
     let abort = Arc::new(AtomicU32::new(0));
     let abort_clone = Arc::clone(&abort);
 
