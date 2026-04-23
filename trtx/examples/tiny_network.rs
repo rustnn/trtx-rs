@@ -38,7 +38,7 @@ fn main() -> Result<()> {
     println!("   Number of I/O tensors: {}", num_io_tensors);
 
     for i in 0..num_io_tensors {
-        let name = engine.tensor_name(i)?;
+        let name = engine.io_tensor_name(i)?;
         println!("   Tensor {}: {}", i, name);
     }
 
