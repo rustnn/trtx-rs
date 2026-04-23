@@ -377,7 +377,7 @@ fn main() -> Result<()> {
         };
 
         println!(
-            "Duration CPU: {duration_cpu:?} ms ({} runs) {:?} ms per inference",
+            "Duration CPU: {duration_cpu:?} ({} runs) {:?} per inference",
             args.num_inferences,
             duration_cpu / args.num_inferences as u32
         );
