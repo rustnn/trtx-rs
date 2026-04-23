@@ -128,8 +128,12 @@ impl<'engine> CudaEngine<'engine> {
 
     /// See [`nvinfer1::ICudaEngine::getTensorDataType`].
     pub fn tensor_data_type(&self, name: &str) -> Result<DataType> {
-        let name_cstr = std::ffi::CString::new(name)?;
-        Ok(unsafe { self.inner.getTensorDataType(name_cstr.as_ptr()) }.into())
+        if cfg!(not(feature = "mock_runtime")) {
+            let name_cstr = std::ffi::CString::new(name)?;
+            Ok(unsafe { self.inner.getTensorDataType(name_cstr.as_ptr()) }.into())
+        } else {
+            Ok(DataType::kFLOAT)
+        }
     }
 
     /// See [`nvinfer1::ICudaEngine::getNbLayers`].
@@ -304,18 +308,12 @@ impl<'engine> CudaEngine<'engine> {
         }
     }
 
-    /// Returns the data type of the tensor (e.g. kFLOAT, kHALF).
-    /// Required for correct buffer sizing and f32/f16 conversion when I/O uses half precision.
+    #[deprecated = "use tensor_data_type"]
     pub fn tensor_dtype(&self, name: &str) -> Result<DataType> {
-        #[cfg(not(feature = "mock_runtime"))]
-        {
-            let name_cstr = std::ffi::CString::new(name)?;
-            Ok(unsafe { self.inner.getTensorDataType(name_cstr.as_ptr()).into() })
-        }
-        #[cfg(feature = "mock_runtime")]
-        Ok(DataType::kFLOAT)
+        self.tensor_data_type(name)
     }
 
+    /// See [nvinfer1::ICudaEngine::createExecutionContext]
     pub fn create_execution_context(&'_ mut self) -> Result<ExecutionContext<'engine>> {
         #[cfg(not(feature = "mock_runtime"))]
         {
@@ -331,6 +329,7 @@ impl<'engine> CudaEngine<'engine> {
         Ok(unsafe { ExecutionContext::from_ptr(std::ptr::null_mut())? })
     }
 
+    /// See [nvinfer1::ICudaEngine::createSerializationConfig]
     pub fn create_serialization_config(&mut self) -> Result<SerializationConfig<'engine>> {
         let config = unsafe {
             self.inner
