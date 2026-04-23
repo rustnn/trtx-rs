@@ -291,6 +291,13 @@ void *network_add_concatenation(void *network, void **inputs,
 }
 
 uint32_t get_tensorrt_version() { return NV_TENSORRT_VERSION; }
+uint32_t get_tensorrt_major_version() { return NV_TENSORRT_MAJOR; }
+uint32_t get_tensorrt_minor_version() { return NV_TENSORRT_MINOR; }
+uint32_t get_tensorrt_patch_version() { return NV_TENSORRT_PATCH; }
+uint32_t get_nvonnxparser_version() { return NV_ONNX_PARSER_VERSION; }
+uint32_t get_nvonnxparser_major_version() { return NV_ONNX_PARSER_MAJOR; }
+uint32_t get_nvonnxparser_minor_version() { return NV_ONNX_PARSER_MINOR; }
+uint32_t get_nvonnxparser_patch_version() { return NV_ONNX_PARSER_PATCH; }
 
 namespace nvinfer1 {
 class ProgressMonitor : public IProgressMonitor {
