@@ -346,8 +346,6 @@ fn main() -> Result<()> {
             let after_cpu = Instant::now();
             let duration_cpu = after_cpu - before_cpu;
             let duration_gpu = before_gpu.elapsed_ms(&after_gpu)?;
-            ctx.report_to_profiler()
-                .with_context(|| "reportToProfiler after CUDA graph launch")?;
 
             (duration_cpu, duration_gpu)
         } else {
@@ -370,8 +368,6 @@ fn main() -> Result<()> {
 
             let duration_cpu = after_cpu - before_cpu;
             let duration_gpu = before_gpu.elapsed_ms(&after_gpu)?;
-            ctx.report_to_profiler()
-                .with_context(|| "reportToProfiler after enqueue")?;
 
             (duration_cpu, duration_gpu)
         };
