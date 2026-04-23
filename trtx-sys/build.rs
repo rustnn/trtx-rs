@@ -75,7 +75,7 @@ fn prepare_transformed_headers(header_dir: &Path, out_dir: &Path) -> PathBuf {
             let replaced = see_regex.replace_all(&replaced, "See [`$1`]");
             let replaced = param_regex.replace_all(&replaced, "- `$1`");
             let replaced = http_link_regex.replace_all(&replaced, "<$0>");
-            let replaced = replaced
+            let mut replaced = replaced
                 .replace("std::size_t", "size_t")
                 // workaround autocxx limitation where there can't be the same type in different
                 // namespaces
@@ -92,6 +92,33 @@ fn prepare_transformed_headers(header_dir: &Path, out_dir: &Path) -> PathBuf {
                 )
                 .replace("//!", "///")
                 .replace(r"\returns", " - Returns ");
+
+            for class in [
+                "IHostMemory",
+                "IRuntime",
+                "IRuntimeConfig",
+                "IRefitter",
+                "IBuilder",
+                "ITimingCache",
+                "IEngineInspector",
+                "INetworkDefintion",
+                "IExecutionContext",
+                "ICudaEngine",
+                "INetworkDefinition",
+                "IBuilderConfig",
+                "ISerializationConfig",
+            ] {
+                replaced = replaced
+                    .replace(
+                        &format!("virtual ~{class}() noexcept = 0"),
+                        &format!("virtual ~{class}() noexcept = default"),
+                    )
+                    .replace(
+                        &format!("inline {class}::~{class}() noexcept = default;"),
+                        "",
+                    )
+            }
+
             let replaced = doxy_regex.replace_all(&replaced, "");
             // We need to declare everything added after v_1_3 because we can't do features for
             // autocxx
