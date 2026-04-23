@@ -15,18 +15,21 @@ use trtx_sys::{
     SerializationFlag, TensorIOMode,
 };
 
-/// [`trtx_sys::nvinfer1::ISerializationConfig`] — C++ [`nvinfer1::ISerializationConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_serialization_config.html).
+/// [`nvinfer1::ISerializationConfig`] — C++ [`nvinfer1::ISerializationConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_serialization_config.html).
 pub struct SerializationConfig<'cuda_engine> {
     inner: UniquePtr<nvinfer1::ISerializationConfig>,
     _runtime: PhantomData<&'cuda_engine nvinfer1::ICudaEngine>,
 }
 impl SerializationConfig<'_> {
+    /// See [nvinfer1::ISerializationConfig::getFlag]
     pub fn flag(&self, flag: SerializationFlag) -> bool {
         self.inner.getFlag(flag.into())
     }
+    /// See [nvinfer1::SerializationConfig::getFlags]
     pub fn flags(&self) -> u32 {
         self.inner.getFlags()
     }
+    /// See [nvinfer1::ISerializationConfig::setFlag]
     pub fn set_flag(&mut self, flag: SerializationFlag) -> Result<()> {
         if self.inner.pin_mut().setFlag(flag.into()) {
             Ok(())
@@ -36,6 +39,7 @@ impl SerializationConfig<'_> {
             ))
         }
     }
+    /// See [nvinfer1::ISerializationConfig::setFlags]
     pub fn set_flags(&mut self, flags: u32) -> Result<()> {
         if self.inner.pin_mut().setFlags(flags) {
             Ok(())
@@ -45,6 +49,7 @@ impl SerializationConfig<'_> {
             ))
         }
     }
+    /// See [nvinfer1::ISerializationConfig::clearFlag]
     pub fn clear_flag(&mut self, flag: SerializationFlag) -> Result<()> {
         if self.inner.pin_mut().clearFlag(flag.into()) {
             Ok(())
