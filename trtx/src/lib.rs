@@ -129,6 +129,7 @@ pub mod cuda;
 pub mod cuda_engine;
 pub mod engine_inspector;
 pub mod error;
+pub mod execution_context;
 #[cfg(feature = "onnxparser")]
 pub mod executor;
 pub mod host_memory;
