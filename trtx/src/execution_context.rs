@@ -191,6 +191,8 @@ impl<'a> ExecutionContext<'a> {
     /// # Safety
     /// `cuda_stream` must be a valid CUDA stream, and all tensor addresses must
     /// point to valid device memory.
+    ///
+    /// See [nvinfer1::IExecutionContext::enqueueV3]
     pub unsafe fn enqueue_v3(&mut self, cuda_stream: *mut std::ffi::c_void) -> Result<()> {
         #[cfg(not(feature = "mock_runtime"))]
         {
