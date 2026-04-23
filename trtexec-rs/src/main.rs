@@ -305,11 +305,11 @@ fn main() -> Result<()> {
                 bail!("Dynamic shapes are not supported. {name:?} requires dynamic shapes");
             }
 
-            let dtype = engine.tensor_dtype(&name)?;
+            let data_type = engine.tensor_data_type(&name)?;
             let shape = engine.tensor_shape(&name)?;
             let num_elements = shape.iter().product::<i64>();
             // only correct for non-vectorized layouts
-            let size = (num_elements as usize * dtype.size_bits()) / 8;
+            let size = (num_elements as usize * data_type.size_bits()) / 8;
             //let bytes = engine.tensor_components_per_element(&name)?;
             //let comp_per_element = engine.tensor_components_per_element(&name)?;
             let mut buffer = stream.alloc_zeros(size)?;
