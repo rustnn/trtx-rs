@@ -300,7 +300,7 @@ fn main() -> Result<()> {
         let mut io_tensors = Vec::<CudaSlice<u8>>::new();
 
         for i in 0..engine.nb_io_tensors()? {
-            let name = engine.tensor_name(i)?;
+            let name = engine.io_tensor_name(i)?;
             if engine.is_shape_inference_io(&name)? {
                 bail!("Dynamic shapes are not supported. {name:?} requires dynamic shapes");
             }

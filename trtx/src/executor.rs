@@ -103,7 +103,7 @@ fn execute_engine(
 
     // Process each tensor
     for i in 0..num_tensors {
-        let name = engine.tensor_name(i)?;
+        let name = engine.io_tensor_name(i)?;
 
         // Check if this is an input or output
         if let Some(input) = inputs.iter().find(|inp| inp.name == name) {

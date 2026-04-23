@@ -88,7 +88,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             println!("   ✓ Engine has {} I/O tensors", num_tensors);
 
             for i in 0..num_tensors {
-                let name = engine.tensor_name(i)?;
+                let name = engine.io_tensor_name(i)?;
                 println!("      - Tensor {}: {}", i, name);
             }
 

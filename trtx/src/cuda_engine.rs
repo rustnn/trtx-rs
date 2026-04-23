@@ -83,16 +83,16 @@ impl<'engine> CudaEngine<'engine> {
     pub fn get_tensor_shape(&self, name: &str) -> Result<Vec<i64>> {
         self.tensor_shape(name)
     }
-    #[deprecated = "use tensor_name"]
+    #[deprecated = "use io_tensor_name"]
     pub fn get_tensor_name(&self, index: i32) -> Result<String> {
-        self.tensor_name(index)
+        self.io_tensor_name(index)
     }
     #[deprecated = "use tensor_data_type"]
     pub fn get_tensor_dtype(&self, name: &str) -> Result<DataType> {
         self.tensor_data_type(name)
     }
 
-    /// See [`trtx_sys::nvinfer1::ICudaEngine::getNbIOTensors`].
+    /// See [`nvinfer1::ICudaEngine::getNbIOTensors`].
     pub fn nb_io_tensors(&self) -> Result<i32> {
         if cfg!(feature = "mock_runtime") {
             Ok(0)
@@ -101,7 +101,8 @@ impl<'engine> CudaEngine<'engine> {
         }
     }
 
-    pub fn tensor_name(&self, index: i32) -> Result<String> {
+    /// See [`nvinfer1::ICudaEngine::getIOTensorName`].
+    pub fn io_tensor_name(&self, index: i32) -> Result<String> {
         if cfg!(feature = "mock_runtime") {
             Ok("mock_runtime".to_string())
         } else {
