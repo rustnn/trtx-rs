@@ -473,6 +473,40 @@ void *trtx_create_gpu_allocator(void *self, void *allocateAsync,
 void trtx_destroy_gpu_allocator(void *obj) {
   delete static_cast<nvinfer1::GpuAllocatorSubclass *>(obj);
 }
+
+//==============================================================================
+// IProfiler subclass (bridge to Rust ReportLayerTime)
+//==============================================================================
+namespace nvinfer1 {
+class ProfilerSubclass : public IProfiler {
+public:
+  ProfilerSubclass(void *self, void (*reportLayerTime)(void *, char const *, float))
+      : self(self),
+        m_reportLayerTime((decltype(m_reportLayerTime))reportLayerTime) {}
+  ~ProfilerSubclass() = default;
+
+  void *self;
+  void (*m_reportLayerTime)(void *, char const *, float);
+
+  void reportLayerTime(char const *layerName, float ms) noexcept override {
+    m_reportLayerTime(self, layerName, ms);
+  }
+};
+} // namespace nvinfer1
+
+void *trtx_create_profiler(
+    void *self, void (*reportLayerTime)(void *, char const *, float)) {
+  try {
+    return new nvinfer1::ProfilerSubclass(
+        self, (void (*)(void *, char const *, float))reportLayerTime);
+  } catch (...) {
+    return nullptr;
+  }
+}
+
+void trtx_destroy_profiler(void *obj) {
+  delete static_cast<nvinfer1::ProfilerSubclass *>(obj);
+}
 }
 
 namespace nvinfer1 {

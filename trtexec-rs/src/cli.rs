@@ -53,4 +53,8 @@ pub struct Args {
     #[arg(short, long)]
     /// Capture TensorRT API to JSON
     pub api_capture: Option<PathBuf>,
+
+    /// Report layer time
+    #[arg(long)]
+    pub report_layer_time: bool,
 }
