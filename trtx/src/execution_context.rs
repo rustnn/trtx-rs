@@ -127,7 +127,7 @@ impl<'a> ExecutionContext<'a> {
     }
 
     /// See [nvinfer1::IExecutionContext::getDebugState].
-    pub fn get_tensor_debug_state(&self, name: &str) -> Result<bool> {
+    pub fn tensor_debug_state(&self, name: &str) -> Result<bool> {
         let name = CString::new(name)?;
         unsafe { Ok(self.inner.getDebugState(name.as_ptr())) }
     }
@@ -153,7 +153,7 @@ impl<'a> ExecutionContext<'a> {
         }
     }
     /// See [nvinfer1::IExecutionContext::getUnfusedTensorsDebugState].
-    pub fn get_unfused_tensor_debug_state(&self) -> bool {
+    pub fn unfused_tensor_debug_state(&self) -> bool {
         self.inner.getUnfusedTensorsDebugState()
     }
 
