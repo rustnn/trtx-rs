@@ -7,7 +7,7 @@ use std::{ffi::CString, marker::PhantomData, pin::Pin};
 use crate::{error::PropertySetAttempt, Error, Result};
 use trtx_sys::{nvinfer1, Dims64, OptProfileSelector};
 
-/// [`trtx_sys::nvinfer1::IOptimizationProfile`] — C++ [`nvinfer1::IOptimizationProfile`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_optimization_profile.html).
+/// [nvinfer1::IOptimizationProfile] — C++ [`nvinfer1::IOptimizationProfile`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_optimization_profile.html).
 pub struct OptimizationProfile<'builder> {
     pub(crate) inner: Pin<&'builder mut nvinfer1::IOptimizationProfile>,
     _builder: PhantomData<&'builder nvinfer1::IBuilder>,
@@ -21,7 +21,8 @@ impl<'builder> OptimizationProfile<'builder> {
         }
     }
 
-    pub fn get_dimensions(&self, input_name: &str, select: OptProfileSelector) -> Dims64 {
+    /// See [nvinfer1::IOptimizationProfile::getDimensions]
+    pub fn dimensions(&self, input_name: &str, select: OptProfileSelector) -> Dims64 {
         let input_name_c =
             CString::new(input_name).expect("User provided string that contains \\0 characters");
         unsafe {
@@ -29,6 +30,8 @@ impl<'builder> OptimizationProfile<'builder> {
                 .getDimensions(input_name_c.as_ptr(), select.into())
         }
     }
+
+    /// See [nvinfer1::IOptimizationProfile::setDimensions]
     pub fn set_dimensions(
         &mut self,
         input_name: &str,
@@ -52,10 +55,12 @@ impl<'builder> OptimizationProfile<'builder> {
         }
     }
 
+    /// See [nvinfer1::IOptimizationProfile::isValid]
     pub fn is_valid(&self) -> bool {
         self.inner.isValid()
     }
 
+    /// See [nvinfer1::IOptimizationProfile::setExtraMemoryTarget]
     pub fn set_extra_memory_target(&mut self, target: f32) -> Result<()> {
         if self.inner.as_mut().setExtraMemoryTarget(target) {
             Ok(())
@@ -65,10 +70,13 @@ impl<'builder> OptimizationProfile<'builder> {
             ))
         }
     }
-    pub fn get_extra_memory_target(&self) -> f32 {
+
+    /// See [nvinfer1::IOptimizationProfile::getExtraMemoryTarget]
+    pub fn extra_memory_target(&self) -> f32 {
         self.inner.getExtraMemoryTarget()
     }
 
+    /// See [nvinfer1::IOptimizationProfile::setShapeValuesV2]
     pub fn set_shape_values_v2(
         &mut self,
         input_name: &str,
@@ -93,6 +101,7 @@ impl<'builder> OptimizationProfile<'builder> {
         }
     }
 }
+
 impl Drop for OptimizationProfile<'_> {
     fn drop(&mut self) {
         unsafe {
