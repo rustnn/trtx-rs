@@ -17,28 +17,17 @@ use std::sync::Arc;
 use std::time::Instant;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{prelude::*, EnvFilter};
-//use tracing_log::LogTracer;
 use trtx::host_memory::HostMemory;
-use trtx::interfaces::ReportLayerTime;
 use trtx::{Builder, Logger, OnnxParser, ProfilingVerbosity};
 use trtx::{LayerInformationFormat, Runtime};
 
 use crate::cli::Args;
+use crate::profiler::LayerTimingLogger;
 use crate::progress_monitor::ProgressMonitor;
 
 mod cli;
+mod profiler;
 mod progress_monitor;
-
-/// Forwards TensorRT per-layer timings to the application log (see `IExecutionContext::setProfiler`).
-/// To get a JSON like trtexec one would need to implement samples/common/sampleReporting.h in
-/// particular     void exportJSONProfile(std::string const& fileName) const noexcept;
-struct LayerTimingLogger;
-
-impl ReportLayerTime for LayerTimingLogger {
-    fn report_layer_time(&self, layer_name: &str, ms: f32) {
-        info!("TensorRT layer {layer_name:?}: {ms:.4} ms");
-    }
-}
 
 /// If any dimension is negative (dynamic), either bail (`non_interactive`) or read concrete sizes from stdin.
 fn resolve_dynamic_input_shape(
