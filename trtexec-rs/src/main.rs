@@ -201,6 +201,7 @@ fn main() -> Result<()> {
 
         let mut _graph = None;
         let mut network = builder.create_network(0)?;
+        let mut parser = OnnxParser::new(&mut network, &logger)?;
         let file_extension = onnx_path.extension();
         if file_extension == Some(&OsString::from("json"))
             || file_extension == Some(&OsString::from("webnn"))
@@ -219,7 +220,6 @@ fn main() -> Result<()> {
         } else {
             debug!("Processing as ONNX file: {onnx_path:?}");
 
-            let mut parser = OnnxParser::new(&mut network, &logger)?;
             parser.parse_from_file(&onnx_path.to_string_lossy().clone(), 5)?;
         }
 
@@ -307,8 +307,21 @@ fn main() -> Result<()> {
             }
 
             let data_type = engine.tensor_data_type(&name)?;
+            let vec_dim = engine.tensor_vectorized_dim(&name)?;
+            let comps = engine.tensor_components_per_element(&name)?;
             let shape = engine.tensor_shape(&name)?;
-            let num_elements = shape.iter().product::<i64>();
+            let num_elements = shape
+                .iter()
+                .enumerate()
+                .map(|(i, &v)| {
+                    if i == vec_dim as usize {
+                        //v.next_multiple_of(comps as i64) // nightly feature
+                        (v + (comps as i64) - 1) / comps as i64 * comps as i64
+                    } else {
+                        v
+                    }
+                })
+                .product::<i64>();
             // only correct for non-vectorized layouts
             let size = (num_elements as usize * data_type.size_bits()) / 8;
             //let bytes = engine.tensor_components_per_element(&name)?;
