@@ -201,9 +201,9 @@ fn main() -> Result<()> {
 
         let mut _graph = None;
         let mut network = builder.create_network(0)?;
-        let mut parser = OnnxParser::new(&mut network, &logger)?;
+        let mut _parser = None;
         let file_extension = onnx_path.extension();
-        if file_extension == Some(&OsString::from("json"))
+        let network = if file_extension == Some(&OsString::from("json"))
             || file_extension == Some(&OsString::from("webnn"))
         {
             info!("Processing as RustNN file: {onnx_path:?}");
@@ -217,26 +217,31 @@ fn main() -> Result<()> {
                 _graph.as_ref().unwrap(),
                 &mut network,
             )?;
+            &mut network
         } else {
             debug!("Processing as ONNX file: {onnx_path:?}");
-
+            let mut parser = OnnxParser::new(network, &logger)?;
             parser.parse_from_file(&onnx_path.to_string_lossy().clone(), 5)?;
-        }
+
+            // keep parser alive
+            _parser = Some(parser);
+            _parser.as_mut().unwrap().network_mut()
+        };
 
         let mut shape_changed = false;
         for i in 0..network.get_nb_inputs() {
             let mut input = network.get_input(i)?;
-            let shape = input.dimensions(&network)?;
-            let name = input.name(&network)?;
+            let shape = input.dimensions(network)?;
+            let name = input.name(network)?;
             let resolved = resolve_dynamic_input_shape(args.non_interactive, &name, &shape)?;
             if resolved != shape {
                 shape_changed = true;
-                input.set_dimensions(&mut network, &resolved);
+                input.set_dimensions(network, &resolved);
             }
         }
 
         let serialized = builder
-            .build_serialized_network(&mut network, &mut config)
+            .build_serialized_network(network, &mut config)
             .with_context(|| format!("Fail to build {onnx_path:?}"))?;
 
         if !shape_changed {

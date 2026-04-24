@@ -14,10 +14,10 @@ mod tests {
 
         let logger = Logger::stderr().unwrap();
         let mut builder = Builder::new(&logger).unwrap();
-        let mut network = builder.create_network(0).unwrap();
+        let network = builder.create_network(0).unwrap();
 
         // Loading the library fixes the error
         trtx::dynamically_load_tensorrt_onnxparser(None::<String>).unwrap();
-        OnnxParser::new(&mut network, &logger).unwrap();
+        OnnxParser::new(network, &logger).unwrap();
     }
 }

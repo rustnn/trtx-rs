@@ -2,12 +2,11 @@
 //!
 //! [`OnnxParser`] wraps [`trtx_sys::nvonnxparser::IParser`] (C++ [`nvonnxparser::IParser`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvonnxparser_1_1_i_parser.html)).
 
-use std::marker::PhantomData;
 use std::path::PathBuf;
 
 use cxx::UniquePtr;
 use std::ffi::{c_void, CString};
-use trtx_sys::{nvinfer1, nvonnxparser};
+use trtx_sys::nvonnxparser;
 
 use crate::error::{Error, Result};
 use crate::logger::Logger;
@@ -16,10 +15,10 @@ use crate::network::NetworkDefinition;
 /// [`trtx_sys::nvonnxparser::IParser`] — C++ [`nvonnxparser::IParser`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvonnxparser_1_1_i_parser.html).
 pub struct OnnxParser<'network> {
     inner: UniquePtr<nvonnxparser::IParser>,
-    _network: PhantomData<&'network nvinfer1::INetworkDefinition>,
+    network: NetworkDefinition<'network>,
 }
 
-impl OnnxParser<'_> {
+impl<'parser> OnnxParser<'parser> {
     #[cfg(not(any(
         feature = "link_tensorrt_onnxparser",
         feature = "dlopen_tensorrt_onnxparser"
@@ -32,7 +31,11 @@ impl OnnxParser<'_> {
         feature = "link_tensorrt_onnxparser",
         feature = "dlopen_tensorrt_onnxparser"
     ))]
-    pub fn new(network: &mut NetworkDefinition, logger: &Logger) -> Result<Self> {
+    /// Creates a new Parser. This consumes NetworkDefinition to ensure the parser is not dropped
+    /// before the network build is finished (as the parser holds the weights).
+    ///
+    /// Use [OnnxParser::network], [OnnxParser::network_mut] to get a borrow to the network
+    pub fn new(network: NetworkDefinition<'parser>, logger: &Logger) -> Result<Self> {
         #[cfg(not(feature = "mock"))]
         {
             let network_ptr = network.inner.as_mut_ptr();
@@ -75,13 +78,13 @@ impl OnnxParser<'_> {
             }
             Ok(OnnxParser {
                 inner: unsafe { UniquePtr::from_raw(parser_ptr) },
-                _network: Default::default(),
+                network,
             })
         }
         #[cfg(feature = "mock")]
         Ok(OnnxParser {
             inner: UniquePtr::null(),
-            _network: Default::default(),
+            network,
         })
     }
 
@@ -141,22 +144,27 @@ impl OnnxParser<'_> {
         }
         Ok(())
     }
+
+    pub fn network(&'parser self) -> &'parser NetworkDefinition<'parser> {
+        &self.network
+    }
+
+    pub fn network_mut(&'parser mut self) -> &'parser mut NetworkDefinition<'parser> {
+        &mut self.network
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::builder::network_flags;
     use crate::{Builder, Logger};
 
     #[test]
     fn test_onnx_parser_creation() {
         let logger = Logger::stderr().unwrap();
         let mut builder = Builder::new(&logger).unwrap();
-        let mut network = builder
-            .create_network(network_flags::EXPLICIT_BATCH)
-            .unwrap();
-        let parser = OnnxParser::new(&mut network, &logger);
+        let network = builder.create_network(0).unwrap();
+        let parser = OnnxParser::new(network, &logger);
         assert!(parser.is_ok());
     }
 
@@ -170,10 +178,8 @@ mod tests {
         let model_bytes = std::fs::read(model_path).expect("Failed to read test ONNX model");
         let logger = Logger::stderr().unwrap();
         let mut builder = Builder::new(&logger).unwrap();
-        let mut network = builder
-            .create_network(network_flags::EXPLICIT_BATCH)
-            .unwrap();
-        let mut parser = OnnxParser::new(&mut network, &logger).unwrap();
+        let network = builder.create_network(0).unwrap();
+        let mut parser = OnnxParser::new(network, &logger).unwrap();
         let result = parser.parse(&model_bytes);
         assert!(
             result.is_ok(),
