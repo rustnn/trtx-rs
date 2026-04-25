@@ -136,11 +136,11 @@ mod tests {
         for i in 1..=4 {
             let one_layer =
                 network.add_small_constant_copied(&[1], &one_bytes, DataType::kFLOAT)?;
-            let one_t = one_layer.get_output(&network, 0)?;
+            let one_t = one_layer.output(&network, 0)?;
             let mut sum_layer =
                 network.add_elementwise(&tensor, &one_t, ElementWiseOperation::kSUM)?;
             sum_layer.set_name(&mut network, &format!("plus1_{}", i))?;
-            tensor = sum_layer.get_output(&network, 0)?;
+            tensor = sum_layer.output(&network, 0)?;
             let name = format!("tensor_{}", i);
             tensor.set_name(&mut network, &name)?;
             network.mark_tensor_debug(&tensor)?;
@@ -219,7 +219,7 @@ mod tests {
             conv.set_padding(&mut network, &[1i64, 1i64]);
             let name = format!("conv_out_{}", i);
             conv.set_name(&mut network, &name)?;
-            tensor = conv.get_output(&network, 0)?;
+            tensor = conv.output(&network, 0)?;
             tensor.set_name(&mut network, &name)?;
             network.mark_tensor_debug(&tensor)?;
             debug_names.push(name);
@@ -276,7 +276,7 @@ mod tests {
                 .set_tensor_address("conv_out_2", output_device.as_ptr())
                 .expect("set output");
             context
-                .enqueue_v3(crate::cuda::get_default_stream())
+                .enqueue_v3(crate::cuda::default_stream())
                 .expect("enqueue");
         }
         synchronize().expect("sync");
@@ -332,7 +332,7 @@ mod tests {
                 .set_tensor_address("tensor_4", output_device.as_ptr())
                 .expect("set output");
             context
-                .enqueue_v3(crate::cuda::get_default_stream())
+                .enqueue_v3(crate::cuda::default_stream())
                 .expect("enqueue");
         }
         synchronize().expect("sync");

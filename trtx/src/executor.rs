@@ -168,7 +168,7 @@ fn execute_engine(
 
     // Execute inference
     unsafe {
-        context.enqueue_v3(crate::cuda::get_default_stream())?;
+        context.enqueue_v3(crate::cuda::default_stream())?;
     }
 
     // Synchronize to ensure completion

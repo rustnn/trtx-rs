@@ -68,9 +68,9 @@
 //! let context = engine.create_execution_context()?;
 //!
 //! // List I/O tensors
-//! let num_tensors = engine.get_nb_io_tensors()?;
+//! let num_tensors = engine.nb_io_tensors()?;
 //! for i in 0..num_tensors {
-//!     let name = engine.get_tensor_name(i)?;
+//!     let name = engine.io_tensor_name(i)?;
 //!     println!("Tensor {}: {}", i, name);
 //! }
 //! # Ok(())
@@ -146,7 +146,7 @@ pub mod tensor;
 // Re-export commonly used types
 pub use axes::Axes;
 pub use builder::{Builder, BuilderConfig, ProfilingVerbosity};
-pub use cuda::{get_default_stream, synchronize, DeviceBuffer};
+pub use cuda::{default_stream, synchronize, DeviceBuffer};
 pub use error::{Error, Result};
 #[cfg(feature = "onnxparser")]
 pub use executor::{run_onnx_with_tensorrt, run_onnx_zeroed};
