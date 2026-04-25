@@ -21,6 +21,7 @@ pub enum PropertySetAttempt {
     BuilderConfigComputeCapability,
     ExecutionContextTensorDebugState,
     ExecutionContextNcclCommunicator,
+    ExecutionContextInputShape,
     DequantizeLayerBlockShape,
     QuantizeLayerBlockShape,
     AttentionLayerInput,
@@ -116,6 +117,9 @@ pub enum Error {
 
     #[error("Failed to set parse ONNX: {0:?}")]
     FailedToParseOnnx(PathBuf),
+
+    #[error("Failed to report to Profiler")]
+    FailedToReportToProfiler,
 }
 
 impl<T> From<std::sync::PoisonError<T>> for Error {
