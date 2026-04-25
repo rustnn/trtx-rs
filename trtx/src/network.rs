@@ -1192,8 +1192,8 @@ impl MoELayer<'_> {
     }
 }
 
-/// `IDistCollectiveLayer` adds no methods beyond [`ILayer`](trtx_sys::nvinfer1::ILayer); use [`Layer`] helpers.
 #[cfg(feature = "v_1_4")]
+/// `IDistCollectiveLayer` adds no methods beyond [`ILayer`](trtx_sys::nvinfer1::ILayer); use [`Layer`] helpers.
 impl DistCollectiveLayer<'_> {}
 
 /// [`trtx_sys::nvinfer1::INetworkDefinition`] — C++ [`nvinfer1::INetworkDefinition`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_network_definition.html).
@@ -2252,8 +2252,8 @@ impl<'network> NetworkDefinition<'network> {
         })
     }
 
-    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addMoE`].
     #[cfg(feature = "v_1_4")]
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addMoE`].
     pub fn add_moe(
         &mut self,
         hidden_states: &Tensor,
@@ -2277,10 +2277,10 @@ impl<'network> NetworkDefinition<'network> {
         MoELayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
+    #[cfg(feature = "v_1_4")]
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addDistCollective`].
     ///
     /// Pass an empty `groups` slice so all ranks participate (`groups == nullptr`, `groupSize == 0` in C++).
-    #[cfg(feature = "v_1_4")]
     pub fn add_dist_collective(
         &mut self,
         input: &Tensor,
@@ -2525,7 +2525,6 @@ impl<'network> Attention<'network> {
 
     #[cfg(feature = "v_1_4")]
     /// See [`trtx_sys::nvinfer1::IAttention::setNbRanks`].
-    #[cfg(feature = "v_1_4")]
     pub fn set_nb_ranks(&mut self, network: &mut NetworkDefinition, nb_ranks: i32) -> Result<()> {
         check_network!(network, self);
         self.inner
@@ -2536,7 +2535,6 @@ impl<'network> Attention<'network> {
 
     #[cfg(feature = "v_1_4")]
     /// See [`trtx_sys::nvinfer1::IAttention::getNbRanks`].
-    #[cfg(feature = "v_1_4")]
     pub fn get_nb_ranks(&self, network: &NetworkDefinition) -> i32 {
         check_network!(network, self);
         self.inner.getNbRanks()
