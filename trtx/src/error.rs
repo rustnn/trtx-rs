@@ -21,6 +21,7 @@ pub enum PropertySetAttempt {
     BuilderConfigComputeCapability,
     ExecutionContextTensorDebugState,
     ExecutionContextNcclCommunicator,
+    ExecutionContextInputShape,
     DequantizeLayerBlockShape,
     QuantizeLayerBlockShape,
     AttentionLayerInput,
