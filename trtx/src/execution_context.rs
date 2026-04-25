@@ -228,17 +228,21 @@ impl<'a> ExecutionContext<'a> {
     /// When enqueue does not emit the profile (see C++ `setEnqueueEmitsProfile(false)`), call this
     /// after [`Self::enqueue_v3`] (or after a captured CUDA graph launch) while the same stream is
     /// still valid.
-    pub fn report_to_profiler(&self) -> Result<bool> {
+    pub fn report_to_profiler(&self) -> Result<()> {
         #[cfg(not(feature = "mock_runtime"))]
         {
             if self.inner.is_null() {
                 return Err(Error::Runtime("Invalid execution context".to_string()));
             }
-            Ok(self.inner.reportToProfiler())
+            if self.inner.reportToProfiler() {
+                Ok(())
+            } else {
+                Err(Error::FailedToReportToProfiler)
+            }
         }
         #[cfg(feature = "mock_runtime")]
         {
-            Ok(true)
+            Ok(())
         }
     }
 
