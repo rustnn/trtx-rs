@@ -57,4 +57,8 @@ pub struct Args {
     /// Report layer time
     #[arg(long)]
     pub report_layer_time: bool,
+
+    /// Write TensorRT layer timing profile JSON (trtexec-style); implies layer profiling
+    #[arg(long, value_name = "PATH")]
+    pub profile_json: Option<PathBuf>,
 }

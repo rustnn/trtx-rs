@@ -6,7 +6,7 @@ use cudarc::driver::CudaContext;
 use cudarc::driver::CudaSlice;
 use cudarc::driver::DevicePtrMut;
 use log::{debug, info};
-use rustnn::{load_graph_from_path, GraphConverter};
+use rustnn::load_graph_from_path;
 use std::ffi::{c_void, OsString};
 use std::fs::File;
 use std::io::{BufRead, Read, Write};
@@ -17,28 +17,17 @@ use std::sync::Arc;
 use std::time::Instant;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{prelude::*, EnvFilter};
-//use tracing_log::LogTracer;
 use trtx::host_memory::HostMemory;
-use trtx::interfaces::ReportLayerTime;
 use trtx::{Builder, Logger, OnnxParser, ProfilingVerbosity};
 use trtx::{LayerInformationFormat, Runtime};
 
 use crate::cli::Args;
+use crate::profiler::{LayerProfilerReporter, LayerProfilerState, LayerTimingLogger};
 use crate::progress_monitor::ProgressMonitor;
 
 mod cli;
+mod profiler;
 mod progress_monitor;
-
-/// Forwards TensorRT per-layer timings to the application log (see `IExecutionContext::setProfiler`).
-/// To get a JSON like trtexec one would need to implement samples/common/sampleReporting.h in
-/// particular     void exportJSONProfile(std::string const& fileName) const noexcept;
-struct LayerTimingLogger;
-
-impl ReportLayerTime for LayerTimingLogger {
-    fn report_layer_time(&self, layer_name: &str, ms: f32) {
-        info!("TensorRT layer {layer_name:?}: {ms:.4} ms");
-    }
-}
 
 /// If any dimension is negative (dynamic), either bail (`non_interactive`) or read concrete sizes from stdin.
 fn resolve_dynamic_input_shape(
@@ -210,6 +199,9 @@ fn main() -> Result<()> {
             continue;
         }
 
+        let mut _graph = None;
+        let mut network = builder.create_network(0)?;
+        let mut parser = OnnxParser::new(&mut network, &logger)?;
         let file_extension = onnx_path.extension();
         if file_extension == Some(&OsString::from("json"))
             || file_extension == Some(&OsString::from("webnn"))
@@ -220,17 +212,16 @@ fn main() -> Result<()> {
                 graph_path = onnx_path.to_string_lossy().to_string()
             );
             let _enter = _span.enter();
-            let graph = load_graph_from_path(onnx_path)?;
-            let converted = rustnn::converters::TrtxConverter.convert(&graph)?;
-            engine_bytes.push(converted.data.into());
+            _graph = Some(load_graph_from_path(onnx_path)?);
+            rustnn::converters::TrtxConverter::build_network(
+                _graph.as_ref().unwrap(),
+                &mut network,
+            )?;
+        } else {
+            debug!("Processing as ONNX file: {onnx_path:?}");
 
-            continue;
+            parser.parse_from_file(&onnx_path.to_string_lossy().clone(), 5)?;
         }
-        debug!("Processing as ONNX file: {onnx_path:?}");
-
-        let mut network = builder.create_network(0)?;
-        let mut parser = OnnxParser::new(&mut network, &logger)?;
-        parser.parse_from_file(&onnx_path.to_string_lossy().clone(), 5)?;
 
         let mut shape_changed = false;
         for i in 0..network.get_nb_inputs() {
@@ -272,10 +263,20 @@ fn main() -> Result<()> {
         Runtime::new(&logger).with_context(|| "Failed to create TensorRT runtime for inference")?;
     let stream = cuda_ctx.new_stream()?;
 
-    for (bytes, input_path) in engine_bytes.drain(..).zip(args.inputs.iter()) {
+    for (idx, (bytes, input_path)) in engine_bytes.drain(..).zip(args.inputs.iter()).enumerate() {
         let mut engine = runtime.deserialize_cuda_engine(&bytes)?;
         let mut ctx = engine.create_execution_context()?;
-        if args.report_layer_time {
+
+        let layer_profiler_state = if args.profile_json.is_some() {
+            Some(Arc::new(LayerProfilerState::new(args.report_layer_time)))
+        } else {
+            None
+        };
+
+        if let Some(ref state) = layer_profiler_state {
+            ctx.set_profiler(Box::new(LayerProfilerReporter::new(Arc::clone(state))))
+                .with_context(|| "Failed to set TensorRT layer profiler")?;
+        } else if args.report_layer_time {
             ctx.set_profiler(Box::new(LayerTimingLogger))
                 .with_context(|| "Failed to set TensorRT layer profiler")?;
         }
@@ -306,8 +307,21 @@ fn main() -> Result<()> {
             }
 
             let data_type = engine.tensor_data_type(&name)?;
+            let vec_dim = engine.tensor_vectorized_dim(&name)?;
+            let comps = engine.tensor_components_per_element(&name)?;
             let shape = engine.tensor_shape(&name)?;
-            let num_elements = shape.iter().product::<i64>();
+            let num_elements = shape
+                .iter()
+                .enumerate()
+                .map(|(i, &v)| {
+                    if i == vec_dim as usize {
+                        //v.next_multiple_of(comps as i64) // nightly feature
+                        (v + (comps as i64) - 1) / comps as i64 * comps as i64
+                    } else {
+                        v
+                    }
+                })
+                .product::<i64>();
             // only correct for non-vectorized layouts
             let size = (num_elements as usize * data_type.size_bits()) / 8;
             //let bytes = engine.tensor_components_per_element(&name)?;
@@ -381,7 +395,25 @@ fn main() -> Result<()> {
             "Duration GPU: {duration_gpu:.02} ms ({} runs), {:?} ms per inference",
             args.num_inferences,
             duration_gpu / args.num_inferences as f32
-        )
+        );
+
+        if let (Some(state), Some(json_base)) =
+            (layer_profiler_state.as_ref(), args.profile_json.as_ref())
+        {
+            let export_path = if args.inputs.len() > 1 {
+                let stem = json_base
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("layer_time");
+                json_base.with_file_name(format!("{stem}_{idx}.json"))
+            } else {
+                json_base.clone()
+            };
+            state
+                .export_json_profile(&export_path)
+                .with_context(|| format!("export layer time JSON to {export_path:?}"))?;
+            info!("Wrote layer timing profile {export_path:?}");
+        }
     }
 
     Ok(())
