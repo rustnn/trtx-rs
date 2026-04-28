@@ -106,7 +106,7 @@ impl<'builder> Builder<'builder> {
         }
     }
 
-    pub fn create_config(&'_ mut self) -> Result<BuilderConfig> {
+    pub fn create_config(&'_ mut self) -> Result<BuilderConfig<'builder>> {
         #[cfg(not(feature = "mock"))]
         let config_ptr = self.inner.pin_mut().createBuilderConfig();
         #[cfg(feature = "mock")]

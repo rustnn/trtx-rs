@@ -2,12 +2,14 @@
 //!
 //! Wraps [`trtx_sys::nvinfer1::IBuilderConfig`]; C++: [`nvinfer1::IBuilderConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_builder_config.html).
 
+use std::marker::PhantomData;
 use std::pin::Pin;
 
 use crate::error::PropertySetAttempt;
 use crate::interfaces::MonitorProgress;
 use crate::interfaces::ProgressMonitor;
 use crate::optimization_profile::OptimizationProfile;
+use crate::Builder;
 use crate::Error;
 use crate::Result;
 use cxx::UniquePtr;
@@ -21,12 +23,13 @@ use trtx_sys::{
 use trtx_sys::ComputeCapability;
 
 /// [`trtx_sys::nvinfer1::IBuilderConfig`] — C++ [`nvinfer1::IBuilderConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_builder_config.html).
-pub struct BuilderConfig {
+pub struct BuilderConfig<'builder> {
     pub(crate) inner: UniquePtr<IBuilderConfig>,
     progress_monitor: Option<Pin<Box<ProgressMonitor>>>,
+    _builder: PhantomData<&'builder Builder<'builder>>,
 }
 
-impl BuilderConfig {
+impl<'builder> BuilderConfig<'builder> {
     pub(crate) fn new(builder_config: *mut nvinfer1::IBuilderConfig) -> Result<Self> {
         #[cfg(not(feature = "mock"))]
         if builder_config.is_null() {
@@ -35,6 +38,7 @@ impl BuilderConfig {
         Ok(Self {
             inner: unsafe { UniquePtr::from_raw(builder_config) },
             progress_monitor: None,
+            _builder: Default::default(),
         })
     }
 
