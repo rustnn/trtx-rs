@@ -76,6 +76,14 @@ impl<'engine> CudaEngine<'engine> {
         }
     }
 
+    pub fn name(&self) -> Result<String> {
+        let ptr = self.inner.getName();
+        if ptr.is_null() {
+            return Ok(String::new());
+        }
+        Ok(unsafe { CStr::from_ptr(ptr) }.to_str()?.to_string())
+    }
+
     #[deprecated = "use nb_io_tensors"]
     pub fn get_nb_io_tensors(&self) -> Result<i32> {
         self.nb_io_tensors()
