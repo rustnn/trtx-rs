@@ -1357,6 +1357,24 @@ impl<'network> NetworkDefinition<'network> {
         self.output(index)
     }
 
+    /// Returns an iterator over the network's input tensors.
+    pub fn inputs(&self) -> NetworkInputIter<'_, 'network> {
+        NetworkInputIter {
+            network: self,
+            index: 0,
+            count: self.nb_inputs(),
+        }
+    }
+
+    /// Returns an iterator over the network's output tensors.
+    pub fn outputs(&self) -> NetworkOutputIter<'_, 'network> {
+        NetworkOutputIter {
+            network: self,
+            index: 0,
+            count: self.nb_outputs(),
+        }
+    }
+
     /// Number of layers in the network (for introspection/dumping).
     /// See [INetworkDefinition::getNbLayers]
     pub fn nb_layers(&self) -> i32 {
@@ -2386,6 +2404,60 @@ impl<'network> NetworkDefinition<'network> {
     }
 }
 
+// --- Network input/output iterators ---
+
+/// Iterator over a [`NetworkDefinition`]'s input tensors. Created by [`NetworkDefinition::inputs`].
+pub struct NetworkInputIter<'a, 'network> {
+    network: &'a NetworkDefinition<'network>,
+    index: i32,
+    count: i32,
+}
+
+impl<'network> Iterator for NetworkInputIter<'_, 'network> {
+    type Item = Tensor<'network>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.count {
+            return None;
+        }
+        let tensor = self.network.input(self.index).expect("valid input index");
+        self.index += 1;
+        Some(tensor)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = (self.count - self.index).max(0) as usize;
+        (remaining, Some(remaining))
+    }
+}
+
+impl ExactSizeIterator for NetworkInputIter<'_, '_> {}
+
+/// Iterator over a [`NetworkDefinition`]'s output tensors. Created by [`NetworkDefinition::outputs`].
+pub struct NetworkOutputIter<'a, 'network> {
+    network: &'a NetworkDefinition<'network>,
+    index: i32,
+    count: i32,
+}
+
+impl<'network> Iterator for NetworkOutputIter<'_, 'network> {
+    type Item = Tensor<'network>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.count {
+            return None;
+        }
+        let tensor = self.network.output(self.index).expect("valid output index");
+        self.index += 1;
+        Some(tensor)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = (self.count - self.index).max(0) as usize;
+        (remaining, Some(remaining))
+    }
+}
+
+impl ExactSizeIterator for NetworkOutputIter<'_, '_> {}
+
 // --- IAttention ---
 
 impl<'network> Attention<'network> {
@@ -3073,5 +3145,47 @@ mod test {
                 .unwrap()
         );
         assert_eq!(&network.layer(1).unwrap().name(&network), "Eva");
+    }
+
+    #[test]
+    #[cfg(not(feature = "mock"))]
+    fn test_inputs_outputs_iter() {
+        let logger = Logger::stderr().unwrap();
+        let mut builder = Builder::new(&logger).unwrap();
+        let mut network = builder.create_network(0).unwrap();
+        let a = network
+            .add_input("input_a", trtx_sys::DataType::kFLOAT, &[1])
+            .unwrap();
+        let b = network
+            .add_input("input_b", trtx_sys::DataType::kFLOAT, &[1])
+            .unwrap();
+        let out = network
+            .add_elementwise(&a, &b, trtx_sys::ElementWiseOperation::kSUM)
+            .unwrap()
+            .output(&network, 0)
+            .unwrap();
+        out.set_name(&mut network, "output_c").unwrap();
+        network.mark_output(&out);
+
+        let input_names: Vec<_> = network
+            .inputs()
+            .map(|t| t.name(&network).unwrap())
+            .collect();
+        assert_eq!(input_names, ["input_a", "input_b"]);
+        assert_eq!(network.inputs().len(), 2);
+
+        let output_names: Vec<_> = network
+            .outputs()
+            .map(|t| t.name(&network).unwrap())
+            .collect();
+        assert_eq!(output_names, ["output_c"]);
+        assert_eq!(network.outputs().len(), 1);
+
+        // equivalent to the old loop pattern
+        let mut old_style = Vec::new();
+        for i in 0..network.nb_inputs() {
+            old_style.push(network.input(i).unwrap().name(&network).unwrap());
+        }
+        assert_eq!(input_names, old_style);
     }
 }
