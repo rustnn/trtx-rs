@@ -89,7 +89,7 @@ fn main() -> Result<()> {
 
     // 8. Execute inference
     println!("8. Running inference...");
-    let stream = trtx::cuda::get_default_stream();
+    let stream = trtx::cuda::default_stream();
     unsafe {
         context.enqueue_v3(stream)?;
     }
@@ -178,7 +178,7 @@ fn build_tiny_network(logger: &Logger) -> Result<Vec<u8>> {
 
     println!("   Adding ReLU activation layer...");
     let activation_layer = network.add_activation(&input, ActivationType::kRELU)?;
-    let output = activation_layer.get_output(&network, 0)?;
+    let output = activation_layer.output(&network, 0)?;
 
     println!("   Setting output tensor name...");
     let output_named = output;
@@ -188,8 +188,8 @@ fn build_tiny_network(logger: &Logger) -> Result<Vec<u8>> {
     println!("   Marking output tensor...");
     network.mark_output(&output_named);
 
-    println!("   Network has {} inputs", network.get_nb_inputs());
-    println!("   Network has {} outputs", network.get_nb_outputs());
+    println!("   Network has {} inputs", network.nb_inputs());
+    println!("   Network has {} outputs", network.nb_outputs());
 
     println!("   Creating builder config...");
     let mut config = builder.create_config()?;

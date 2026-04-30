@@ -136,36 +136,56 @@ impl<'network, Inner: AsLayer> Layer<'network, Inner> {
     }
 
     /// See [nvinfer1::ILayer::getInput]
-    pub fn get_input(
-        &self,
-        network: &'_ NetworkDefinition,
-        index: i32,
-    ) -> Result<Tensor<'network>> {
+    pub fn input(&self, network: &'_ NetworkDefinition, index: i32) -> Result<Tensor<'network>> {
         check_network!(network, self);
         let tensor = self.inner.as_layer().getInput(index);
         unsafe { Tensor::new(self.network, tensor) }
     }
 
+    #[deprecated = "use input instead"]
+    pub fn get_input(
+        &self,
+        network: &'_ NetworkDefinition,
+        index: i32,
+    ) -> Result<Tensor<'network>> {
+        self.input(network, index)
+    }
+
     /// See [nvinfer1::ILayer::getOutput]
+    pub fn output(&self, network: &'_ NetworkDefinition, index: i32) -> Result<Tensor<'network>> {
+        check_network!(network, self);
+        let tensor = self.inner.as_layer().getOutput(index);
+        unsafe { Tensor::new(self.network, tensor) }
+    }
+
+    #[deprecated = "use output instead"]
     pub fn get_output(
         &self,
         network: &'_ NetworkDefinition,
         index: i32,
     ) -> Result<Tensor<'network>> {
-        check_network!(network, self);
-        let tensor = self.inner.as_layer().getOutput(index);
-        unsafe { Tensor::new(self.network, tensor) }
+        self.output(network, index)
     }
     /// See [nvinfer1::ILayer::getNbInputs]
-    pub fn get_num_inputs(&self, network: &'_ NetworkDefinition) -> i32 {
+    pub fn num_inputs(&self, network: &'_ NetworkDefinition) -> i32 {
         check_network!(network, self);
         self.inner.as_layer().getNbInputs()
     }
 
+    #[deprecated = "use num_inputs instead"]
+    pub fn get_num_inputs(&self, network: &'_ NetworkDefinition) -> i32 {
+        self.num_inputs(network)
+    }
+
     /// See [nvinfer1::ILayer::getNbOutputs]
-    pub fn get_num_outputs(&self, network: &'_ NetworkDefinition) -> i32 {
+    pub fn num_outputs(&self, network: &'_ NetworkDefinition) -> i32 {
         check_network!(network, self);
         self.inner.as_layer().getNbOutputs()
+    }
+
+    #[deprecated = "use num_outputs instead"]
+    pub fn get_num_outputs(&self, network: &'_ NetworkDefinition) -> i32 {
+        self.num_outputs(network)
     }
 
     /// See [nvinfer1::ILayer::setName]
@@ -940,9 +960,14 @@ impl NormalizationLayer<'_> {
         self.inner.as_mut().setEpsilon(eps);
     }
     /// See [nvinfer1::INormalizationLayer::getEpsilon]
-    pub fn get_epsilon(&self, network: &NetworkDefinition) -> f32 {
+    pub fn epsilon(&self, network: &NetworkDefinition) -> f32 {
         check_network!(network, self);
         self.inner.as_ref().getEpsilon()
+    }
+
+    #[deprecated = "use epsilon instead"]
+    pub fn get_epsilon(&self, network: &NetworkDefinition) -> f32 {
+        self.epsilon(network)
     }
     /// See [nvinfer1::INormalizationLayer::setAxes]
     pub fn set_axes(&mut self, network: &mut NetworkDefinition, axes: crate::Axes) {
@@ -950,9 +975,14 @@ impl NormalizationLayer<'_> {
         self.inner.as_mut().setAxes(axes.to_bits());
     }
     /// See [nvinfer1::INormalizationLayer::getAxes]
-    pub fn get_axes(&self, network: &NetworkDefinition) -> crate::Axes {
+    pub fn axes(&self, network: &NetworkDefinition) -> crate::Axes {
         check_network!(network, self);
         crate::Axes::from_bits(self.inner.as_ref().getAxes())
+    }
+
+    #[deprecated = "use axes instead"]
+    pub fn get_axes(&self, network: &NetworkDefinition) -> crate::Axes {
+        self.axes(network)
     }
     /// See [nvinfer1::INormalizationLayer::setNbGroups]
     pub fn set_num_groups(&mut self, network: &mut NetworkDefinition, groups: i64) {
@@ -960,9 +990,14 @@ impl NormalizationLayer<'_> {
         self.inner.as_mut().setNbGroups(groups);
     }
     /// See [nvinfer1::INormalizationLayer::getNbGroups]
-    pub fn get_num_groups(&self, network: &NetworkDefinition) -> i64 {
+    pub fn num_groups(&self, network: &NetworkDefinition) -> i64 {
         check_network!(network, self);
         self.inner.as_ref().getNbGroups()
+    }
+
+    #[deprecated = "use num_groups instead"]
+    pub fn get_num_groups(&self, network: &NetworkDefinition) -> i64 {
+        self.num_groups(network)
     }
 
     // is removed because deprecated in TRT
@@ -1269,17 +1304,27 @@ impl<'network> NetworkDefinition<'network> {
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::getNbInputs`].
-    pub fn get_nb_inputs(&self) -> i32 {
+    pub fn nb_inputs(&self) -> i32 {
         self.inner.getNbInputs()
     }
 
+    #[deprecated = "use nb_inputs instead"]
+    pub fn get_nb_inputs(&self) -> i32 {
+        self.nb_inputs()
+    }
+
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::getNbOutputs`].
-    pub fn get_nb_outputs(&self) -> i32 {
+    pub fn nb_outputs(&self) -> i32 {
         self.inner.getNbOutputs()
     }
 
+    #[deprecated = "use nb_outputs instead"]
+    pub fn get_nb_outputs(&self) -> i32 {
+        self.nb_outputs()
+    }
+
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::getInput`].
-    pub fn get_input(&self, index: i32) -> Result<Tensor<'network>> {
+    pub fn input(&self, index: i32) -> Result<Tensor<'network>> {
         let tensor_ptr = self.inner.getInput(index);
         if tensor_ptr.is_null() {
             return Err(Error::Runtime(format!(
@@ -1290,8 +1335,13 @@ impl<'network> NetworkDefinition<'network> {
         unsafe { Tensor::new(self.inner.as_ptr(), tensor_ptr) }
     }
 
+    #[deprecated = "use input instead"]
+    pub fn get_input(&self, index: i32) -> Result<Tensor<'network>> {
+        self.input(index)
+    }
+
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::getOutput`].
-    pub fn get_output(&self, index: i32) -> Result<Tensor<'network>> {
+    pub fn output(&self, index: i32) -> Result<Tensor<'network>> {
         let tensor_ptr = self.inner.getOutput(index);
         if tensor_ptr.is_null() {
             return Err(Error::Runtime(format!(
@@ -1302,27 +1352,50 @@ impl<'network> NetworkDefinition<'network> {
         unsafe { Tensor::new(self.inner.as_ptr(), tensor_ptr) }
     }
 
+    #[deprecated = "use output instead"]
+    pub fn get_output(&self, index: i32) -> Result<Tensor<'network>> {
+        self.output(index)
+    }
+
     /// Number of layers in the network (for introspection/dumping).
     /// See [INetworkDefinition::getNbLayers]
-    pub fn get_nb_layers(&self) -> i32 {
+    pub fn nb_layers(&self) -> i32 {
         self.inner.getNbLayers()
     }
 
-    pub fn get_layer(&self, layer_index: i32) -> Result<DynLayer<'network>> {
+    #[deprecated = "use nb_layers instead"]
+    pub fn get_nb_layers(&self) -> i32 {
+        self.nb_layers()
+    }
+
+    pub fn layer(&self, layer_index: i32) -> Result<DynLayer<'network>> {
         let layer_ptr = self.inner.getLayer(layer_index);
         DynLayer::new_dyn(self.inner.as_ptr(), layer_ptr)
     }
 
+    #[deprecated = "use layer instead"]
+    pub fn get_layer(&self, layer_index: i32) -> Result<DynLayer<'network>> {
+        self.layer(layer_index)
+    }
+
     /// Layer name at index (for introspection/dumping). Returns "(Unnamed)" if null.
-    #[deprecated = "use network.get_layer(index)?.name(&network)"]
+    pub fn layer_name(&self, layer_index: i32) -> Result<String> {
+        Ok(self.layer(layer_index)?.name(self))
+    }
+
+    #[deprecated = "use layer_name instead"]
     pub fn get_layer_name(&self, layer_index: i32) -> Result<String> {
-        Ok(self.get_layer(layer_index)?.name(self))
+        self.layer_name(layer_index)
     }
 
     /// Layer type enum value at index (for introspection/dumping). See TensorRT LayerType.
-    #[deprecated = "use network.get_layer(index)?.layer_type_dynamic()"]
+    pub fn layer_type(&self, layer_index: i32) -> Result<LayerType> {
+        Ok(self.layer(layer_index)?.layer_type_dynamic())
+    }
+
+    #[deprecated = "use layer_type instead"]
     pub fn get_layer_type(&self, layer_index: i32) -> Result<LayerType> {
-        Ok(self.get_layer(layer_index)?.layer_type_dynamic())
+        self.layer_type(layer_index)
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addActivation`].
@@ -1509,13 +1582,13 @@ impl<'network> NetworkDefinition<'network> {
                 weights.kernel.values,
                 weights.kernel.data_type,
             )?
-            .get_output(self, 0)?;
+            .output(self, 0)?;
         layer.set_input(self, 1, &kernel)?;
 
         if let Some(bias) = weights.bias {
             let bias = self
                 .add_constant_owned(&bias.shape, bias.values, bias.data_type)?
-                .get_output(self, 0)?;
+                .output(self, 0)?;
             layer.set_input(self, 2, &bias)?;
         }
 
@@ -1691,13 +1764,13 @@ impl<'network> NetworkDefinition<'network> {
                 weights.kernel.values,
                 weights.kernel.data_type,
             )?
-            .get_output(self, 0)?;
+            .output(self, 0)?;
         layer.set_input(self, 1, &kernel)?;
 
         if let Some(bias) = weights.bias {
             let bias = self
                 .add_constant_owned(&bias.shape, bias.values, bias.data_type)?
-                .get_output(self, 0)?;
+                .output(self, 0)?;
             layer.set_input(self, 2, &bias)?;
         }
 
@@ -1938,7 +2011,7 @@ impl<'network> NetworkDefinition<'network> {
         let axis_bytes = axis.to_le_bytes();
         let axis_constant =
             self.add_small_constant_copied(&[], &axis_bytes, trtx_sys::DataType::kINT32)?;
-        let axis_tensor = axis_constant.get_output(self, 0)?;
+        let axis_tensor = axis_constant.output(self, 0)?;
         self.add_cumulative_with_axis_tensor(input, &axis_tensor, op, exclusive, reverse)
     }
 
@@ -2417,10 +2490,15 @@ impl<'network> Attention<'network> {
     }
 
     /// See [`trtx_sys::nvinfer1::IAttention::getInput`].
-    pub fn get_input(&self, network: &NetworkDefinition, index: i32) -> Result<Tensor<'network>> {
+    pub fn input(&self, network: &NetworkDefinition, index: i32) -> Result<Tensor<'network>> {
         check_network!(network, self);
         let tensor_ptr = self.inner.getInput(index);
         unsafe { Tensor::new(self.network, tensor_ptr) }
+    }
+
+    #[deprecated = "use input instead"]
+    pub fn get_input(&self, network: &NetworkDefinition, index: i32) -> Result<Tensor<'network>> {
+        self.input(network, index)
     }
 
     /// See [`trtx_sys::nvinfer1::IAttention::getNbOutputs`].
@@ -2430,10 +2508,15 @@ impl<'network> Attention<'network> {
     }
 
     /// See [`trtx_sys::nvinfer1::IAttention::getOutput`]. IAttention has one output (index 0).
-    pub fn get_output(&self, network: &NetworkDefinition, index: i32) -> Result<Tensor<'network>> {
+    pub fn output(&self, network: &NetworkDefinition, index: i32) -> Result<Tensor<'network>> {
         check_network!(network, self);
         let tensor_ptr = self.inner.getOutput(index);
         unsafe { Tensor::new(self.network, tensor_ptr) }
+    }
+
+    #[deprecated = "use output instead"]
+    pub fn get_output(&self, network: &NetworkDefinition, index: i32) -> Result<Tensor<'network>> {
+        self.output(network, index)
     }
 
     /// See [`trtx_sys::nvinfer1::IAttention::setName`].
@@ -2499,9 +2582,14 @@ impl<'network> Attention<'network> {
     }
 
     /// See [`trtx_sys::nvinfer1::IAttention::getNormalizationQuantizeToType`].
-    pub fn get_normalization_quantize_to_type(&self, network: &NetworkDefinition) -> DataType {
+    pub fn normalization_quantize_to_type(&self, network: &NetworkDefinition) -> DataType {
         check_network!(network, self);
         self.inner.getNormalizationQuantizeToType().into()
+    }
+
+    #[deprecated = "use normalization_quantize_to_type instead"]
+    pub fn get_normalization_quantize_to_type(&self, network: &NetworkDefinition) -> DataType {
+        self.normalization_quantize_to_type(network)
     }
 
     /// See [`trtx_sys::nvinfer1::IAttention::setMetadata`].
@@ -2535,9 +2623,14 @@ impl<'network> Attention<'network> {
 
     #[cfg(feature = "v_1_4")]
     /// See [`trtx_sys::nvinfer1::IAttention::getNbRanks`].
-    pub fn get_nb_ranks(&self, network: &NetworkDefinition) -> i32 {
+    pub fn nb_ranks(&self, network: &NetworkDefinition) -> i32 {
         check_network!(network, self);
         self.inner.getNbRanks()
+    }
+
+    #[deprecated = "use nb_ranks instead"]
+    pub fn get_nb_ranks(&self, network: &NetworkDefinition) -> i32 {
+        self.nb_ranks(network)
     }
 }
 
@@ -2703,9 +2796,14 @@ impl IteratorLayer<'_> {
 
 impl LoopOutputLayer<'_> {
     /// See [`trtx_sys::nvinfer1::ILoopOutputLayer::getLoopOutput`].
-    pub fn get_loop_output(&self, network: &NetworkDefinition) -> trtx_sys::nvinfer1::LoopOutput {
+    pub fn loop_output(&self, network: &NetworkDefinition) -> trtx_sys::nvinfer1::LoopOutput {
         check_network!(network, self);
         self.inner.as_ref().getLoopOutput()
+    }
+
+    #[deprecated = "use loop_output instead"]
+    pub fn get_loop_output(&self, network: &NetworkDefinition) -> trtx_sys::nvinfer1::LoopOutput {
+        self.loop_output(network)
     }
     /// See [`trtx_sys::nvinfer1::ILoopOutputLayer::setAxis`]. Ignored if output kind is kLAST_VALUE.
     pub fn set_axis(&mut self, network: &mut NetworkDefinition, axis: i32) {
@@ -2718,9 +2816,14 @@ impl LoopOutputLayer<'_> {
 
 impl TripLimitLayer<'_> {
     /// See [`trtx_sys::nvinfer1::ITripLimitLayer::getTripLimit`].
-    pub fn get_trip_limit(&self, network: &NetworkDefinition) -> trtx_sys::nvinfer1::TripLimit {
+    pub fn trip_limit(&self, network: &NetworkDefinition) -> trtx_sys::nvinfer1::TripLimit {
         check_network!(network, self);
         self.inner.as_ref().getTripLimit()
+    }
+
+    #[deprecated = "use trip_limit instead"]
+    pub fn get_trip_limit(&self, network: &NetworkDefinition) -> trtx_sys::nvinfer1::TripLimit {
+        self.trip_limit(network)
     }
 }
 
@@ -2888,17 +2991,17 @@ mod test {
         let a = network
             .add_activation(&input, trtx_sys::ActivationType::kRELU)
             .unwrap()
-            .get_output(&network, 0)
+            .output(&network, 0)
             .unwrap();
         let b = network
             .add_activation(&a, trtx_sys::ActivationType::kRELU)
             .unwrap()
-            .get_output(&network, 0)
+            .output(&network, 0)
             .unwrap();
         let c = network
             .add_activation(&b, trtx_sys::ActivationType::kRELU)
             .unwrap()
-            .get_output(&network, 0)
+            .output(&network, 0)
             .unwrap();
         a.set_name(&mut network, "Fritz").unwrap();
         b.set_name(&mut network, "Adam").unwrap();
@@ -2906,9 +3009,9 @@ mod test {
 
         assert_eq!(
             &network
-                .get_layer(0)
+                .layer(0)
                 .unwrap()
-                .get_output(&network, 0)
+                .output(&network, 0)
                 .unwrap()
                 .name(&network)
                 .unwrap(),
@@ -2916,9 +3019,9 @@ mod test {
         );
         assert_eq!(
             &network
-                .get_layer(1)
+                .layer(1)
                 .unwrap()
-                .get_output(&network, 0)
+                .output(&network, 0)
                 .unwrap()
                 .name(&network)
                 .unwrap(),
@@ -2926,35 +3029,35 @@ mod test {
         );
         assert_eq!(
             &network
-                .get_layer(2)
+                .layer(2)
                 .unwrap()
-                .get_output(&network, 0)
+                .output(&network, 0)
                 .unwrap()
                 .name(&network)
                 .unwrap(),
             "James"
         );
         assert_eq!(
-            network.get_layer(2).unwrap().layer_type_dynamic(),
+            network.layer(2).unwrap().layer_type_dynamic(),
             LayerType::kACTIVATION
         );
         network
-            .get_layer(1)
+            .layer(1)
             .unwrap()
             .set_name(&mut network, "Eva")
             .unwrap();
         assert_eq!(
             &network
-                .get_layer(1)
+                .layer(1)
                 .unwrap()
-                .get_output(&network, 0)
+                .output(&network, 0)
                 .unwrap()
                 .name(&network)
                 .unwrap(),
             &network
-                .get_layer(2)
+                .layer(2)
                 .unwrap()
-                .get_input(&network, 0)
+                .input(&network, 0)
                 .unwrap()
                 .name(&network)
                 .unwrap(),
@@ -2962,13 +3065,13 @@ mod test {
         assert_eq!(
             "Adam",
             &network
-                .get_layer(2)
+                .layer(2)
                 .unwrap()
-                .get_input(&network, 0)
+                .input(&network, 0)
                 .unwrap()
                 .name(&network)
                 .unwrap()
         );
-        assert_eq!(&network.get_layer(1).unwrap().name(&network), "Eva");
+        assert_eq!(&network.layer(1).unwrap().name(&network), "Eva");
     }
 }

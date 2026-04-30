@@ -64,8 +64,13 @@ pub fn synchronize() -> Result<()> {
 }
 
 /// Get the default CUDA stream
-pub fn get_default_stream() -> *mut std::ffi::c_void {
+pub fn default_stream() -> *mut std::ffi::c_void {
     std::ptr::null_mut()
+}
+
+#[deprecated = "use default_stream instead"]
+pub fn get_default_stream() -> *mut std::ffi::c_void {
+    default_stream()
 }
 
 #[cfg(test)]

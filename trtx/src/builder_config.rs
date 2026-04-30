@@ -82,12 +82,17 @@ impl<'builder> BuilderConfig<'builder> {
     }
 
     /// See [IBuilderConfig::getProfilingVerbosity]
-    pub fn get_profiling_verbosity(&self) -> ProfilingVerbosity {
+    pub fn profiling_verbosity(&self) -> ProfilingVerbosity {
         if cfg!(not(feature = "mock")) {
             self.inner.getProfilingVerbosity().into()
         } else {
             ProfilingVerbosity::kNONE
         }
+    }
+
+    #[deprecated = "use profiling_verbosity instead"]
+    pub fn get_profiling_verbosity(&self) -> ProfilingVerbosity {
+        self.profiling_verbosity()
     }
 
     /// See [IBuilderConfig::setAvgTimingIterations]
@@ -97,12 +102,17 @@ impl<'builder> BuilderConfig<'builder> {
     }
 
     /// See [IBuilderConfig::getAvgTimingIterations]
-    pub fn get_avg_timing_iterations(&self) -> i32 {
+    pub fn avg_timing_iterations(&self) -> i32 {
         if cfg!(not(feature = "mock")) {
             self.inner.getAvgTimingIterations()
         } else {
             0
         }
+    }
+
+    #[deprecated = "use avg_timing_iterations instead"]
+    pub fn get_avg_timing_iterations(&self) -> i32 {
+        self.avg_timing_iterations()
     }
 
     /// See [IBuilderConfig::setEngineCapability]
@@ -112,12 +122,17 @@ impl<'builder> BuilderConfig<'builder> {
     }
 
     /// See [IBuilderConfig::getEngineCapability]
-    pub fn get_engine_capability(&self) -> EngineCapability {
+    pub fn engine_capability(&self) -> EngineCapability {
         if cfg!(not(feature = "mock")) {
             self.inner.getEngineCapability().into()
         } else {
             EngineCapability::kSTANDARD
         }
+    }
+
+    #[deprecated = "use engine_capability instead"]
+    pub fn get_engine_capability(&self) -> EngineCapability {
+        self.engine_capability()
     }
 
     /// See [IBuilderConfig::setFlags]
@@ -127,12 +142,17 @@ impl<'builder> BuilderConfig<'builder> {
     }
 
     /// See [IBuilderConfig::getFlags]
-    pub fn get_flags(&self) -> u32 {
+    pub fn flags(&self) -> u32 {
         if cfg!(not(feature = "mock")) {
             self.inner.getFlags()
         } else {
             0
         }
+    }
+
+    #[deprecated = "use flags instead"]
+    pub fn get_flags(&self) -> u32 {
+        self.flags()
     }
 
     /// See [IBuilderConfig::setFlag]
@@ -148,12 +168,17 @@ impl<'builder> BuilderConfig<'builder> {
     }
 
     /// See [IBuilderConfig::getFlag]
-    pub fn get_flag(&self, flag: BuilderFlag) -> bool {
+    pub fn flag(&self, flag: BuilderFlag) -> bool {
         if cfg!(not(feature = "mock")) {
             self.inner.getFlag(flag.into())
         } else {
             false
         }
+    }
+
+    #[deprecated = "use flag instead"]
+    pub fn get_flag(&self, flag: BuilderFlag) -> bool {
+        self.flag(flag)
     }
 
     /// See [IBuilderConfig::setDLACore]
@@ -163,12 +188,17 @@ impl<'builder> BuilderConfig<'builder> {
     }
 
     /// See [IBuilderConfig::getDLACore]
-    pub fn get_dla_core(&self) -> i32 {
+    pub fn dla_core(&self) -> i32 {
         if cfg!(not(feature = "mock")) {
             self.inner.getDLACore()
         } else {
             0
         }
+    }
+
+    #[deprecated = "use dla_core instead"]
+    pub fn get_dla_core(&self) -> i32 {
+        self.dla_core()
     }
 
     /// See [IBuilderConfig::setDefaultDeviceType]
@@ -180,12 +210,17 @@ impl<'builder> BuilderConfig<'builder> {
     }
 
     /// See [IBuilderConfig::getDefaultDeviceType]
-    pub fn get_default_device_type(&self) -> DeviceType {
+    pub fn default_device_type(&self) -> DeviceType {
         if cfg!(not(feature = "mock")) {
             self.inner.getDefaultDeviceType().into()
         } else {
             DeviceType::kGPU
         }
+    }
+
+    #[deprecated = "use default_device_type instead"]
+    pub fn get_default_device_type(&self) -> DeviceType {
+        self.default_device_type()
     }
 
     /// See [IBuilderConfig::reset]
@@ -195,12 +230,17 @@ impl<'builder> BuilderConfig<'builder> {
     }
 
     /// See [IBuilderConfig::getNbOptimizationProfiles]
-    pub fn get_nb_optimization_profiles(&self) -> i32 {
+    pub fn nb_optimization_profiles(&self) -> i32 {
         if cfg!(not(feature = "mock")) {
             self.inner.getNbOptimizationProfiles()
         } else {
             0
         }
+    }
+
+    #[deprecated = "use nb_optimization_profiles instead"]
+    pub fn get_nb_optimization_profiles(&self) -> i32 {
+        self.nb_optimization_profiles()
     }
 
     /// See [IBuilderConfig::addOptimizationProfile].
@@ -242,7 +282,7 @@ impl<'builder> BuilderConfig<'builder> {
     }
 
     /// See [IBuilderConfig::getTacticSources]
-    pub fn get_tactic_sources(&self) -> u32 {
+    pub fn tactic_sources(&self) -> u32 {
         if cfg!(not(feature = "mock")) {
             self.inner.getTacticSources()
         } else {
@@ -250,13 +290,23 @@ impl<'builder> BuilderConfig<'builder> {
         }
     }
 
+    #[deprecated = "use tactic_sources instead"]
+    pub fn get_tactic_sources(&self) -> u32 {
+        self.tactic_sources()
+    }
+
     /// See [IBuilderConfig::getMemoryPoolLimit]
-    pub fn get_memory_pool_limit(&self, pool: MemoryPoolType) -> usize {
+    pub fn memory_pool_limit(&self, pool: MemoryPoolType) -> usize {
         if cfg!(not(feature = "mock")) {
             self.inner.getMemoryPoolLimit(pool.into())
         } else {
             0
         }
+    }
+
+    #[deprecated = "use memory_pool_limit instead"]
+    pub fn get_memory_pool_limit(&self, pool: MemoryPoolType) -> usize {
+        self.memory_pool_limit(pool)
     }
 
     /// See [IBuilderConfig::setPreviewFeature]
@@ -268,12 +318,17 @@ impl<'builder> BuilderConfig<'builder> {
     }
 
     /// See [IBuilderConfig::getPreviewFeature]
-    pub fn get_preview_feature(&self, feature: PreviewFeature) -> bool {
+    pub fn preview_feature(&self, feature: PreviewFeature) -> bool {
         if cfg!(not(feature = "mock")) {
             self.inner.getPreviewFeature(feature.into())
         } else {
             false
         }
+    }
+
+    #[deprecated = "use preview_feature instead"]
+    pub fn get_preview_feature(&self, feature: PreviewFeature) -> bool {
+        self.preview_feature(feature)
     }
 
     /// See [IBuilderConfig::setBuilderOptimizationLevel]
@@ -283,12 +338,17 @@ impl<'builder> BuilderConfig<'builder> {
     }
 
     /// See [IBuilderConfig::getBuilderOptimizationLevel]
-    pub fn get_builder_optimization_level(&mut self) -> i32 {
+    pub fn builder_optimization_level(&mut self) -> i32 {
         if cfg!(not(feature = "mock")) {
             self.inner.pin_mut().getBuilderOptimizationLevel()
         } else {
             0
         }
+    }
+
+    #[deprecated = "use builder_optimization_level instead"]
+    pub fn get_builder_optimization_level(&mut self) -> i32 {
+        self.builder_optimization_level()
     }
 
     /// See [IBuilderConfig::setHardwareCompatibilityLevel]
@@ -300,8 +360,13 @@ impl<'builder> BuilderConfig<'builder> {
     }
 
     /// See [IBuilderConfig::getHardwareCompatibilityLevel]
-    pub fn get_hardware_compatibility_level(&self) -> HardwareCompatibilityLevel {
+    pub fn hardware_compatibility_level(&self) -> HardwareCompatibilityLevel {
         self.inner.getHardwareCompatibilityLevel().into()
+    }
+
+    #[deprecated = "use hardware_compatibility_level instead"]
+    pub fn get_hardware_compatibility_level(&self) -> HardwareCompatibilityLevel {
+        self.hardware_compatibility_level()
     }
 
     /// See [IBuilderConfig::setMaxAuxStreams]
@@ -311,12 +376,17 @@ impl<'builder> BuilderConfig<'builder> {
     }
 
     /// See [IBuilderConfig::getMaxAuxStreams]
-    pub fn get_max_aux_streams(&self) -> i32 {
+    pub fn max_aux_streams(&self) -> i32 {
         if cfg!(not(feature = "mock")) {
             self.inner.getMaxAuxStreams()
         } else {
             0
         }
+    }
+
+    #[deprecated = "use max_aux_streams instead"]
+    pub fn get_max_aux_streams(&self) -> i32 {
+        self.max_aux_streams()
     }
 
     /// See [IBuilderConfig::setRuntimePlatform]
@@ -326,12 +396,17 @@ impl<'builder> BuilderConfig<'builder> {
     }
 
     /// See [IBuilderConfig::getRuntimePlatform]
-    pub fn get_runtime_platform(&self) -> RuntimePlatform {
+    pub fn runtime_platform(&self) -> RuntimePlatform {
         if cfg!(not(feature = "mock")) {
             self.inner.getRuntimePlatform().into()
         } else {
             RuntimePlatform::kSAME_AS_BUILD
         }
+    }
+
+    #[deprecated = "use runtime_platform instead"]
+    pub fn get_runtime_platform(&self) -> RuntimePlatform {
+        self.runtime_platform()
     }
 
     /// See [IBuilderConfig::setMaxNbTactics]
@@ -341,12 +416,17 @@ impl<'builder> BuilderConfig<'builder> {
     }
 
     /// See [IBuilderConfig::getMaxNbTactics]
-    pub fn get_max_nb_tactics(&self) -> i32 {
+    pub fn max_nb_tactics(&self) -> i32 {
         if cfg!(not(feature = "mock")) {
             self.inner.getMaxNbTactics()
         } else {
             0
         }
+    }
+
+    #[deprecated = "use max_nb_tactics instead"]
+    pub fn get_max_nb_tactics(&self) -> i32 {
+        self.max_nb_tactics()
     }
 
     /// See [IBuilderConfig::setTilingOptimizationLevel]
@@ -372,12 +452,17 @@ impl<'builder> BuilderConfig<'builder> {
     }
 
     /// See [IBuilderConfig::getTilingOptimizationLevel]
-    pub fn get_tiling_optimization_level(&self) -> TilingOptimizationLevel {
+    pub fn tiling_optimization_level(&self) -> TilingOptimizationLevel {
         if cfg!(not(feature = "mock")) {
             self.inner.getTilingOptimizationLevel().into()
         } else {
             TilingOptimizationLevel::kNONE
         }
+    }
+
+    #[deprecated = "use tiling_optimization_level instead"]
+    pub fn get_tiling_optimization_level(&self) -> TilingOptimizationLevel {
+        self.tiling_optimization_level()
     }
 
     /// See [IBuilderConfig::setL2LimitForTiling]
@@ -396,12 +481,17 @@ impl<'builder> BuilderConfig<'builder> {
     }
 
     /// See [IBuilderConfig::getL2LimitForTiling]
-    pub fn get_l2_limit_for_tiling(&self) -> i64 {
+    pub fn l2_limit_for_tiling(&self) -> i64 {
         if cfg!(not(feature = "mock")) {
             self.inner.getL2LimitForTiling()
         } else {
             0
         }
+    }
+
+    #[deprecated = "use l2_limit_for_tiling instead"]
+    pub fn get_l2_limit_for_tiling(&self) -> i64 {
+        self.l2_limit_for_tiling()
     }
 
     /// See [IBuilderConfig::setNbComputeCapabilities]
@@ -429,7 +519,7 @@ impl<'builder> BuilderConfig<'builder> {
 
     /// See [IBuilderConfig::getNbComputeCapabilities]
     #[cfg(not(feature = "enterprise"))]
-    pub fn get_nb_compute_capabilities(&self) -> i32 {
+    pub fn nb_compute_capabilities(&self) -> i32 {
         if cfg!(not(feature = "mock")) {
             self.inner.getNbComputeCapabilities()
         } else {
@@ -438,8 +528,13 @@ impl<'builder> BuilderConfig<'builder> {
     }
 
     #[cfg(not(feature = "enterprise"))]
-    /// See [IBuilderConfig::setComputeCapability]
+    #[deprecated = "use nb_compute_capabilities instead"]
+    pub fn get_nb_compute_capabilities(&self) -> i32 {
+        self.nb_compute_capabilities()
+    }
+
     #[cfg(not(feature = "enterprise"))]
+    /// See [IBuilderConfig::setComputeCapability]
     pub fn set_compute_capability(
         &mut self,
         compute_capability: ComputeCapability,
@@ -464,13 +559,18 @@ impl<'builder> BuilderConfig<'builder> {
 
     #[cfg(not(feature = "enterprise"))]
     /// See [IBuilderConfig::getComputeCapability]
-    #[cfg(not(feature = "enterprise"))]
-    pub fn get_compute_capability(&self, index: i32) -> ComputeCapability {
+    pub fn compute_capability(&self, index: i32) -> ComputeCapability {
         if cfg!(not(feature = "mock")) {
             self.inner.getComputeCapability(index).into()
         } else {
             ComputeCapability::kNONE
         }
+    }
+
+    #[cfg(not(feature = "enterprise"))]
+    #[deprecated = "use compute_capability instead"]
+    pub fn get_compute_capability(&self, index: i32) -> ComputeCapability {
+        self.compute_capability(index)
     }
 }
 
@@ -536,7 +636,7 @@ mod tests {
         for i in 0..NUM_LAYERS {
             let mut layer = network.add_identity(&tensor)?;
             layer.set_name(&mut network, &format!("layer_{}", i))?;
-            tensor = layer.get_output(&network, 0)?;
+            tensor = layer.output(&network, 0)?;
         }
         tensor.set_name(&mut network, "output")?;
         network.mark_output(&tensor);

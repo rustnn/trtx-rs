@@ -111,9 +111,14 @@ impl Tensor<'_> {
     }
 
     /// See [nvinfer1::ITensor::getType]
-    pub fn get_type(&self, network: &NetworkDefinition) -> DataType {
+    pub fn r#type(&self, network: &NetworkDefinition) -> DataType {
         check_network!(network, self);
         self.as_ref().getType().into()
+    }
+
+    #[deprecated = "use r#type instead"]
+    pub fn get_type(&self, network: &NetworkDefinition) -> DataType {
+        self.r#type(network)
     }
 
     /// Set allowed tensor formats (bitmask of TensorFormat). E.g. 1u32 << TensorFormat::kHWC for channels-last.

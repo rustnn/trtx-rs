@@ -229,8 +229,8 @@ fn main() -> Result<()> {
         };
 
         let mut shape_changed = false;
-        for i in 0..network.get_nb_inputs() {
-            let mut input = network.get_input(i)?;
+        for i in 0..network.nb_inputs() {
+            let mut input = network.input(i)?;
             let shape = input.dimensions(network)?;
             let name = input.name(network)?;
             let resolved = resolve_dynamic_input_shape(args.non_interactive, &name, &shape)?;
@@ -287,8 +287,7 @@ fn main() -> Result<()> {
         }
 
         let inspector = engine.create_engine_inspector()?;
-        let engine_layer_info_json =
-            inspector.get_engine_information(LayerInformationFormat::kJSON)?;
+        let engine_layer_info_json = inspector.engine_information(LayerInformationFormat::kJSON)?;
         let layer_json_path = args.engine_dir.join(format!(
             "{}.graph.json",
             input_path
