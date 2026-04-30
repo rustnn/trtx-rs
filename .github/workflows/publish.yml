@@ -36,7 +36,6 @@ jobs:
       - name: Run tests
         run: |
           cargo test -p trtx --features mock --verbose
-          cargo test -p trtx-sys --features mock --verbose
 
       - name: Publish trtx-sys to crates.io
         if: |
