@@ -120,6 +120,9 @@ pub enum Error {
 
     #[error("Failed to report to Profiler")]
     FailedToReportToProfiler,
+
+    #[error("Could not get dimensions from Tensor {tensor_name:?}")]
+    FailedToGetTensorDimensions { tensor_name: String },
 }
 
 impl<T> From<std::sync::PoisonError<T>> for Error {
