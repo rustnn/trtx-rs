@@ -64,11 +64,12 @@ fn build_engine_from_onnx(logger: &Logger, onnx_bytes: &[u8]) -> Result<Vec<u8>>
     let mut builder = Builder::new(logger)?;
 
     // Create network with explicit batch
-    let mut network = builder.create_network(network_flags::EXPLICIT_BATCH)?;
+    let network = builder.create_network(network_flags::EXPLICIT_BATCH)?;
 
     // Parse ONNX model
-    let mut parser = OnnxParser::new(&mut network, logger)?;
+    let mut parser = OnnxParser::new(network, logger)?;
     parser.parse(onnx_bytes)?;
+    let network = parser.network_mut();
 
     // Configure builder
     let mut config = builder.create_config()?;
@@ -77,7 +78,7 @@ fn build_engine_from_onnx(logger: &Logger, onnx_bytes: &[u8]) -> Result<Vec<u8>>
     config.set_memory_pool_limit(MemoryPoolType::kWORKSPACE, 1 << 30);
 
     // Build serialized engine
-    let memory = builder.build_serialized_network(&mut network, &mut config)?;
+    let memory = builder.build_serialized_network(network, &mut config)?;
 
     // This makes an extra copy since the `memory` depends on the lifetime of builder
     Ok(memory.to_vec())
