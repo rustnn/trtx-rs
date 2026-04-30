@@ -1437,6 +1437,14 @@ impl<'network> NetworkDefinition<'network> {
         IdentityLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addShape`].
+    pub fn add_shape(&mut self, input: &'_ Tensor) -> Result<ShapeLayer<'network>> {
+        check_network!(self, input);
+        debug!("add_shape input={}", tensor_dbg(self, input));
+        let layer_ptr = self.inner.pin_mut().addShape(input.pin_mut());
+        ShapeLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addCast`].
     pub fn add_cast(
         &mut self,
