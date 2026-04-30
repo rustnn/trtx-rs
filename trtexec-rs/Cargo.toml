@@ -7,15 +7,15 @@ authors.workspace = true
 repository.workspace = true
 
 [dependencies]
-rustnn = { git = "https://github.com/rustnn/rustnn/", features = [
+rustnn = { git = "https://github.com/theHamsta/rustnn/", features = [
 	"trtx-runtime",
-], default-features = false }
+], default-features = false, branch = "trtx-v0.5.0" }
 
 nvidia-nvtx = { version = "0.2", git = "https://github.com/NVIDIA/NVTX", branch = "release-v3" }
 log = "0.4"
 pretty_env_logger = "0.5"
-trtx = { version = "0.4.0", path = "../trtx", default-features = true }
-trtx-sys = { version = "0.4.0", path = "../trtx-sys", default-features = true }
+trtx = { version = "0.5.0", path = "../trtx", default-features = true }
+trtx-sys = { version = "0.5.0", path = "../trtx-sys", default-features = true }
 indicatif = "0.18"
 anyhow = { version = "1.0", features = ["backtrace"] }
 clap = { version = "4.6", features = ["derive"] }
