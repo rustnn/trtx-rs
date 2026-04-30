@@ -83,6 +83,12 @@ impl Tensor<'_> {
     pub fn dimensions(&self, network: &NetworkDefinition) -> Result<Vec<i64>> {
         check_network!(network, self);
         let result = self.as_ref().getDimensions();
+        if result.nbDims < 0 || result.nbDims >= 8 {
+            let tensor_name = self
+                .name(network)
+                .unwrap_or_else(|e| format!("<failed to get tensor name: {e}>"));
+            return Err(Error::FailedToGetTensorDimensions { tensor_name });
+        }
         Ok(result.d[..result.nbDims as usize].to_vec())
     }
 
