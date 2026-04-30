@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-04-30
+
+### Added
+- trtexec-rs as a Rust port of trtexec (supports also WebNN graphs)
+- Support for IProfiler interface
+- More methods on ExecutionContext, CudaEngine and some Layers
+- Add support for setting NCCL communicator on networks
+
+### Changed
+- Removed `get_` prefix from getters (old names deprecated)
+
+### Fixed
+- Fixed concurrent dynamic loading (only load libraries once)
+- Make sure OnnxParser can't be dropped before build
+- Add lifetimes of parent object to BuilderConfig
+
+
 ## [0.4.0] - 2026-04-09
 
 ### Added
@@ -19,7 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - trtx now enforces with lifetimes correct usage of API
 - autocxx is now used for almost everything, even mock
 - mock now uses the same API as real mode, builder API now has limited mock coverage
-
 
 ### Fixed
 - fixed one SEGFAULT in `add_comulative` (now prevented by lifetimes in API)
