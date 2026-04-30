@@ -1391,6 +1391,15 @@ impl<'network> NetworkDefinition<'network> {
         DynLayer::new_dyn(self.inner.as_ptr(), layer_ptr)
     }
 
+    /// Returns an iterator over the network's layers.
+    pub fn layers(&self) -> NetworkLayerIter<'_, 'network> {
+        NetworkLayerIter {
+            network: self,
+            index: 0,
+            count: self.nb_layers(),
+        }
+    }
+
     #[deprecated = "use layer instead"]
     pub fn get_layer(&self, layer_index: i32) -> Result<DynLayer<'network>> {
         self.layer(layer_index)
@@ -2458,6 +2467,32 @@ impl<'network> Iterator for NetworkOutputIter<'_, 'network> {
 
 impl ExactSizeIterator for NetworkOutputIter<'_, '_> {}
 
+/// Iterator over a [`NetworkDefinition`]'s layers. Created by [`NetworkDefinition::layers`].
+pub struct NetworkLayerIter<'a, 'network> {
+    network: &'a NetworkDefinition<'network>,
+    index: i32,
+    count: i32,
+}
+
+impl<'network> Iterator for NetworkLayerIter<'_, 'network> {
+    type Item = DynLayer<'network>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.count {
+            return None;
+        }
+        let layer = self.network.layer(self.index).expect("valid layer index");
+        self.index += 1;
+        Some(layer)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = (self.count - self.index).max(0) as usize;
+        (remaining, Some(remaining))
+    }
+}
+
+impl ExactSizeIterator for NetworkLayerIter<'_, '_> {}
+
 // --- IAttention ---
 
 impl<'network> Attention<'network> {
@@ -3187,5 +3222,28 @@ mod test {
             old_style.push(network.input(i).unwrap().name(&network).unwrap());
         }
         assert_eq!(input_names, old_style);
+    }
+
+    #[test]
+    #[cfg(not(feature = "mock"))]
+    fn test_layers_iter() {
+        use trtx_sys::LayerType;
+
+        let logger = Logger::stderr().unwrap();
+        let mut builder = Builder::new(&logger).unwrap();
+        let mut network = builder.create_network(0).unwrap();
+        let input = network
+            .add_input("a", trtx_sys::DataType::kFLOAT, &[1])
+            .unwrap();
+        network
+            .add_activation(&input, trtx_sys::ActivationType::kRELU)
+            .unwrap();
+        network
+            .add_activation(&input, trtx_sys::ActivationType::kSIGMOID)
+            .unwrap();
+
+        assert_eq!(network.layers().len(), 2);
+        let types: Vec<_> = network.layers().map(|l| l.layer_type_dynamic()).collect();
+        assert_eq!(types, [LayerType::kACTIVATION, LayerType::kACTIVATION]);
     }
 }
