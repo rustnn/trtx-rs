@@ -111,12 +111,18 @@ impl Tensor<'_> {
     }
 
     /// See [nvinfer1::ITensor::getType]
+    pub fn data_type(&self, network: &NetworkDefinition) -> DataType {
+        check_network!(network, self);
+        self.as_ref().getType().into()
+    }
+
+    /// See [nvinfer1::ITensor::getType]
     pub fn r#type(&self, network: &NetworkDefinition) -> DataType {
         check_network!(network, self);
         self.as_ref().getType().into()
     }
 
-    #[deprecated = "use r#type instead"]
+    /// See [nvinfer1::ITensor::getType]
     pub fn get_type(&self, network: &NetworkDefinition) -> DataType {
         self.r#type(network)
     }
