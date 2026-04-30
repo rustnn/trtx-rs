@@ -378,7 +378,59 @@ impl<'engine> CudaEngine<'engine> {
         let name_cstr = std::ffi::CString::new(name)?;
         Ok(unsafe { self.inner.isShapeInferenceIO(name_cstr.as_ptr()) })
     }
+
+    /// Returns an iterator over all IO tensor names.
+    pub fn io_tensor_names(&self) -> Result<CudaEngineIoTensorNamesIter<'_>> {
+        Ok(CudaEngineIoTensorNamesIter {
+            engine: self,
+            index: 0,
+            count: self.nb_io_tensors()?,
+        })
+    }
+
+    /// Returns an iterator over input tensor names.
+    pub fn input_tensor_names(&self) -> Result<impl Iterator<Item = String> + '_> {
+        Ok(self
+            .io_tensor_names()?
+            .filter(|name| self.tensor_io_mode(name).ok() == Some(TensorIOMode::kINPUT)))
+    }
+
+    /// Returns an iterator over output tensor names.
+    pub fn output_tensor_names(&self) -> Result<impl Iterator<Item = String> + '_> {
+        Ok(self
+            .io_tensor_names()?
+            .filter(|name| self.tensor_io_mode(name).ok() == Some(TensorIOMode::kOUTPUT)))
+    }
 }
+
+/// Iterator over [`CudaEngine`] IO tensor names. Created by [`CudaEngine::io_tensor_names`].
+pub struct CudaEngineIoTensorNamesIter<'a> {
+    engine: &'a CudaEngine<'a>,
+    index: i32,
+    count: i32,
+}
+
+impl Iterator for CudaEngineIoTensorNamesIter<'_> {
+    type Item = String;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.count {
+            return None;
+        }
+        let name = self
+            .engine
+            .io_tensor_name(self.index)
+            .expect("valid tensor index");
+        self.index += 1;
+        Some(name)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = (self.count - self.index).max(0) as usize;
+        (remaining, Some(remaining))
+    }
+}
+
+impl ExactSizeIterator for CudaEngineIoTensorNamesIter<'_> {}
 
 #[cfg(test)]
 #[cfg(not(feature = "mock_runtime"))]
@@ -405,6 +457,7 @@ mod tests {
             .unwrap()
             .output(&network, 0)
             .unwrap();
+        tensor.set_name(&mut network, "output").unwrap();
         network.mark_output(&tensor);
 
         let mut config = builder.create_config()?;
@@ -413,6 +466,48 @@ mod tests {
 
         let engine_data = builder.build_serialized_network(&mut network, &mut config)?;
         Ok(engine_data.to_vec())
+    }
+
+    #[test]
+    fn input_output_tensor_names_iter() {
+        let logger = Logger::stderr().expect("logger");
+        let engine_data =
+            build_minimal_engine_with_verbose_profiling(&logger).expect("build engine");
+        let mut runtime = Runtime::new(&logger).expect("runtime");
+        let engine = runtime
+            .deserialize_cuda_engine(&engine_data)
+            .expect("deserialize");
+
+        let inputs: Vec<_> = engine.input_tensor_names().unwrap().collect();
+        let outputs: Vec<_> = engine.output_tensor_names().unwrap().collect();
+
+        assert_eq!(inputs, ["input"]);
+        assert_eq!(outputs, ["output"]);
+        assert_eq!(
+            inputs.len() + outputs.len(),
+            engine.nb_io_tensors().unwrap() as usize
+        );
+    }
+
+    #[test]
+    fn io_tensor_names_iter() {
+        let logger = Logger::stderr().expect("logger");
+        let engine_data =
+            build_minimal_engine_with_verbose_profiling(&logger).expect("build engine");
+        let mut runtime = Runtime::new(&logger).expect("runtime");
+        let engine = runtime
+            .deserialize_cuda_engine(&engine_data)
+            .expect("deserialize");
+
+        let names: Vec<_> = engine.io_tensor_names().unwrap().collect();
+        assert_eq!(engine.io_tensor_names().unwrap().len(), names.len());
+
+        // equivalent to the old loop pattern
+        let mut old_style = Vec::new();
+        for i in 0..engine.nb_io_tensors().unwrap() {
+            old_style.push(engine.io_tensor_name(i).unwrap());
+        }
+        assert_eq!(names, old_style);
     }
 
     #[test]
