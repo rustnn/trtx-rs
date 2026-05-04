@@ -21,6 +21,14 @@ pub struct SerializationConfig<'cuda_engine> {
     inner: UniquePtr<nvinfer1::ISerializationConfig>,
     _runtime: PhantomData<&'cuda_engine nvinfer1::ICudaEngine>,
 }
+impl std::fmt::Debug for SerializationConfig<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SerializationConfig")
+            .field("inner", &format!("{:x}", self.inner.as_ptr() as usize))
+            .finish_non_exhaustive()
+    }
+}
+
 impl SerializationConfig<'_> {
     /// See [nvinfer1::ISerializationConfig::getFlag]
     pub fn flag(&self, flag: SerializationFlag) -> bool {
@@ -66,6 +74,14 @@ impl SerializationConfig<'_> {
 pub struct CudaEngine<'runtime> {
     pub(crate) inner: UniquePtr<ICudaEngine>,
     _runtime: PhantomData<&'runtime nvinfer1::IRuntime>,
+}
+
+impl std::fmt::Debug for CudaEngine<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CudaEngine")
+            .field("inner", &format!("{:x}", self.inner.as_ptr() as usize))
+            .finish_non_exhaustive()
+    }
 }
 
 impl<'engine> CudaEngine<'engine> {
@@ -404,6 +420,7 @@ impl<'engine> CudaEngine<'engine> {
 }
 
 /// Iterator over [`CudaEngine`] IO tensor names. Created by [`CudaEngine::io_tensor_names`].
+#[derive(Debug)]
 pub struct CudaEngineIoTensorNamesIter<'a> {
     engine: &'a CudaEngine<'a>,
     index: i32,

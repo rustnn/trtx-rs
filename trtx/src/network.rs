@@ -38,6 +38,7 @@ use crate::interfaces::ErrorRecorder;
 use log::{debug, trace};
 
 /// Kernel and optional bias weights for convolution and deconvolution layers.
+#[derive(Debug)]
 pub struct ConvWeights<'a> {
     pub kernel_weights: &'a [u8],
     pub kernel_dtype: crate::DataType,
@@ -45,12 +46,14 @@ pub struct ConvWeights<'a> {
     pub bias_dtype: Option<crate::DataType>,
 }
 
+#[derive(Debug)]
 pub struct OwnedWeights {
     pub shape: Vec<i64>,
     pub data_type: DataType,
     pub values: Vec<u8>,
 }
 
+#[derive(Debug)]
 pub struct OwnedConvWeights {
     pub kernel: OwnedWeights,
     pub bias: Option<OwnedWeights>,
@@ -71,6 +74,15 @@ impl OwnedConvWeights {
 pub struct Layer<'network, Inner: AsLayer> {
     pub(crate) inner: Pin<&'network mut Inner>,
     pub(crate) network: *const nvinfer1::INetworkDefinition,
+}
+
+impl<Inner: AsLayer> std::fmt::Debug for Layer<'_, Inner> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Layer")
+            .field("inner", &format!("{:x}", &*self.inner as *const _ as usize))
+            .field("layer_type", self.layer_type_dynamic())
+            .finish_non_exhaustive()
+    }
 }
 
 impl<'network, Inner: AsLayerTyped> Layer<'network, Inner> {
@@ -344,16 +356,40 @@ pub struct Attention<'network> {
     pub(crate) network: *const nvinfer1::INetworkDefinition,
 }
 
+impl std::fmt::Debug for Attention<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Attention")
+            .field("inner", &format!("{:x}", &*self.inner as *const _ as usize))
+            .finish_non_exhaustive()
+    }
+}
+
 /// Loop construct for recurrent subgraphs. Created by [`NetworkDefinition::add_loop`].
 pub struct Loop<'network> {
     pub(crate) inner: Pin<&'network mut nvinfer1::ILoop>,
     pub(crate) network: *const nvinfer1::INetworkDefinition,
 }
 
+impl std::fmt::Debug for Loop<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Loop")
+            .field("inner", &format!("{:x}", &*self.inner as *const _ as usize))
+            .finish_non_exhaustive()
+    }
+}
+
 /// If-conditional construct. Created by [`NetworkDefinition::add_if_conditional`].
 pub struct IfConditional<'network> {
     pub(crate) inner: Pin<&'network mut nvinfer1::IIfConditional>,
     pub(crate) network: *const nvinfer1::INetworkDefinition,
+}
+
+impl std::fmt::Debug for IfConditional<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("IfConditional")
+            .field("inner", &format!("{:x}", &*self.inner as *const _ as usize))
+            .finish_non_exhaustive()
+    }
 }
 impl ShuffleLayer<'_> {
     /// See [nvinfer1::IShuffleLayer::setReshapeDimensions]
@@ -1239,6 +1275,14 @@ pub struct NetworkDefinition<'builder> {
     _builder: PhantomData<&'builder trtx_sys::nvinfer1::IBuilder>,
     small_copied_weights: Vec<Vec<u8>>, // for convenience we hold pointers to scalars here
     error_recorder: Option<Pin<Box<ErrorRecorder>>>,
+}
+
+impl std::fmt::Debug for NetworkDefinition<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NetworkDefinition")
+            .field("inner", &format!("{:x}", self.inner.as_ptr() as usize))
+            .finish_non_exhaustive()
+    }
 }
 
 fn tensor_dbg(network: &NetworkDefinition<'_>, tensor: &Tensor<'_>) -> String {
@@ -2424,6 +2468,7 @@ impl<'network> NetworkDefinition<'network> {
 // --- Network input/output iterators ---
 
 /// Iterator over a [`NetworkDefinition`]'s input tensors. Created by [`NetworkDefinition::inputs`].
+#[derive(Debug)]
 pub struct NetworkInputIter<'a, 'network> {
     network: &'a NetworkDefinition<'network>,
     index: i32,
@@ -2450,6 +2495,7 @@ impl<'network> Iterator for NetworkInputIter<'_, 'network> {
 impl ExactSizeIterator for NetworkInputIter<'_, '_> {}
 
 /// Iterator over a [`NetworkDefinition`]'s output tensors. Created by [`NetworkDefinition::outputs`].
+#[derive(Debug)]
 pub struct NetworkOutputIter<'a, 'network> {
     network: &'a NetworkDefinition<'network>,
     index: i32,
@@ -2476,6 +2522,7 @@ impl<'network> Iterator for NetworkOutputIter<'_, 'network> {
 impl ExactSizeIterator for NetworkOutputIter<'_, '_> {}
 
 /// Iterator over a [`NetworkDefinition`]'s layers. Created by [`NetworkDefinition::layers`].
+#[derive(Debug)]
 pub struct NetworkLayerIter<'a, 'network> {
     network: &'a NetworkDefinition<'network>,
     index: i32,

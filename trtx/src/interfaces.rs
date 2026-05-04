@@ -157,6 +157,14 @@ pub struct GpuAllocator {
     rust_impl: Box<dyn AllocateGpu>,
 }
 
+impl std::fmt::Debug for GpuAllocator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GpuAllocator")
+            .field("inner", &format!("{:x}", self.cpp_obj.as_ptr() as usize))
+            .finish_non_exhaustive()
+    }
+}
+
 impl GpuAllocator {
     pub fn new(inner: Box<dyn AllocateGpu>) -> Result<Pin<Box<Self>>> {
         let mut rust_obj = Box::pin(GpuAllocator {
@@ -298,6 +306,14 @@ pub struct ErrorRecorder {
     rust_impl: Box<dyn RecordError>,
 }
 
+impl std::fmt::Debug for ErrorRecorder {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ErrorRecorder")
+            .field("inner", &format!("{:x}", self.cpp_obj.as_ptr() as usize))
+            .finish_non_exhaustive()
+    }
+}
+
 impl ErrorRecorder {
     pub fn new(inner: Box<dyn RecordError>) -> Result<Pin<Box<Self>>> {
         let mut rust_obj = Box::pin(ErrorRecorder {
@@ -380,6 +396,14 @@ pub struct DebugListener {
 
 pub type ProcessDebugTensorResult = std::result::Result<(), ()>;
 
+impl std::fmt::Debug for DebugListener {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DebugListener")
+            .field("inner", &format!("{:x}", self.cpp_obj as usize))
+            .finish_non_exhaustive()
+    }
+}
+
 impl DebugListener {
     pub fn new(inner: Box<dyn ProcessDebugTensor>) -> Result<Pin<Box<Self>>> {
         let mut rust_obj = Box::pin(Self {
@@ -448,6 +472,14 @@ unsafe extern "system" fn Profiler_reportLayerTime(
 pub struct Profiler {
     cpp_obj: *mut nvinfer1::IProfiler,
     rust_impl: Box<dyn ReportLayerTime>,
+}
+
+impl std::fmt::Debug for Profiler {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Profiler")
+            .field("inner", &format!("{:x}", self.cpp_obj as usize))
+            .finish_non_exhaustive()
+    }
 }
 
 impl Profiler {

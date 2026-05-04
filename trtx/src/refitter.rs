@@ -16,6 +16,7 @@ use autocxx::cxx::UniquePtr;
 use trtx_sys::{nvinfer1, DataType};
 
 /// View compatible with [`trtx_sys::nvinfer1::Weights`]; C++ [`nvinfer1::Weights`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_weights.html).
+#[derive(Debug)]
 pub struct Weights<'data, T> {
     data: &'data [T],
     data_type: DataType,
@@ -37,6 +38,14 @@ pub struct Refitter<'logger, 'engine> {
     error_recorder: Option<Pin<Box<ErrorRecorder>>>,
     _logger: PhantomData<&'logger Logger>,
     _engine: PhantomData<&'engine CudaEngine<'engine>>,
+}
+
+impl std::fmt::Debug for Refitter<'_, '_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Refitter")
+            .field("inner", &format!("{:x}", self.inner.as_ptr() as usize))
+            .finish_non_exhaustive()
+    }
 }
 
 impl<'logger, 'engine> Refitter<'logger, 'engine> {
