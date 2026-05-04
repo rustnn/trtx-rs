@@ -37,6 +37,14 @@ pub struct Builder<'a> {
     error_recorder: Option<Pin<Box<ErrorRecorder>>>,
 }
 
+impl std::fmt::Debug for Builder<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Builder")
+            .field("inner", &format!("{:x}", self.inner.as_ptr() as usize))
+            .finish_non_exhaustive()
+    }
+}
+
 impl<'builder> Builder<'builder> {
     #[cfg(not(feature = "link_tensorrt_rtx"))]
     #[cfg(not(feature = "dlopen_tensorrt_rtx"))]
