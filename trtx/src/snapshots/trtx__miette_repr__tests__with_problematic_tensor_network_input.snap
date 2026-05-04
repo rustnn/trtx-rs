@@ -1,0 +1,13 @@
+---
+source: trtx/src/miette_repr.rs
+expression: out
+---
+  [31m×[0m Runtime error: test
+[31m  ╰─▶ [0mRuntime error: test
+   ╭─[[36;1;4mnetwork:1:1[0m]
+ [2m1[0m │ img([1,3,224,224], F32)  // network input
+   · [35;1m───────────┬───────────[0m
+   ·            [35;1m╰── [35;1mThis tensor caused the problem[0m[0m
+ [2m2[0m │ 
+   ╰────
+[36m  help: [0mThis tensor is a network input

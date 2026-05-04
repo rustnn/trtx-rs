@@ -135,6 +135,8 @@ pub mod executor;
 pub mod host_memory;
 pub mod interfaces;
 pub mod logger;
+#[cfg(feature = "miette")]
+pub mod miette_repr;
 pub mod network;
 #[cfg(feature = "onnxparser")]
 pub mod onnx_parser;
