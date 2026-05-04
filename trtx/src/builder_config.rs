@@ -29,6 +29,14 @@ pub struct BuilderConfig<'builder> {
     _builder: PhantomData<&'builder Builder<'builder>>,
 }
 
+impl std::fmt::Debug for BuilderConfig<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BuilderConfig")
+            .field("inner", &format!("{:x}", self.inner.as_ptr() as usize))
+            .finish_non_exhaustive()
+    }
+}
+
 impl<'builder> BuilderConfig<'builder> {
     pub(crate) fn new(builder_config: *mut nvinfer1::IBuilderConfig) -> Result<Self> {
         #[cfg(not(feature = "mock"))]

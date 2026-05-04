@@ -14,6 +14,14 @@ pub struct EngineInspector<'engine> {
     pub(crate) _engine: PhantomData<&'engine nvinfer1::ICudaEngine>,
 }
 
+impl std::fmt::Debug for EngineInspector<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EngineInspector")
+            .field("inner", &format!("{:x}", self.inner.as_ptr() as usize))
+            .finish_non_exhaustive()
+    }
+}
+
 impl EngineInspector<'_> {
     /// Returns layer information for the given layer index in the requested format.
     /// See [`trtx_sys::nvinfer1::IEngineInspector::getLayerInformation`].

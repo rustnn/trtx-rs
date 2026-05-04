@@ -34,6 +34,7 @@ impl LogHandler for StderrLogger {
     }
 }
 
+#[derive(Debug)]
 pub struct LogCrateLogger;
 
 impl LogHandler for LogCrateLogger {
@@ -111,6 +112,14 @@ impl Logger {
                 handler_box.log(severity, msg);
             }
         }
+    }
+}
+
+impl std::fmt::Debug for Logger {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Logger")
+            .field("bridge", &format!("{:x}", self.bridge as usize))
+            .finish_non_exhaustive()
     }
 }
 

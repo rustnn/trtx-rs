@@ -17,6 +17,14 @@ pub struct HostMemory<'builder> {
     mock_data: Vec<u8>,
 }
 
+impl std::fmt::Debug for HostMemory<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HostMemory")
+            .field("inner", &format!("{:x}", self.inner.as_ptr() as usize))
+            .finish_non_exhaustive()
+    }
+}
+
 impl<'builder> HostMemory<'builder> {
     /// assumes ownership of ref
     pub(crate) unsafe fn from_raw(ptr: *mut nvinfer1::IHostMemory) -> Self {

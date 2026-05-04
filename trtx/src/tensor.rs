@@ -9,6 +9,15 @@ pub struct Tensor<'network> {
     pub(crate) inner: *mut nvinfer1::ITensor,
     pub(crate) network: &'network nvinfer1::INetworkDefinition,
 }
+
+impl std::fmt::Debug for Tensor<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Tensor")
+            .field("inner", &format!("{:x}", self.inner as usize))
+            .finish_non_exhaustive()
+    }
+}
+
 impl Tensor<'_> {
     pub(crate) unsafe fn new(
         network: *const nvinfer1::INetworkDefinition,

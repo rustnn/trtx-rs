@@ -21,6 +21,14 @@ pub struct Runtime<'logger> {
     _logger: PhantomData<&'logger Logger>,
 }
 
+impl std::fmt::Debug for Runtime<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Runtime")
+            .field("inner", &format!("{:x}", self.inner.as_ptr() as usize))
+            .finish_non_exhaustive()
+    }
+}
+
 impl<'runtime> Runtime<'runtime> {
     #[cfg(not(feature = "link_tensorrt_rtx"))]
     #[cfg(not(feature = "dlopen_tensorrt_rtx"))]
