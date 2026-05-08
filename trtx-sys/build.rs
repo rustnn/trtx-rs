@@ -187,6 +187,12 @@ fn generate_enum_bindings(crate_root: &str, out_path: &Path, include_dir: &Path)
 }
 
 fn main() {
+    // RUST_LOG makes autocxx unbearably slow. RUST_LOG unusually intended for running the program
+    // not building it
+    unsafe {
+        std::env::remove_var("RUST_LOG");
+    }
+
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     let crate_root = env::var("CARGO_MANIFEST_DIR").unwrap();
     let link_trt = env::var("CARGO_FEATURE_LINK_TENSORRT_RTX").is_ok();
