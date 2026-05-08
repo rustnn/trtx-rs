@@ -170,7 +170,7 @@ pub(crate) static TRTLIB: std::sync::RwLock<Option<libloading::Library>> =
 pub fn dynamically_load_tensorrt(_filename: Option<impl AsFilename>) -> Result<()> {
     #[cfg(not(any(feature = "link_tensorrt_rtx", feature = "mock")))]
     {
-        use log::{debug, error};
+        use log::{debug, warn};
         if TRTLIB.read()?.is_some() {
             return Ok(());
         }
@@ -219,7 +219,7 @@ pub fn dynamically_load_tensorrt(_filename: Option<impl AsFilename>) -> Result<(
                     })
                 }
             }
-            .inspect_err(|e| error!("Failed to load TensorRT library: {e:?}"))?;
+            .inspect_err(|e| warn!("Failed to load TensorRT library: {e:?}"))?;
 
             *write = Some(lib);
         }
@@ -236,7 +236,7 @@ pub(crate) static TRT_ONNXPARSER_LIB: std::sync::RwLock<Option<libloading::Libra
 pub fn dynamically_load_tensorrt_onnxparser(_filename: Option<impl AsFilename>) -> Result<()> {
     #[cfg(not(any(feature = "link_tensorrt_onnxparser", feature = "mock")))]
     {
-        use log::{debug, error};
+        use log::{debug, warn};
         let mut write = TRT_ONNXPARSER_LIB.write()?;
         if write.is_some() {
             return Ok(());
@@ -284,7 +284,7 @@ pub fn dynamically_load_tensorrt_onnxparser(_filename: Option<impl AsFilename>) 
                 })
             }
         }
-        .inspect_err(|e| error!("Failed to load TensorRT onnxparser library: {e:?}"))?;
+        .inspect_err(|e| warn!("Failed to load TensorRT onnxparser library: {e:?}"))?;
 
         *write = Some(lib);
     }
