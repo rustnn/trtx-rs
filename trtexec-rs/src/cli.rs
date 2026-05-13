@@ -51,7 +51,9 @@ pub struct Args {
 
     #[cfg(unix)]
     #[arg(short, long)]
-    /// Capture TensorRT API to JSON
+    /// Capture TensorRT API usage to JSON for possible later replay
+    ///
+    /// See https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/inference-library/capture-replay.html#capture-replay
     pub api_capture: Option<PathBuf>,
 
     /// Report layer time
