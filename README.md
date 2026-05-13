@@ -33,7 +33,17 @@ trtx-rs/
 
 ### Required (building) 
 
-1. **Clang**: Required for autocxx. On Windows: `winget install LLVM.LLVM`
+1. **libclang < 22**: Required for autocxx. On Windows: `winget install LLVM.LLVM -v 20.1.2`
+
+   *Important*: libclang version 22 or greater will cause a compilation error
+
+   You can steer discovery of libclang using LIBCLANG_PATH environment variable if auto-discovery
+   discovers a wrong version of libclang, e.g.
+
+   $env:LIBCLANG_PATH="D:\programs\LLVM\bin"  # powershell windows
+   export LIBCLANG_PATH=/usr/lib/llvm-19/lib  # linux
+
+   See https://rust-lang.github.io/rust-bindgen/requirements.html (note that autocxx uses an older fork of bindgen)
 
 TensorRT is by default dynamically loaded. So, the TensorRT SDK is only required for building
 with Cargo features `link_tensorrt_rtx`/ `link_tensorrt_onnxparser` which would link the TensorRT libraries.
