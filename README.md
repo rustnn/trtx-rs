@@ -406,6 +406,6 @@ This project is in early development. APIs may change before 1.0 release.
 
 ## Resources
 
-- [TensorRT-RTX Documentation](https://docs.nvidia.com/deeplearning/tensorrt-rtx/)
+- [TensorRT-RTX Documentation](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/)
 - [TensorRT-RTX GitHub](https://github.com/NVIDIA/TensorRT-RTX)
 - [CUDA Programming Guide](https://docs.nvidia.com/cuda/)
