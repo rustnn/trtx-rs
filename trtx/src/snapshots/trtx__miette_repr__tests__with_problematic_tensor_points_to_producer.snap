@@ -1,0 +1,19 @@
+---
+source: trtx/src/miette_repr.rs
+expression: out
+---
+  [31m×[0m Runtime error: test
+[31m  ╰─▶ [0mRuntime error: test
+   ╭─[[36;1;4mnetwork:4:1[0m]
+ [2m1[0m │ data([4], F32)  // network input
+   · [35;1m───────┬──────[0m
+   ·        [35;1m╰── [35;1minput 0: data[0m[0m
+ [2m2[0m │ 
+ [2m3[0m │ (Unnamed Layer* 0) [Constant]_output([1], F32) <- Constant[(Unnamed Layer* 0) [Constant]]()
+   · [33;1m───────────────────────┬──────────────────────[0m
+   ·                        [33;1m╰── [33;1minput 1: (Unnamed Layer* 0) [Constant]_output[0m[0m
+ [2m4[0m │ add_one_output([4], F32) <- Elementwise[add_one](data([4], F32), (Unnamed Layer* 0) [Constant]_output([1], F32))
+   · [32;1m────────────┬───────────[0m
+   ·             [32;1m╰── [32;1mproblematic tensor[0m[0m
+   ╰────
+[36m  help: [0mProduced by Elementwise[add_one]. Inputs: data, (Unnamed Layer* 0) [Constant]_output
