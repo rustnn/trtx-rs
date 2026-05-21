@@ -123,6 +123,15 @@ pub enum Error {
 
     #[error("Could not get dimensions from Tensor {tensor_name:?}")]
     FailedToGetTensorDimensions { tensor_name: String },
+
+    #[error("Failed to set input tensor address for tensor {tensor_name:?}")]
+    FailedToSetInputTensorAddress { tensor_name: String },
+
+    #[error("Failed to set output tensor  address for tensor {tensor_name:?}")]
+    FailedToSetOutputTensorAddress { tensor_name: String },
+
+    #[error("Failed to set IO tensor  address for tensor {tensor_name:?}")]
+    FailedToSetTensorAddress { tensor_name: String },
 }
 
 impl<T> From<std::sync::PoisonError<T>> for Error {
