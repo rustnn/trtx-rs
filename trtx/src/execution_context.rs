@@ -546,3 +546,108 @@ impl<'a> ExecutionContext<'a> {
         }
     }
 }
+
+#[cfg(test)]
+#[cfg(not(feature = "mock_runtime"))]
+mod tests {
+    use crate::builder::{Builder, MemoryPoolType};
+    use crate::cuda::{default_stream, synchronize, DeviceBuffer};
+    use crate::error::Error;
+    use crate::logger::Logger;
+    use crate::{DataType, ElementWiseOperation, Runtime};
+
+    fn build_add_network(logger: &Logger) -> crate::Result<Vec<u8>> {
+        let mut builder = Builder::new(logger)?;
+        let mut network = builder.create_network(0)?;
+        let a = network.add_input("a", DataType::kFLOAT, &[1])?;
+        let b = network.add_input("b", DataType::kFLOAT, &[1])?;
+        let sum = network.add_elementwise(&a, &b, ElementWiseOperation::kSUM)?;
+        let c = sum.output(&network, 0)?;
+        c.set_name(&mut network, "c")?;
+        network.mark_output(&c);
+
+        let mut config = builder.create_config()?;
+        config.set_memory_pool_limit(MemoryPoolType::kWORKSPACE, 1 << 20);
+        let engine_data = builder.build_serialized_network(&mut network, &mut config)?;
+        Ok(engine_data.to_vec())
+    }
+
+    #[test]
+    fn elementwise_add_with_input_output_tensor_addresses() {
+        let logger = Logger::stderr().expect("logger");
+        let engine_data = build_add_network(&logger).expect("build a + b = c network");
+
+        let mut runtime = Runtime::new(&logger).expect("runtime");
+        let mut engine = runtime
+            .deserialize_cuda_engine(&engine_data)
+            .expect("deserialize");
+        let mut context = engine
+            .create_execution_context()
+            .expect("execution context");
+
+        let elem_size = std::mem::size_of::<f32>();
+        let mut a_buf = DeviceBuffer::new(elem_size).expect("buffer a");
+        let mut b_buf = DeviceBuffer::new(elem_size).expect("buffer b");
+        let c_buf = DeviceBuffer::new(elem_size).expect("buffer c");
+        a_buf.copy_from_host(&2.0f32.to_le_bytes()).expect("copy a");
+        b_buf.copy_from_host(&3.0f32.to_le_bytes()).expect("copy b");
+
+        unsafe {
+            context
+                .set_input_tensor_address("a", a_buf.as_ptr() as *const _)
+                .expect("bind input a");
+            context
+                .set_input_tensor_address("b", b_buf.as_ptr() as *const _)
+                .expect("bind input b");
+            context
+                .set_output_tensor_address("c", c_buf.as_ptr())
+                .expect("bind output c");
+            context.enqueue_v3(default_stream()).expect("enqueue");
+        }
+        synchronize().expect("sync");
+
+        let mut out_bytes = [0u8; 4];
+        c_buf.copy_to_host(&mut out_bytes).expect("copy c");
+        let c_val = f32::from_le_bytes(out_bytes);
+        assert!(
+            (c_val - 5.0f32).abs() < 1e-5,
+            "expected a + b = 5.0, got {c_val}"
+        );
+    }
+
+    #[test]
+    fn set_input_output_tensor_address_invalid_name_fails() {
+        let logger = Logger::stderr().expect("logger");
+        let engine_data = build_add_network(&logger).expect("build network");
+
+        let mut runtime = Runtime::new(&logger).expect("runtime");
+        let mut engine = runtime
+            .deserialize_cuda_engine(&engine_data)
+            .expect("deserialize");
+        let mut context = engine
+            .create_execution_context()
+            .expect("execution context");
+
+        let buf = DeviceBuffer::new(std::mem::size_of::<f32>()).expect("buffer");
+        let ptr = buf.as_ptr();
+        let const_ptr = ptr as *const std::ffi::c_void;
+
+        unsafe {
+            let input_err = context
+                .set_input_tensor_address("not_a_tensor", const_ptr)
+                .unwrap_err();
+            assert!(
+                matches!(input_err, Error::FailedToSetInputTensorAddress { .. }),
+                "unexpected error for invalid input name: {input_err:?}"
+            );
+
+            let output_err = context
+                .set_output_tensor_address("also_not_a_tensor", ptr)
+                .unwrap_err();
+            assert!(
+                matches!(output_err, Error::FailedToSetOutputTensorAddress { .. }),
+                "unexpected error for invalid output name: {output_err:?}"
+            );
+        }
+    }
+}
