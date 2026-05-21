@@ -347,7 +347,9 @@ impl<'a> ExecutionContext<'a> {
                 .pin_mut()
                 .setTensorAddress(name_cstr.as_ptr(), data as *mut _);
             if !success {
-                return Err(Error::Runtime("Failed to set tensor address".to_string()));
+                return Err(Error::FailedToSetTensorAddress {
+                    tensor_name: name.to_string(),
+                });
             }
         }
         Ok(())
@@ -368,13 +370,21 @@ impl<'a> ExecutionContext<'a> {
         &mut self,
         name: &str,
         data: *mut std::ffi::c_void,
-    ) -> Result<bool> {
-        let name = CString::new(name)?;
-        Ok(unsafe {
-            self.inner
+    ) -> Result<()> {
+        let cname = CString::new(name)?;
+        unsafe {
+            if self
+                .inner
                 .pin_mut()
-                .setOutputTensorAddress(name.as_ptr(), data as *mut _)
-        })
+                .setOutputTensorAddress(cname.as_ptr(), data as *mut _)
+            {
+                Ok(())
+            } else {
+                Err(Error::FailedToSetOutputTensorAddress {
+                    tensor_name: name.to_string(),
+                })
+            }
+        }
     }
 
     /// See [nvinfer1::IExecutionContext::setInputTensorAddress].
@@ -386,13 +396,21 @@ impl<'a> ExecutionContext<'a> {
         &mut self,
         name: &str,
         data: *const std::ffi::c_void,
-    ) -> Result<bool> {
-        let name = CString::new(name)?;
-        Ok(unsafe {
-            self.inner
+    ) -> Result<()> {
+        let cname = CString::new(name)?;
+        unsafe {
+            if self
+                .inner
                 .pin_mut()
-                .setInputTensorAddress(name.as_ptr(), data as *const _)
-        })
+                .setInputTensorAddress(cname.as_ptr(), data as *const _)
+            {
+                Ok(())
+            } else {
+                Err(Error::FailedToSetInputTensorAddress {
+                    tensor_name: name.to_string(),
+                })
+            }
+        }
     }
 
     /// See [nvinfer1::IExecutionContext::getOutputTensorAddress].
