@@ -35,7 +35,7 @@ impl SerializationConfig<'_> {
     pub fn flag(&self, flag: SerializationFlag) -> bool {
         self.inner.getFlag(flag.into())
     }
-    /// See [nvinfer1::SerializationConfig::getFlags]
+    /// See [nvinfer1::ISerializationConfig::getFlags]
     pub fn flags(&self) -> u32 {
         self.inner.getFlags()
     }

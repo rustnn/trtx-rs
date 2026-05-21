@@ -14,7 +14,7 @@ use crate::interfaces::{
 /// [`trtx_sys::nvinfer1::IExecutionContext`] — C++ [`nvinfer1::IExecutionContext`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_execution_context.html).
 ///
 /// `inner` is declared last so it is dropped first (see [`Drop`]): TensorRT must release
-/// [`DebugListener`](crate::interfaces::DebugListener) / [`Profiler`](crate::interfaces::Profiler)
+/// [DebugListener] / [Profiler]
 /// pointers before their Rust wrappers run destructors.
 pub struct ExecutionContext<'a> {
     _engine: std::marker::PhantomData<&'a CudaEngine<'a>>,
