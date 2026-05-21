@@ -100,8 +100,11 @@ fn prepare_transformed_headers(header_dir: &Path, out_dir: &Path) -> PathBuf {
                 + r#"
 namespace nvinfer1 {
     class IMoELayer;
+    class IRuntimeCache;
     class IDistCollectiveLayer;
     enum class ComputeCapability : int32_t;
+    enum class CudaGraphStrategy : int32_t;
+    enum class DynamicShapesKernelSpecializationStrategy : int32_t;
 }"#;
 
             // trimming of indentation is necessary, so that rustdoc doesn't interpret

@@ -8,6 +8,7 @@ use std::{ffi::CStr, marker::PhantomData};
 use crate::engine_inspector::EngineInspector;
 use crate::error::PropertySetAttempt;
 use crate::host_memory::HostMemory;
+use crate::runtime_config::RuntimeConfig;
 use crate::{DataType, Error, ExecutionContext, Result};
 use autocxx::cxx::UniquePtr;
 use trtx_sys::{
@@ -354,6 +355,26 @@ impl<'engine> CudaEngine<'engine> {
         Ok(unsafe { ExecutionContext::from_ptr(std::ptr::null_mut())? })
     }
 
+    /// See [nvinfer1::ICudaEngine::createExecutionContext1]
+    pub fn create_execution_context_with_config(
+        &'_ mut self,
+        runtime_conifg: &'engine RuntimeConfig<'engine>,
+    ) -> Result<ExecutionContext<'engine>> {
+        #[cfg(not(feature = "mock_runtime"))]
+        {
+            use crate::ExecutionContext;
+
+            let context_ptr = unsafe {
+                self.inner
+                    .pin_mut()
+                    .createExecutionContext1(runtime_conifg.inner.as_mut_ptr())
+            };
+            Ok(unsafe { ExecutionContext::from_ptr(context_ptr)? })
+        }
+        #[cfg(feature = "mock_runtime")]
+        Ok(unsafe { ExecutionContext::from_ptr(std::ptr::null_mut())? })
+    }
+
     /// See [nvinfer1::ICudaEngine::createSerializationConfig]
     pub fn create_serialization_config(&mut self) -> Result<SerializationConfig<'engine>> {
         let config = unsafe {
@@ -393,6 +414,15 @@ impl<'engine> CudaEngine<'engine> {
     pub fn is_shape_inference_io(&self, name: &str) -> Result<bool> {
         let name_cstr = std::ffi::CString::new(name)?;
         Ok(unsafe { self.inner.isShapeInferenceIO(name_cstr.as_ptr()) })
+    }
+
+    /// See [nvinfer1::ICudaEngine::createRuntimeConfig]
+    pub fn create_runtime_config(&'_ mut self) -> Result<RuntimeConfig<'engine>> {
+        #[cfg(not(feature = "mock"))]
+        let config_ptr = self.inner.pin_mut().createRuntimeConfig();
+        #[cfg(feature = "mock")]
+        let config_ptr = std::ptr::null_mut();
+        RuntimeConfig::new(config_ptr)
     }
 
     /// Returns an iterator over all IO tensor names.

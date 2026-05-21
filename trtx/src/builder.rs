@@ -114,6 +114,12 @@ impl<'builder> Builder<'builder> {
         }
     }
 
+    /// See [nvinfer1::IBuilder::createBuilderConfig]
+    pub fn create_builder_config(&'_ mut self) -> Result<BuilderConfig<'builder>> {
+        self.create_config()
+    }
+
+    /// See [nvinfer1::IBuilder::createBuilderConfig]
     pub fn create_config(&'_ mut self) -> Result<BuilderConfig<'builder>> {
         #[cfg(not(feature = "mock"))]
         let config_ptr = self.inner.pin_mut().createBuilderConfig();

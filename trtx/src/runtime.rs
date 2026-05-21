@@ -14,6 +14,9 @@ pub use crate::engine_inspector::EngineInspector;
 use crate::error::{Error, Result};
 pub use crate::execution_context::ExecutionContext;
 use crate::logger::Logger;
+#[cfg(not(feature = "enterprise"))]
+pub use crate::runtime_cache::RuntimeCache;
+pub use crate::runtime_config::RuntimeConfig;
 
 /// [`trtx_sys::nvinfer1::IRuntime`] — C++ [`nvinfer1::IRuntime`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_runtime.html).
 pub struct Runtime<'logger> {
