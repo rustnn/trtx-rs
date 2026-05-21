@@ -52,6 +52,14 @@ impl DeviceBuffer {
     }
 }
 
+impl std::fmt::Debug for DeviceBuffer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DeviceBuffer")
+            .field("size", &self.size)
+            .finish_non_exhaustive()
+    }
+}
+
 unsafe impl Send for DeviceBuffer {}
 
 /// Synchronize CUDA device

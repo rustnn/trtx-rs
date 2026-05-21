@@ -13,6 +13,14 @@ pub struct OptimizationProfile<'builder> {
     _builder: PhantomData<&'builder nvinfer1::IBuilder>,
 }
 
+impl std::fmt::Debug for OptimizationProfile<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("OptimizationProfile")
+            .field("inner", &format!("{:x}", &*self.inner as *const _ as usize))
+            .finish_non_exhaustive()
+    }
+}
+
 impl<'builder> OptimizationProfile<'builder> {
     pub fn from_raw(profile: &'builder mut nvinfer1::IOptimizationProfile) -> Self {
         Self {

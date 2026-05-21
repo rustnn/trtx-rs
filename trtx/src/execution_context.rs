@@ -24,6 +24,14 @@ pub struct ExecutionContext<'a> {
     inner: UniquePtr<nvinfer1::IExecutionContext>,
 }
 
+impl std::fmt::Debug for ExecutionContext<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ExecutionContext")
+            .field("inner", &format!("{:x}", self.inner.as_ptr() as usize))
+            .finish_non_exhaustive()
+    }
+}
+
 impl<'a> ExecutionContext<'a> {
     pub(crate) unsafe fn from_ptr(
         execution_context: *mut nvinfer1::IExecutionContext,
