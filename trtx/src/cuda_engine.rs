@@ -358,7 +358,7 @@ impl<'engine> CudaEngine<'engine> {
     /// See [nvinfer1::ICudaEngine::createExecutionContext1]
     pub fn create_execution_context_with_config(
         &'_ mut self,
-        runtime_conifg: &'engine RuntimeConfig<'engine>,
+        runtime_config: &'engine RuntimeConfig<'engine>,
     ) -> Result<ExecutionContext<'engine>> {
         #[cfg(not(feature = "mock_runtime"))]
         {
@@ -367,7 +367,7 @@ impl<'engine> CudaEngine<'engine> {
             let context_ptr = unsafe {
                 self.inner
                     .pin_mut()
-                    .createExecutionContext1(runtime_conifg.inner.as_mut_ptr())
+                    .createExecutionContext1(runtime_config.inner.as_mut_ptr())
             };
             Ok(unsafe { ExecutionContext::from_ptr(context_ptr)? })
         }
