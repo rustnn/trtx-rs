@@ -151,6 +151,9 @@ pub mod onnx_parser;
 pub mod optimization_profile;
 pub mod refitter;
 pub mod runtime;
+#[cfg(not(feature = "enterprise"))]
+pub mod runtime_cache;
+pub mod runtime_config;
 pub mod tensor;
 
 // Re-export commonly used types
@@ -169,7 +172,9 @@ pub use network::{ConvWeights, NetworkDefinition, OwnedConvWeights, OwnedWeights
 #[cfg(feature = "onnxparser")]
 pub use onnx_parser::OnnxParser;
 pub use refitter::Refitter;
-pub use runtime::{CudaEngine, EngineInspector, ExecutionContext, Runtime};
+#[cfg(not(feature = "enterprise"))]
+pub use runtime::RuntimeCache;
+pub use runtime::{CudaEngine, EngineInspector, ExecutionContext, Runtime, RuntimeConfig};
 
 #[cfg(feature = "dlopen_tensorrt_rtx")]
 #[cfg(not(any(feature = "link_tensorrt_rtx", feature = "mock")))]
@@ -303,12 +308,14 @@ pub fn dynamically_load_tensorrt_onnxparser(_filename: Option<impl AsFilename>) 
 
 // Re-export TensorRT enums
 pub use trtx_sys::{
-    ActivationType, CumulativeOperation, DataType, ElementWiseOperation, GatherMode,
-    InterpolationMode, LayerInformationFormat, LayerType, MatrixOperation, PaddingMode,
-    PoolingType, ReduceOperation, ResizeCoordinateTransformation, ResizeMode, ResizeRoundMode,
-    ResizeSelector, SampleMode, ScaleMode, ScatterMode, TensorFormat, TensorIOMode, TopKOperation,
-    UnaryOperation,
+    ActivationType, CumulativeOperation, DataType, ElementWiseOperation,
+    ExecutionContextAllocationStrategy, GatherMode, InterpolationMode, LayerInformationFormat,
+    LayerType, MatrixOperation, PaddingMode, PoolingType, ReduceOperation,
+    ResizeCoordinateTransformation, ResizeMode, ResizeRoundMode, ResizeSelector, SampleMode,
+    ScaleMode, ScatterMode, TensorFormat, TensorIOMode, TopKOperation, UnaryOperation,
 };
 
 #[cfg(not(feature = "enterprise"))]
-pub use trtx_sys::ComputeCapability;
+pub use trtx_sys::{
+    ComputeCapability, CudaGraphStrategy, DynamicShapesKernelSpecializationStrategy,
+};

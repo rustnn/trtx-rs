@@ -22,6 +22,9 @@ pub enum PropertySetAttempt {
     ExecutionContextTensorDebugState,
     ExecutionContextNcclCommunicator,
     ExecutionContextInputShape,
+    RuntimeConfigCudaGraphStrategy,
+    RuntimeConfigRuntimeCache,
+    RuntimeCacheDeserialize,
     DequantizeLayerBlockShape,
     QuantizeLayerBlockShape,
     AttentionLayerInput,
@@ -112,6 +115,12 @@ pub enum Error {
     #[error("Failed to create BuilderConfig")]
     BuilderConfigCreationFailed,
 
+    #[error("Failed to create RuntimeConfig")]
+    RuntimeConfigCreationFailed,
+
+    #[error("Failed to create RuntimeCache")]
+    RuntimeCacheCreationFailed,
+
     #[error("Failed to set property: {0:?}")]
     FailedToSetProperty(PropertySetAttempt),
 
@@ -132,6 +141,9 @@ pub enum Error {
 
     #[error("Failed to set IO tensor  address for tensor {tensor_name:?}")]
     FailedToSetTensorAddress { tensor_name: String },
+
+    #[error("Failed to reset to RuntimeCache")]
+    FailedToResetRuntimeCache,
 }
 
 impl<T> From<std::sync::PoisonError<T>> for Error {

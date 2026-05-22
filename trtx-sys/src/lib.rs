@@ -65,6 +65,11 @@ better_enum!(HardwareCompatibilityLevel);
 better_enum!(RuntimePlatform);
 better_enum!(TilingOptimizationLevel);
 #[cfg(not(feature = "enterprise"))]
+better_enum!(CudaGraphStrategy);
+#[cfg(not(feature = "enterprise"))]
+better_enum!(DynamicShapesKernelSpecializationStrategy);
+better_enum!(ExecutionContextAllocationStrategy);
+#[cfg(not(feature = "enterprise"))]
 better_enum!(ComputeCapability);
 better_enum!(CumulativeOperation);
 better_enum!(ElementWiseOperation);
@@ -187,11 +192,10 @@ include_cpp! {
     generate!("nvinfer1::IAttention")
     generate!("nvinfer1::IMoELayer")
     generate!("nvinfer1::IDistCollectiveLayer")
-    // NOTE: IRNNv2Layer is deprecated (TRT_DEPRECATED) and autocxx cannot generate bindings for it
-    // RNN operations (lstm, lstmCell, gru, gruCell) remain deferred until we can work around this
-    // generate!("nvinfer1::IRNNv2Layer")
 
     generate!("nvinfer1::IRuntime")
+    generate!("nvinfer1::IRuntimeConfig")
+    generate!("nvinfer1::IRuntimeCache")
     generate!("nvinfer1::ICudaEngine")
     generate!("nvinfer1::IExecutionContext")
     generate!("nvinfer1::IEngineInspector")
@@ -232,11 +236,10 @@ include_cpp! {
     generate_pod!("nvinfer1::TilingOptimizationLevel")
     generate_pod!("nvinfer1::ComputeCapability")
     generate_pod!("nvinfer1::APILanguage")
-    // NOTE: RNN enums commented out because IRNNv2Layer (deprecated) cannot be generated
-    // generate!("nvinfer1::RNNOperation")
-    // generate!("nvinfer1::RNNDirection")
-    // generate!("nvinfer1::RNNInputMode")
-    // generate!("nvinfer1::RNNGateType")
+    generate_pod!("nvinfer1::CudaGraphStrategy")
+    generate_pod!("nvinfer1::DynamicShapesKernelSpecializationStrategy")
+    generate_pod!("nvinfer1::ExecutionContextAllocationStrategy")
+
     generate_pod!("nvinfer1::Weights")
     generate_pod!("nvinfer1::Permutation")
     generate_pod!("nvinfer1::TripLimit")
