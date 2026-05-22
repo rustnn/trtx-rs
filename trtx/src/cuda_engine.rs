@@ -353,17 +353,14 @@ impl<'engine> CudaEngine<'engine> {
             Ok(unsafe { ExecutionContext::from_ptr(context_ptr, None)? })
         }
         #[cfg(feature = "mock_runtime")]
-        Ok(unsafe { ExecutionContext::from_ptr(std::ptr::null_mut())? })
+        Ok(unsafe { ExecutionContext::from_ptr(std::ptr::null_mut(), None)? })
     }
 
     /// See [nvinfer1::ICudaEngine::createExecutionContext1]
-    pub fn create_execution_context_with_config<'config>(
+    pub fn create_execution_context_with_config(
         &'_ mut self,
-        runtime_config: Rc<RuntimeConfig<'config>>,
-    ) -> Result<ExecutionContext<'engine>>
-    where
-        'config: 'engine,
-    {
+        runtime_config: Rc<RuntimeConfig<'engine>>,
+    ) -> Result<ExecutionContext<'engine>> {
         #[cfg(not(feature = "mock_runtime"))]
         {
             use crate::ExecutionContext;
@@ -376,7 +373,7 @@ impl<'engine> CudaEngine<'engine> {
             Ok(unsafe { ExecutionContext::from_ptr(context_ptr, Some(runtime_config))? })
         }
         #[cfg(feature = "mock_runtime")]
-        Ok(unsafe { ExecutionContext::from_ptr(std::ptr::null_mut())? })
+        Ok(unsafe { ExecutionContext::from_ptr(std::ptr::null_mut(), None)? })
     }
 
     /// See [nvinfer1::ICudaEngine::createSerializationConfig]

@@ -3,6 +3,8 @@
 //! [`RuntimeConfig`] wraps [`trtx_sys::nvinfer1::IRuntimeConfig`] (C++ [`nvinfer1::IRuntimeConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_runtime_config.html)).
 
 use std::marker::PhantomData;
+#[cfg(not(feature = "enterprise"))]
+use std::sync::{Arc, Mutex};
 
 #[cfg(not(feature = "enterprise"))]
 use crate::error::PropertySetAttempt;
@@ -21,6 +23,11 @@ use trtx_sys::{CudaGraphStrategy, DynamicShapesKernelSpecializationStrategy};
 pub struct RuntimeConfig<'engine> {
     pub(crate) inner: UniquePtr<IRuntimeConfig>,
     _engine: PhantomData<&'engine nvinfer1::ICudaEngine>,
+    // actually IRuntimeCache has its mutex, so we could omit this if we made mut methods of RuntimeCache (e.g. deserialize &self)
+    // this also makes it safe when we modify through our mutex, while cpp calls are made through
+    // IExecution calls
+    #[cfg(not(feature = "enterprise"))]
+    _cache: Option<Arc<Mutex<RuntimeCache<'engine>>>>,
 }
 
 impl std::fmt::Debug for RuntimeConfig<'_> {
@@ -40,6 +47,8 @@ impl<'engine> RuntimeConfig<'engine> {
         Ok(Self {
             inner: unsafe { UniquePtr::from_raw(runtime_config) },
             _engine: Default::default(),
+            #[cfg(not(feature = "enterprise"))]
+            _cache: None,
         })
     }
 
@@ -75,14 +84,17 @@ impl<'engine> RuntimeConfig<'engine> {
 
     #[cfg(not(feature = "enterprise"))]
     /// See [IRuntimeConfig::setRuntimeCache].
-    pub fn set_runtime_cache(&mut self, cache: &RuntimeCache<'engine>) -> Result<()> {
+    pub fn set_runtime_cache(&mut self, cache: Arc<Mutex<RuntimeCache<'engine>>>) -> Result<()> {
         if cfg!(not(feature = "mock")) {
             if self.inner.pin_mut().setRuntimeCache(
                 cache
+                    .lock()
+                    .unwrap()
                     .inner
                     .as_ref()
                     .expect("RuntimeCache inner must be non-null"),
             ) {
+                self._cache = Some(cache);
                 Ok(())
             } else {
                 Err(Error::FailedToSetProperty(
