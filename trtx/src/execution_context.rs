@@ -1,5 +1,6 @@
 use std::ffi::{CStr, CString};
 use std::pin::Pin;
+use std::rc::Rc;
 
 use cxx::UniquePtr;
 use trtx_sys::nvinfer1;
@@ -10,14 +11,16 @@ use crate::error::{Error, PropertySetAttempt, Result};
 use crate::interfaces::{
     DebugListener, ErrorRecorder, ProcessDebugTensor, Profiler, RecordError, ReportLayerTime,
 };
+use crate::RuntimeConfig;
 
 /// [`trtx_sys::nvinfer1::IExecutionContext`] — C++ [`nvinfer1::IExecutionContext`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_execution_context.html).
 ///
 /// `inner` is declared last so it is dropped first (see [`Drop`]): TensorRT must release
 /// [DebugListener] / [Profiler]
 /// pointers before their Rust wrappers run destructors.
-pub struct ExecutionContext<'a> {
-    _engine: std::marker::PhantomData<&'a CudaEngine<'a>>,
+pub struct ExecutionContext<'engine> {
+    _engine: std::marker::PhantomData<&'engine CudaEngine<'engine>>,
+    _config: Option<Rc<RuntimeConfig<'engine>>>,
     debug_listener: Option<Pin<Box<DebugListener>>>,
     profiler: Option<Pin<Box<Profiler>>>,
     error_recorder: Option<Pin<Box<ErrorRecorder>>>,
@@ -32,9 +35,10 @@ impl std::fmt::Debug for ExecutionContext<'_> {
     }
 }
 
-impl<'a> ExecutionContext<'a> {
+impl<'engine> ExecutionContext<'engine> {
     pub(crate) unsafe fn from_ptr(
         execution_context: *mut nvinfer1::IExecutionContext,
+        config: Option<Rc<RuntimeConfig<'engine>>>,
     ) -> Result<Self> {
         #[cfg(not(feature = "mock_runtime"))]
         if execution_context.is_null() {
@@ -44,6 +48,7 @@ impl<'a> ExecutionContext<'a> {
         }
         Ok(ExecutionContext {
             _engine: Default::default(),
+            _config: config,
             debug_listener: None,
             error_recorder: None,
             profiler: None,

@@ -3,6 +3,7 @@
 //! [`CudaEngine`] wraps [`nvinfer1::ICudaEngine`] (C++ [`nvinfer1::ICudaEngine`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_cuda_engine.html)).
 //! [`SerializationConfig`] wraps [`nvinfer1::ISerializationConfig`] (C++ [`nvinfer1::ISerializationConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_serialization_config.html)).
 
+use std::rc::Rc;
 use std::{ffi::CStr, marker::PhantomData};
 
 use crate::engine_inspector::EngineInspector;
@@ -349,16 +350,16 @@ impl<'engine> CudaEngine<'engine> {
                 .inner
                 .pin_mut()
                 .createExecutionContext(nvinfer1::ExecutionContextAllocationStrategy::kSTATIC);
-            Ok(unsafe { ExecutionContext::from_ptr(context_ptr)? })
+            Ok(unsafe { ExecutionContext::from_ptr(context_ptr, None)? })
         }
         #[cfg(feature = "mock_runtime")]
-        Ok(unsafe { ExecutionContext::from_ptr(std::ptr::null_mut())? })
+        Ok(unsafe { ExecutionContext::from_ptr(std::ptr::null_mut(), None)? })
     }
 
     /// See [nvinfer1::ICudaEngine::createExecutionContext1]
     pub fn create_execution_context_with_config(
         &'_ mut self,
-        runtime_conifg: &'engine RuntimeConfig<'engine>,
+        runtime_config: Rc<RuntimeConfig<'engine>>,
     ) -> Result<ExecutionContext<'engine>> {
         #[cfg(not(feature = "mock_runtime"))]
         {
@@ -367,12 +368,12 @@ impl<'engine> CudaEngine<'engine> {
             let context_ptr = unsafe {
                 self.inner
                     .pin_mut()
-                    .createExecutionContext1(runtime_conifg.inner.as_mut_ptr())
+                    .createExecutionContext1(runtime_config.inner.as_mut_ptr())
             };
-            Ok(unsafe { ExecutionContext::from_ptr(context_ptr)? })
+            Ok(unsafe { ExecutionContext::from_ptr(context_ptr, Some(runtime_config))? })
         }
         #[cfg(feature = "mock_runtime")]
-        Ok(unsafe { ExecutionContext::from_ptr(std::ptr::null_mut())? })
+        Ok(unsafe { ExecutionContext::from_ptr(std::ptr::null_mut(), None)? })
     }
 
     /// See [nvinfer1::ICudaEngine::createSerializationConfig]
