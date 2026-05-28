@@ -74,7 +74,7 @@ jobs:
         shell: bash
         run: |
           # 1.3 is not on pip, only starting with 1.4
-          pip install tensorrt_rtx~=1.4
+          pip install tensorrt_rtx~=1.5
           RTX_LIB_DIR=$(python -c 'from os.path import dirname;print(dirname(__import__("tensorrt_rtx_libs").__file__))')
           echo "RTX_LIB_DIR=$RTX_LIB_DIR"
           echo "RTX_LIB_DIR=$RTX_LIB_DIR" >> $GITHUB_ENV
@@ -84,8 +84,8 @@ jobs:
         if: ${{ matrix.os == 'ubuntu-latest' }}
         shell: bash
         run: |
-          ln -s $RTX_LIB_DIR/libtensorrt_rtx.so.1{,.4.0}
-          ln -s $RTX_LIB_DIR/libtensorrt_onnxparser_rtx.so.1{,.4.0}
+          ln -s $RTX_LIB_DIR/libtensorrt_rtx.so.1{,.5.0}
+          ln -s $RTX_LIB_DIR/libtensorrt_onnxparser_rtx.so.1{,.5.0}
 
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -114,6 +114,10 @@ jobs:
 
       - name: Run tests (mock mode old TensorRT versions)
         run: |
+          # v_1_4
+          cargo test -F mock -F v_1_4 -F dlopen_tensorrt_rtx -F dlopen_tensorrt_onnxparser --no-default-features --verbose
+          cargo check -F v_1_4 -F dlopen_tensorrt_rtx -F dlopen_tensorrt_onnxparser --no-default-features --verbose
+          # v_1_3
           cargo test -F mock -F v_1_3 -F dlopen_tensorrt_rtx -F dlopen_tensorrt_onnxparser --no-default-features --verbose
           cargo check -F v_1_3 -F dlopen_tensorrt_rtx -F dlopen_tensorrt_onnxparser --no-default-features --verbose
           # onnxparser disabled

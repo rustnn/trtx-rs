@@ -58,6 +58,8 @@
 #include <NvOnnxParser.h>
 #include <cstdint>
 #include <cstring>
+#include <vector>
+#include <string>
 
 //==============================================================================
 // SECTION 1: LOGGER BRIDGE (NECESSARY - Virtual Methods)

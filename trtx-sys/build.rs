@@ -36,7 +36,9 @@ fn parse_trt_rtx_version_from_nvinfer_version_h(version_h: &Path) -> Option<RtxH
 }
 
 fn trt_version_suffix_from_feature_flags() -> &'static str {
-    if cfg!(feature = "v_1_4") {
+    if cfg!(feature = "v_1_5") {
+        "_1_5"
+    } else if cfg!(feature = "v_1_4") {
         "_1_4"
     } else {
         "_1_3"
@@ -75,7 +77,7 @@ fn prepare_transformed_headers(header_dir: &Path, out_dir: &Path) -> PathBuf {
             let replaced = see_regex.replace_all(&replaced, "See [`$1`]");
             let replaced = param_regex.replace_all(&replaced, "- `$1`");
             let replaced = http_link_regex.replace_all(&replaced, "<$0>");
-            let replaced = replaced
+            let mut replaced = replaced
                 .replace("std::size_t", "size_t")
                 // workaround autocxx limitation where there can't be the same type in different
                 // namespaces
@@ -92,6 +94,34 @@ fn prepare_transformed_headers(header_dir: &Path, out_dir: &Path) -> PathBuf {
                 )
                 .replace("//!", "///")
                 .replace(r"\returns", " - Returns ");
+
+            for class in [
+                "IHostMemory",
+                "IRuntime",
+                "IRuntimeCache",
+                "IRuntimeConfig",
+                "IRefitter",
+                "IBuilder",
+                "ITimingCache",
+                "IEngineInspector",
+                "INetworkDefintion",
+                "IExecutionContext",
+                "ICudaEngine",
+                "INetworkDefinition",
+                "IBuilderConfig",
+                "ISerializationConfig",
+            ] {
+                replaced = replaced
+                    .replace(
+                        &format!("virtual ~{class}() noexcept = 0"),
+                        &format!("virtual ~{class}() noexcept = default"),
+                    )
+                    .replace(
+                        &format!("inline {class}::~{class}() noexcept = default;"),
+                        "",
+                    )
+            }
+
             let replaced = doxy_regex.replace_all(&replaced, "");
             // We need to declare everything added after v_1_3 because we can't do features for
             // autocxx
@@ -204,12 +234,14 @@ fn main() {
     println!("cargo:rerun-if-env-changed=CARGO_FEATURE_LINK_TENSORRT_RTX");
     println!("cargo:rerun-if-env-changed=CARGO_FEATURE_LINK_TENSORRT_ONNXPARSER");
 
-    let trt_version = if cfg!(feature = "v_1_4") {
+    let trt_version = if cfg!(feature = "v_1_5") {
+        "1.5"
+    } else if cfg!(feature = "v_1_4") {
         "1.4"
     } else if cfg!(feature = "v_1_3") {
         "1.3"
     } else {
-        panic!("No version feature enabled! Need to at least enable v_1_3 or v_1_4");
+        panic!("No version feature enabled! Need to at least enable v_1_3 or v_1_4 or v_1_5");
     };
 
     let header_overwrite = env::var("TENSORRT_INCLUDE_DIR").ok();
