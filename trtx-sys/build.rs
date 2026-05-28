@@ -36,7 +36,9 @@ fn parse_trt_rtx_version_from_nvinfer_version_h(version_h: &Path) -> Option<RtxH
 }
 
 fn trt_version_suffix_from_feature_flags() -> &'static str {
-    if cfg!(feature = "v_1_4") {
+    if cfg!(feature = "v_1_5") {
+        "_1_5"
+    } else if cfg!(feature = "v_1_4") {
         "_1_4"
     } else {
         "_1_3"
@@ -96,6 +98,7 @@ fn prepare_transformed_headers(header_dir: &Path, out_dir: &Path) -> PathBuf {
             for class in [
                 "IHostMemory",
                 "IRuntime",
+                "IRuntimeCache",
                 "IRuntimeConfig",
                 "IRefitter",
                 "IBuilder",
@@ -231,12 +234,14 @@ fn main() {
     println!("cargo:rerun-if-env-changed=CARGO_FEATURE_LINK_TENSORRT_RTX");
     println!("cargo:rerun-if-env-changed=CARGO_FEATURE_LINK_TENSORRT_ONNXPARSER");
 
-    let trt_version = if cfg!(feature = "v_1_4") {
+    let trt_version = if cfg!(feature = "v_1_5") {
+        "1.5"
+    } else if cfg!(feature = "v_1_4") {
         "1.4"
     } else if cfg!(feature = "v_1_3") {
         "1.3"
     } else {
-        panic!("No version feature enabled! Need to at least enable v_1_3 or v_1_4");
+        panic!("No version feature enabled! Need to at least enable v_1_3 or v_1_4 or v_1_5");
     };
 
     let header_overwrite = env::var("TENSORRT_INCLUDE_DIR").ok();

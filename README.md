@@ -54,7 +54,7 @@ Use `TENSORRT_SDK_DIR` to point to the TensorRT SDK root directory (the path tha
 1. **NVIDIA TensorRT-RTX**: Download and install from [NVIDIA Developer](https://developer.nvidia.com/tensorrt)
      - The TensorRT libraries should be in a location where they can be dynamically loaded.
        (e.g. by setting PATH on Windows or LD_LIBRARY_PATH on Linux)
-     - This crate currently requires TensorRT RTX version 1.3 or 1.4 (see Cargo feature `v_1_3`, `v_1_4`).
+     - This crate currently requires TensorRT RTX version 1.3, 1.4 or 1.5 (see Cargo feature `v_1_3`, `v_1_4`, `v_1_5`).
        Use `default-features = false` plus version feature to select version.
        You will also have to either enable `dlopen_tensorrt_rtx` or `link_tensorrt_rtx`.
 
@@ -88,7 +88,7 @@ Mock mode provides stub implementations that allow you to:
 
 The `trtx` crate has the following Cargo features:
 
-- `default`: "dlopen_tensorrt_onnxparser", "dlopen_tensorrt_rtx", "onnxparser", "v_1_4"
+- `default`: "dlopen_tensorrt_onnxparser", "dlopen_tensorrt_rtx", "onnxparser", "v_1_5"
 - `mock`: use this library in mock mode. TensorRT libraries and a Nvidia GPU are no longer necessary for execution
 - `mock_runtime`: only mock runtime features of TensorRT. TensorRT libraries are required, but GPU execution is mocked (no GPU or CUDA required).
 - `dlopen_tensorrt_rtx`: enables dynamic loading of the TensorRT library via `trtx::dynamically_load_tensorrt`
@@ -99,6 +99,7 @@ The `trtx` crate has the following Cargo features:
   but using the builder library instead
 - `v_1_3` + `default-features = false` + (`dlopen_tensorrt_rtx` or `link_tensorrt_rtx`): Uses TensorRT RTX versions 1.3. At least one version feature has to be enabled
 - `v_1_4` + `default-features = false` + (`dlopen_tensorrt_rtx` or `link_tensorrt_rtx`): Uses TensorRT RTX versions 1.4. At least one version feature has to be enabled
+- `v_1_5` + `default-features = false` + (`dlopen_tensorrt_rtx` or `link_tensorrt_rtx`): Uses TensorRT RTX versions 1.5. At least one version feature has to be enabled
 
 ## Installation
 

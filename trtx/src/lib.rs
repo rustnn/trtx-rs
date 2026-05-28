@@ -106,7 +106,7 @@
 //! 1. **NVIDIA TensorRT-RTX**: Download and install from [NVIDIA Developer](https://developer.nvidia.com/tensorrt)
 //!      - The TensorRT libraries should be in a location where they can be dynamically loaded.
 //!        (e.g. by setting PATH on Windows or LD_LIBRARY_PATH on Linux)
-//!      - This crate currently requires TensorRT RTX version 1.3 or 1.4 (see Cargo feature `v_1_3`, `v_1_4`)
+//!      - This crate currently requires TensorRT RTX version 1.3, 1.4 or 1.5 (see Cargo feature `v_1_3`, `v_1_4`, `v_1_5`).
 //!        Use `default-features = false` plus version feature to select version.
 //!        You will also have to either enable `dlopen_tensorrt_rtx` or `link_tensorrt_rtx`.
 //!
