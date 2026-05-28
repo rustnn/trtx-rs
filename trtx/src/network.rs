@@ -2910,6 +2910,52 @@ impl<'network> Attention<'network> {
     }
 }
 
+impl<'network> KVCacheUpdateLayer<'network> {
+    #[cfg(feature = "v_1_5")]
+    /// See [`trtx_sys::nvinfer1::IKVCacheUpdateLayer::setUpdateForm`].
+    pub fn set_update_form(
+        &mut self,
+        network: &mut NetworkDefinition,
+        form: AttentionIOForm,
+    ) -> Result<()> {
+        check_network!(network, self);
+        self.inner
+            .as_mut()
+            .setUpdateForm(form.into())
+            .ok_or_err(PropertySetAttempt::KVCacheUpdateUpdateForm)
+    }
+
+    #[cfg(feature = "v_1_5")]
+    /// See [`trtx_sys::nvinfer1::IKVCacheUpdateLayer::setUpdateForm`].
+    pub fn update_form(&self, network: &NetworkDefinition) -> AttentionIOForm {
+        check_network!(network, self);
+        self.inner.getUpdateForm().into()
+    }
+
+    #[cfg(feature = "v_1_5")]
+    /// See [`trtx_sys::nvinfer1::IKVCacheUpdateLayer::setUpdateLengths`].
+    pub fn set_update_lengths(
+        &mut self,
+        network: &mut NetworkDefinition,
+        lengths: &Tensor,
+    ) -> Result<()> {
+        check_network!(network, self);
+        unsafe {
+            self.inner
+                .as_mut()
+                .setUpdateLengths(lengths.inner)
+                .ok_or_err(PropertySetAttempt::KVCacheUpdateLayerUpdateLengths)
+        }
+    }
+
+    #[cfg(feature = "v_1_5")]
+    /// See [`trtx_sys::nvinfer1::IKVCacheUpdateLayer::getUpdateLengths`].
+    pub fn update_lengths(&self, network: &NetworkDefinition) -> Result<Tensor<'network>> {
+        check_network!(network, self);
+        unsafe { Tensor::new(self.network, self.inner.getUpdateLengths()) }
+    }
+}
+
 // --- Loop boundary layers (ILoop::addRecurrence, addTripLimit, addIterator, addLoopOutput) ---
 
 impl<'network> Loop<'network> {
