@@ -45,6 +45,7 @@ pub enum PropertySetAttempt {
     KVCacheUpdateLayerUpdateLengths,
     AttentionLayerNormalizationOp,
     AttentionLayerDecomposable,
+    RotaryEmbeddingLayerRotaryEmbeddingDim,
 }
 
 // can be replaced once https://github.com/rust-lang/rust/issues/142748 becomes stable

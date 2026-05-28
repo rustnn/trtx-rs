@@ -994,6 +994,40 @@ impl ConcatenationLayer<'_> {
         self.inner.as_mut().setAxis(axis);
     }
 }
+
+impl RotaryEmbeddingLayer<'_> {
+    /// See [`trtx_sys::nvinfer1::IRotaryEmbeddingLayer::setInterleaved`].
+    pub fn set_interleaved(&mut self, network: &mut NetworkDefinition, interleaved: bool) {
+        check_network!(network, self);
+        self.inner.as_mut().setInterleaved(interleaved);
+    }
+
+    /// See [`trtx_sys::nvinfer1::IRotaryEmbeddingLayer::getInterleaved`].
+    pub fn interleaved(&self, network: &NetworkDefinition) -> bool {
+        check_network!(network, self);
+        self.inner.as_ref().getInterleaved()
+    }
+
+    /// See [`trtx_sys::nvinfer1::IRotaryEmbeddingLayer::setRotaryEmbeddingDim`].
+    pub fn set_rotary_embedding_dim(
+        &mut self,
+        network: &mut NetworkDefinition,
+        rotary_embedding_dim: i32,
+    ) -> Result<()> {
+        check_network!(network, self);
+        self.inner
+            .as_mut()
+            .setRotaryEmbeddingDim(rotary_embedding_dim)
+            .ok_or_err(PropertySetAttempt::RotaryEmbeddingLayerRotaryEmbeddingDim)
+    }
+
+    /// See [`trtx_sys::nvinfer1::IRotaryEmbeddingLayer::getRotaryEmbeddingDim`].
+    pub fn rotary_embedding_dim(&self, network: &NetworkDefinition) -> i32 {
+        check_network!(network, self);
+        self.inner.as_ref().getRotaryEmbeddingDim()
+    }
+}
+
 impl NormalizationLayer<'_> {
     /// See [nvinfer1::INormalizationLayer::setEpsilon]
     pub fn set_epsilon(&mut self, network: &mut NetworkDefinition, eps: f32) {
@@ -2179,6 +2213,34 @@ impl<'network> NetworkDefinition<'network> {
         debug!("add_resize input={}", tensor_dbg(self, input));
         let layer_ptr = self.inner.pin_mut().addResize(input.pin_mut());
         ResizeLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addRotaryEmbedding`].
+    pub fn add_rotary_embedding(
+        &mut self,
+        input: &'_ Tensor,
+        cos_cache: &'_ Tensor,
+        sin_cache: &'_ Tensor,
+        interleaved: bool,
+        rotary_embedding_dim: i32,
+    ) -> Result<RotaryEmbeddingLayer<'network>> {
+        check_network!(self, input);
+        check_network!(self, cos_cache);
+        check_network!(self, sin_cache);
+        debug!(
+            "add_rotary_embedding input={} cos_cache={} sin_cache={} interleaved={interleaved} rotary_embedding_dim={rotary_embedding_dim}",
+            tensor_dbg(self, input),
+            tensor_dbg(self, cos_cache),
+            tensor_dbg(self, sin_cache)
+        );
+        let layer_ptr = self.inner.pin_mut().addRotaryEmbedding(
+            input.pin_mut(),
+            cos_cache.pin_mut(),
+            sin_cache.pin_mut(),
+            interleaved,
+            rotary_embedding_dim,
+        );
+        RotaryEmbeddingLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addGather`].
