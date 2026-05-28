@@ -99,6 +99,7 @@ better_enum!(WeightsRole);
 better_enum!(TripLimit);
 better_enum!(LoopOutput);
 better_enum!(KVCacheMode);
+better_enum!(FillOperation);
 #[cfg(feature = "v_1_4")]
 better_enum!(MoEActType);
 #[cfg(feature = "v_1_4")]
