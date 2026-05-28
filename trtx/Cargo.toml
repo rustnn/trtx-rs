@@ -29,7 +29,7 @@ default = [
 	"dlopen_tensorrt_onnxparser",
 	"dlopen_tensorrt_rtx",
 	"onnxparser",
-	"v_1_4",
+	"v_1_5",
 ]
 mock = ["mock_runtime"] # mock implementation (no CUDA and TRT libs required)
 mock_runtime = [] # mock implementation (no CUDA required)

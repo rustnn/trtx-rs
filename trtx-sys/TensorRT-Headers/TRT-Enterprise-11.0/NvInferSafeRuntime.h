@@ -137,7 +137,7 @@ public:
     }
 
     //! \brief Retrieves the data as half_t*. It should only be called when the current
-    //! type is kFLOAT. Returns nullptr otherwise.
+    //! type is kHALF. Returns nullptr otherwise.
     half_t* getHalf() const noexcept
     {
         if (mType == DataType::kHALF)
@@ -691,6 +691,13 @@ protected:
 //!        cudaFree.
 //!
 //! \return ErrorCode
+//! \retval ErrorCode::kSUCCESS Graph created successfully; \p graph is set to the new instance.
+//! \retval ErrorCode::kINVALID_ARGUMENT \p buffer is nullptr or \p bufferSize is not positive.
+//! \retval ErrorCode::kINVALID_STATE VM state does not allow this init API (e.g. NvDVMS check failed).
+//! \retval ErrorCode::kFAILED_INITIALIZATION CUDA setup check failed, or graph construction recorded this error on
+//!         \p recorder, or an exception occurred (e.g. allocation failure during graph creation).
+//! \retval Other codes may be propagated from deserialize(), setManagedScratch(), or loadPersistent() (e.g.
+//!         kINVALID_CONFIG, kFAILED_ALLOCATION, kINVALID_STATE).
 extern "C" ErrorCode createTRTGraph(ITRTGraph*& graph, void const* buffer, int64_t bufferSize, ISafeRecorder& recorder,
     bool trtManagedScratch = true, ISafeMemAllocator* allocator = nullptr) noexcept;
 
@@ -703,7 +710,14 @@ extern "C" ErrorCode createTRTGraph(ITRTGraph*& graph, void const* buffer, int64
 //! \pre DEINIT API
 //!
 //! \param graph A pointer reference to a graph object which will be destroyed and reference will be set to nullptr.
+//!
 //! \return ErrorCode
+//! \retval ErrorCode::kSUCCESS Graph destroyed successfully; \p graph is set to nullptr.
+//! \retval ErrorCode::kINVALID_ARGUMENT \p graph is nullptr.
+//! \retval ErrorCode::kINVALID_STATE VM state does not allow this deinit API (e.g. NvDVMS check failed), or
+//!         unloadPersistent() failed (e.g. resource deallocation or CUDA teardown failed).
+//! \retval ErrorCode::kFAILED_INITIALIZATION An exception occurred during destruction (e.g. during graph cleanup).
+//! \retval ErrorCode::kFAILED_ALLOCATION Region deallocation failed (e.g. allocator returned false).
 extern "C" ErrorCode destroyTRTGraph(ITRTGraph*& graph) noexcept;
 
 } // namespace safe

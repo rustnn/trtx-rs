@@ -30,14 +30,20 @@
 #ifndef NV_INFER_SAFE_RECORDER_H
 #define NV_INFER_SAFE_RECORDER_H
 
-#include "NvInferForwardDecl.h"
 #include <cstdint>
+// Define NV_INFER_SAFE_RECORDER_TYPES_ONLY before including this header to skip
+// the ISafeRecorder interface and its dependencies (NvInferForwardDecl.h
+// -> NvInferPluginBase.h / NvInferRuntimeBase.h).
+#ifndef NV_INFER_SAFE_RECORDER_TYPES_ONLY
+#include "NvInferForwardDecl.h"
+#endif
 
 namespace nvinfer2
 {
 namespace safe
 {
 
+#ifndef NV_INFER_SAFE_RECORDER_TYPES_ONLY
 using ErrorDesc = char const*; //!< Type alias for error description strings.
 using RefCount = int32_t;      //!< Type alias for reference count.
 
@@ -82,14 +88,18 @@ public:
     //!
     static constexpr size_t kMAX_SAFE_DESC_LENGTH{4095U};
 
+    //!
     //! \brief Constructor for ISafeRecorder.
     //!
     //! \pre INIT API
     //!
     //! \param[in] severity_ Initial severity level for recording messages.
-    //! Only messages with severity less than or equal to this severity level will be reported.
-    //! \param[in] id_ Optional identifier for the recorder instance. This can be used to
-    //! identify messages issued by different recorders in multiple threads.
+    //!        Only messages with severity less than or equal to this level will be reported.
+    //! \param[in] id_ Optional identifier for the recorder instance; used to
+    //!        identify messages issued by different recorders in multiple threads.
+    //!
+    //! \post Object is constructed with the given severity and id; ready to receive messages.
+    //!
     ISafeRecorder(Severity severity_ = Severity::kERROR, int32_t id_ = -1)
         : IErrorRecorder()
         , mSeverity(severity_)
@@ -97,116 +107,138 @@ public:
     {
     }
 
+    //!
+    //! \brief Deleted copy constructor to maintain non-copyability.
+    //! \pre none
+    //! \post none
+    //!
     ISafeRecorder(ISafeRecorder const&) = delete;
+    //!
+    //! \brief Deleted move constructor to maintain non-movability.
+    //! \pre none
+    //! \post none
+    //!
     ISafeRecorder(ISafeRecorder&&) = delete;
+    //!
+    //! \brief Deleted copy assignment operator to maintain non-copyability.
+    //! \pre none
+    //! \post none
+    //!
     ISafeRecorder& operator=(ISafeRecorder const&) & = delete;
+    //!
+    //! \brief Deleted move assignment operator to maintain non-movability.
+    //! \pre none
+    //! \post none
+    //!
     ISafeRecorder& operator=(ISafeRecorder&&) & = delete;
 
+    //!
     //! \brief Destructor for ISafeRecorder.
+    //! \pre none
+    //! \post Object is destroyed and resources released.
+    //!
     ~ISafeRecorder() noexcept override = default;
 
+    //!
     //! \brief Sets the severity level for the recorder.
-    //!
-    //! \pre RUNTIME API
-    //!
     //! \param[in] severity_ New severity level for recording messages.
-    //!
+    //! \pre RUNTIME API
+    //! \post Recorder severity is set to \p severity_; subsequent messages filtered by this level.
     //! \remark Not thread-safe
+    //!
     virtual void setSeverity(Severity severity_) noexcept
     {
         mSeverity = severity_;
     }
     // NOLINTBEGIN to avoid clang-tidy requiring [[nodiscard]]
+    //!
     //! \brief Get the current severity level of the recorder.
-    //!
     //! \pre RUNTIME API
-    //!
+    //! \post none
     //! \return The severity level of the recorder.
-    //!
     //! \remark This method is required to be thread-safe and may be called from multiple threads
     //!         when multiple execution contexts are used during runtime.
+    //!
     virtual Severity getSeverity() const noexcept
     {
         return mSeverity;
     }
 
+    //!
     //! \brief Gets the identifier of the recorder.
-    //!
     //! \pre RUNTIME API
-    //!
+    //! \post none
     //! \return The identifier of the recorder.
-    //!
     //! \remark This method is required to be thread-safe and may be called from multiple threads
     //!         when multiple execution contexts are used during runtime.
+    //!
     virtual int32_t getId() const noexcept
     {
         return mId;
     }
     // NOLINTEND
 
+    //!
     //! \brief Reports a warning message.
-    //!
-    //! \pre RUNTIME API
-    //!
     //! \param[in] desc Description of the warning.
+    //! \pre RUNTIME API
+    //! \post If true, message was recorded; if false, recording failed or was suppressed.
     //! \return True if the message was reported successfully, false otherwise.
-    //!
     //! \remark This method is required to be thread-safe and may be called from multiple threads
     //!         when multiple execution contexts are used during runtime.
+    //!
     virtual bool reportWarn(ErrorDesc /*desc*/) noexcept
     {
         return false;
     }
 
+    //!
     //! \brief Reports a debug message.
-    //!
-    //! \pre RUNTIME API
-    //!
     //! \param[in] desc Description of the debug information.
+    //! \pre RUNTIME API
+    //! \post If true, message was recorded; if false, recording failed or was suppressed.
     //! \return True if the message was reported successfully, false otherwise.
-    //!
     //! \remark This method is required to be thread-safe and may be called from multiple threads
     //!         when multiple execution contexts are used during runtime.
+    //!
     virtual bool reportDebug(ErrorDesc /*desc*/) noexcept
     {
         return false;
     }
 
+    //!
     //! \brief Reports an informational message.
-    //!
-    //! \pre RUNTIME API
-    //!
     //! \param[in] desc Description of the information.
+    //! \pre RUNTIME API
+    //! \post If true, message was recorded; if false, recording failed or was suppressed.
     //! \return True if the message was reported successfully, false otherwise.
-    //!
     //! \remark This method is required to be thread-safe and may be called from multiple threads
     //!         when multiple execution contexts are used during runtime.
+    //!
     virtual bool reportInfo(ErrorDesc /*desc*/) noexcept
     {
         return false;
     }
 
-    //! \brief Reports a verbose informational  message.
     //!
-    //! \pre RUNTIME API
-    //!
+    //! \brief Reports a verbose informational message.
     //! \param[in] desc Description of the information.
+    //! \pre RUNTIME API
+    //! \post If true, message was recorded; if false, recording failed or was suppressed.
     //! \return True if the message was reported successfully, false otherwise.
-    //!
     //! \remark This method is required to be thread-safe and may be called from multiple threads
     //!         when multiple execution contexts are used during runtime.
+    //!
     virtual bool reportVerbose(ErrorDesc /*desc*/) noexcept
     {
         return false;
     }
 
 protected:
-    //! Severity level of the recorder.
-    Severity mSeverity;
-
-    //! ID of the recorder.
-    int32_t const mId;
+    Severity mSeverity; //!< Severity level of the recorder; messages above this level are filtered.
+    int32_t const mId;  //!< Identifier of the recorder instance; used to distinguish recorders in multi-threaded use.
 };
+#endif // NV_INFER_SAFE_RECORDER_TYPES_ONLY
 
 //! \struct RuntimeErrorInformation
 //! \brief Holds information about runtime errors that occur during asynchronous kernel execution.
@@ -225,26 +257,20 @@ struct RuntimeErrorInformation
 //! \enum RuntimeErrorType
 //! \brief Enumerates types of runtime errors that can occur during kernel execution.
 //! \details
-//! - kNAN_CONSUMED error occurs when a NAN value is stored in an INT8 quantized datatype.
-//! - kINF_CONSUMED error occurs when a +/-INF value is stored in an INT8 quantized datatype.
+//! - kNAN_CONSUMED error occurs when a NAN value is stored in an INT8 or FP4 quantized datatype.
+//! - kINF_CONSUMED error occurs when a +/-INF value is stored in an INT8 or FP4 quantized datatype.
 //! - kGATHER_OOB error occurs when a gather index tensor contains a value that is outside of the data tensor.
 //! - kSCATTER_OOB error occurs when a scatter index tensor contains a value that is outside of the data tensor.
 //! - kSCATTER_RACE error occurs when a scatter index tensor contains duplicate indices with reduction mode kNONE.
 //! - kDIV_ZERO error occurs when a division-by-zero happens and its output is of an integer type.
 enum class RuntimeErrorType : uint64_t
 {
-    //! NaN floating-point value was silently consumed
-    kNAN_CONSUMED = 1ULL << 0,
-    //! Inf floating-point value was silently consumed
-    kINF_CONSUMED = 1ULL << 1,
-    //! Out-of-bounds access in gather operation
-    kGATHER_OOB = 1ULL << 2,
-    //! Out-of-bounds access in scatter operation
-    kSCATTER_OOB = 1ULL << 3,
-    //! Race condition in scatter operation
-    kSCATTER_RACE = 1ULL << 4,
-    //! Division-by-zero in int division
-    kDIV_ZERO = 1ULL << 5,
+    kNAN_CONSUMED = 1ULL << 0, //!< NaN floating-point value was silently consumed
+    kINF_CONSUMED = 1ULL << 1, //!< Inf floating-point value was silently consumed
+    kGATHER_OOB = 1ULL << 2,   //!< Out-of-bounds access in gather operation
+    kSCATTER_OOB = 1ULL << 3,  //!< Out-of-bounds access in scatter operation
+    kSCATTER_RACE = 1ULL << 4, //!< Race condition in scatter operation
+    kDIV_ZERO = 1ULL << 5,     //!< Division-by-zero in int division
 };
 
 } // namespace safe

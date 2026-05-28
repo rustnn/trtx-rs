@@ -60,37 +60,85 @@ struct TensorDescriptor;
 class ISafePluginResourceContext
 {
 public:
-    //! \brief Get the GPU allocator associated with the resource context
     //!
-    //! \pre INIT API
-    //!
+    //! \brief Returns the GPU memory allocator associated with this resource context.
+    //! \details The allocator is used by the plugin for GPU allocations during initResource() and execution.
+    //! \pre INIT API (e.g. can be called from IPluginV3OneSafeRuntime::initResource()).
+    //! \post none
+    //! \return Pointer to the allocator, or nullptr if not set.
+    //! \retval non-null When an allocator has been associated with this context.
+    //! \retval nullptr When no allocator is associated.
     //! \see IPluginV3OneSafeRuntime::initResource()
     //!
     virtual ISafeMemAllocator* getSafeMemAllocator() const noexcept = 0;
 
-    //! \brief Get the error recorder associated with the resource context
     //!
+    //! \brief Returns the error recorder associated with this resource context.
+    //! \details The recorder receives error, warning, and diagnostic messages from the runtime for this context.
     //! \pre RUNTIME API
-    //!
+    //! \post none
+    //! \return Pointer to the recorder, or nullptr if not set.
+    //! \retval non-null When a recorder has been associated with this context.
+    //! \retval nullptr When no recorder is associated.
     //! \see IPluginV3OneSafeRuntime::initResource()
     //!
     virtual ISafeRecorder* getSafeRecorder() const noexcept = 0;
 
-    //! \brief Get the RuntimeErrorInformation associated with the resource context
     //!
+    //! \brief Returns the RuntimeErrorInformation buffer associated with this resource context.
+    //! \details The buffer holds runtime error details for the execution context; may be written by the runtime.
     //! \pre RUNTIME API
-    //!
+    //! \post none
+    //! \return Pointer to the runtime error information, or nullptr if not set.
+    //! \retval non-null When error information has been associated with this context.
+    //! \retval nullptr When no error information is associated.
     //! \see IPluginV3OneSafeRuntime::initResource()
     //!
     virtual RuntimeErrorInformation* getRuntimeErrorInformation() const noexcept = 0;
 
+    //!
+    //! \brief Destructor for ISafePluginResourceContext.
+    //! \details Destroys the object and releases any resources owned by the implementation.
+    //! \pre none
+    //! \post none
+    //!
     virtual ~ISafePluginResourceContext() noexcept = default;
 
 protected:
+    //!
+    //! \brief Default constructor; access limited to derived types and factory.
+    //! \details Constructs an object in a default state. Not intended for direct use by API consumers.
+    //! \pre none
+    //! \post none
+    //!
     ISafePluginResourceContext() = default;
+    //!
+    //! \brief Copy constructor (defaulted).
+    //! \details Creates a copy of the source context; semantics are implementation-defined.
+    //! \pre none
+    //! \post This object is a copy of the source.
+    //!
     ISafePluginResourceContext(ISafePluginResourceContext const&) = default;
+    //!
+    //! \brief Move constructor (defaulted).
+    //! \details Moves state from the source; source is left in valid but unspecified state.
+    //! \pre none
+    //! \post This object has the state that the source had; source is in valid but unspecified state.
+    //!
     ISafePluginResourceContext(ISafePluginResourceContext&&) = default;
+    //!
+    //! \brief Copy assignment operator (defaulted).
+    //! \details Assigns a copy of the source to this object.
+    //! \pre none
+    //! \post This object is a copy of the source.
+    //!
     ISafePluginResourceContext& operator=(ISafePluginResourceContext const&) & = default;
+    //!
+    //! \brief Move assignment operator (defaulted).
+    //! \details Moves state from the source; source is left in valid but unspecified state.
+    //! \pre none
+    //! \post This object has the state that the source had; source is in valid but unspecified state.
+    //!
     ISafePluginResourceContext& operator=(ISafePluginResourceContext&&) & = default;
 };
 
@@ -252,15 +300,40 @@ public:
     //!
     virtual ErrorCode deregisterCreator(IPluginCreatorInterface const& creator) noexcept = 0;
 
-    // @cond SuppressDoxyWarnings
+    //!
+    //! \brief Default constructor for ISafePluginRegistry.
+    //! \details Constructs an object in a default state. Only factory or derived types create instances.
+    //! \pre none
+    //! \post Object is in default-constructed state.
+    //!
     ISafePluginRegistry() = default;
+    //!
+    //! \brief Deleted copy constructor to maintain non-copyability.
+    //! \pre none
+    //! \post none
+    //!
     ISafePluginRegistry(ISafePluginRegistry const&) = delete;
+    //!
+    //! \brief Deleted move constructor to maintain non-movability.
+    //! \pre none
+    //! \post none
+    //!
     ISafePluginRegistry(ISafePluginRegistry&&) = delete;
+    //!
+    //! \brief Deleted copy assignment operator (lvalue) to maintain non-copyability.
+    //! \pre none
+    //! \post none
+    //!
     ISafePluginRegistry& operator=(ISafePluginRegistry const&) & = delete;
+    //!
+    //! \brief Deleted move assignment operator (lvalue) to maintain non-movability.
+    //! \pre none
+    //! \post none
+    //!
     ISafePluginRegistry& operator=(ISafePluginRegistry&&) & = delete;
-    // @endcond
 
 protected:
+    //! \brief Destructor for ISafePluginRegistry.
     virtual ~ISafePluginRegistry() noexcept = default;
 };
 
@@ -339,28 +412,56 @@ protected:
     IPluginV3OneSafeCore() = default;
 };
 
+//!
+//! \class IPluginV3OneSafeBuild
+//! \brief Interface for plugins used during the TensorRT build phase.
+//! \details Extends IPluginCapability to provide build-phase plugin behavior; used when creating
+//!          an engine by IBuilder. Supports configuration and format combination limits.
+//!
 class IPluginV3OneSafeBuild : public IPluginCapability
 {
 public:
     //!
-    //! \brief The default maximum number of format combinations that will be timed by TensorRT during the build phase
-    //!
+    //! \brief Default maximum number of format combinations timed by TensorRT during the build phase.
     //! \see getFormatCombinationLimit
     //!
     static constexpr int32_t kDEFAULT_FORMAT_COMBINATION_LIMIT = 100;
 
     //!
-    //! \brief Return version information associated with this interface. Applications must not override this method.
+    //! \brief Returns version information associated with this interface.
+    //! \details Applications must not override this method.
+    //! \pre none
+    //! \post none
+    //! \return InterfaceInfo with kind "PLUGIN_V3ONE_SAFE_BUILD", major 1, minor 0.
     //!
     InterfaceInfo getInterfaceInfo() const noexcept override
     {
         return InterfaceInfo{"PLUGIN_V3ONE_SAFE_BUILD", 1, 0};
     }
 
+    //!
+    //! \brief Default constructor.
+    //! \pre none
+    //! \post Object is in default-constructed state.
+    //!
     IPluginV3OneSafeBuild() = default;
+    //!
+    //! \brief Deleted move constructor to maintain non-movability.
+    //! \pre none
+    //! \post none
+    //!
     IPluginV3OneSafeBuild(IPluginV3OneSafeBuild&&) = delete;
+    //!
+    //! \brief Deleted move assignment operator to maintain non-movability.
+    //! \pre none
+    //! \post none
+    //!
     IPluginV3OneSafeBuild& operator=(IPluginV3OneSafeBuild&&) & = delete;
+    //!
     //! \brief Destructor for IPluginV3OneSafeBuild.
+    //! \pre none
+    //! \post none
+    //!
     ~IPluginV3OneSafeBuild() noexcept override = default;
 
     //!
@@ -632,8 +733,7 @@ protected:
 //!
 //! \class IPluginV3OneSafeRuntime
 //
-//! \brief Runtime component of the pluginV3 system, this component needs to be safety certified and is required at
-//! runtime.
+//! \brief Runtime component of the pluginV3 system
 //!
 class IPluginV3OneSafeRuntime : public IPluginCapability
 {

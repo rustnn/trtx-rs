@@ -11,12 +11,14 @@ use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 use std::pin::Pin;
 use trtx_sys::nvinfer1::{IConcatenationLayer, INetworkDefinition, ITensor};
-use trtx_sys::InterpolationMode;
 use trtx_sys::{nvinfer1, LayerType, SampleMode, Weights};
 use trtx_sys::{AsLayer, AsLayerTyped};
+#[cfg(feature = "v_1_5")]
+use trtx_sys::{AttentionIOForm, CausalMaskKind};
 #[cfg(feature = "v_1_4")]
 use trtx_sys::{CollectiveOperation, MoEActType, ReduceOperation};
 use trtx_sys::{DataType, Dims64, MatrixOperation, ScaleMode, TopKOperation};
+use trtx_sys::{InterpolationMode, KVCacheMode};
 
 /// Panics if the layer or tensor was created from a different network.
 macro_rules! check_network {
@@ -2240,12 +2242,12 @@ impl<'network> NetworkDefinition<'network> {
             tensor_dbg(self, input),
             tensor_dbg(self, scale)
         );
-        #[cfg(not(feature = "enterprise"))]
+        #[cfg(not(all(feature = "enterprise", not(feature = "v_1_5"))))]
         let layer_ptr =
             self.inner
                 .pin_mut()
                 .addQuantize(input.pin_mut(), scale.pin_mut(), output_type.into());
-        #[cfg(feature = "enterprise")]
+        #[cfg(all(feature = "enterprise", not(feature = "v_1_5")))]
         let layer_ptr =
             self.inner
                 .pin_mut()
@@ -2267,13 +2269,13 @@ impl<'network> NetworkDefinition<'network> {
             tensor_dbg(self, input),
             tensor_dbg(self, scale)
         );
-        #[cfg(not(feature = "enterprise"))]
+        #[cfg(not(all(feature = "enterprise", not(feature = "v_1_5"))))]
         let layer_ptr = self.inner.pin_mut().addDequantize(
             input.pin_mut(),
             scale.pin_mut(),
             output_type.into(),
         );
-        #[cfg(feature = "enterprise")]
+        #[cfg(all(feature = "enterprise", not(feature = "v_1_5")))]
         let layer_ptr = self.inner.pin_mut().addDequantize1(
             input.pin_mut(),
             scale.pin_mut(),
@@ -2369,6 +2371,40 @@ impl<'network> NetworkDefinition<'network> {
             .ok_or_else(|| Error::Runtime("Failed to add if conditional".to_string()))?;
         Ok(IfConditional {
             inner: unsafe { Pin::new_unchecked(if_ptr) },
+            network: self.inner.as_ptr(),
+        })
+    }
+
+    #[cfg(feature = "v_1_5")]
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addAttentionV2`].
+    pub fn add_attention_v2(
+        &mut self,
+        query: &'_ Tensor,
+        key: &'_ Tensor,
+        value: &'_ Tensor,
+        norm_op: trtx_sys::AttentionNormalizationOp,
+        causal_kind: CausalMaskKind,
+    ) -> Result<Attention<'network>> {
+        check_network!(self, query);
+        check_network!(self, key);
+        check_network!(self, value);
+        debug!(
+            "add_attention_v2 query={} key={} value={} norm_op={norm_op:?} causal_kind={causal_kind:?}",
+            tensor_dbg(self, query),
+            tensor_dbg(self, key),
+            tensor_dbg(self, value)
+        );
+        let attn_ptr = self.inner.pin_mut().addAttentionV2(
+            query.pin_mut(),
+            key.pin_mut(),
+            value.pin_mut(),
+            norm_op.into(),
+            causal_kind.into(),
+        );
+        let attn = unsafe { attn_ptr.as_mut() }
+            .ok_or_else(|| Error::Runtime("Failed to add attention".to_string()))?;
+        Ok(Attention {
+            inner: unsafe { Pin::new_unchecked(attn) },
             network: self.inner.as_ptr(),
         })
     }
@@ -2614,6 +2650,27 @@ impl<'network> Attention<'network> {
         self.inner.getCausal()
     }
 
+    #[cfg(feature = "v_1_5")]
+    /// See [`trtx_sys::nvinfer1::IAttention::setCausalKind`].
+    pub fn set_causal_kind(
+        &mut self,
+        network: &mut NetworkDefinition,
+        kind: CausalMaskKind,
+    ) -> Result<()> {
+        check_network!(network, self);
+        self.inner
+            .as_mut()
+            .setCausalKind(kind.into())
+            .ok_or_err(PropertySetAttempt::AttentionLayerCausalKind)
+    }
+
+    #[cfg(feature = "v_1_5")]
+    /// See [`trtx_sys::nvinfer1::IAttention::getCausalKind`].
+    pub fn causal_kind(&self, network: &NetworkDefinition) -> CausalMaskKind {
+        check_network!(network, self);
+        self.inner.getCausalKind().into()
+    }
+
     /// See [`trtx_sys::nvinfer1::IAttention::setDecomposable`].
     pub fn set_decomposable(
         &mut self,
@@ -2796,6 +2853,159 @@ impl<'network> Attention<'network> {
     #[deprecated = "use nb_ranks instead"]
     pub fn get_nb_ranks(&self, network: &NetworkDefinition) -> i32 {
         self.nb_ranks(network)
+    }
+
+    #[cfg(feature = "v_1_5")]
+    /// See [`trtx_sys::nvinfer1::IAttention::setQueryForm`].
+    pub fn set_query_form(
+        &mut self,
+        network: &mut NetworkDefinition,
+        form: AttentionIOForm,
+    ) -> Result<()> {
+        check_network!(network, self);
+        self.inner
+            .as_mut()
+            .setQueryForm(form.into())
+            .ok_or_err(PropertySetAttempt::AttentionLayerQueryForm)
+    }
+
+    #[cfg(feature = "v_1_5")]
+    /// See [`trtx_sys::nvinfer1::IAttention::setKeyValueForm`].
+    pub fn set_key_value_form(
+        &mut self,
+        network: &mut NetworkDefinition,
+        form: AttentionIOForm,
+    ) -> Result<()> {
+        check_network!(network, self);
+        self.inner
+            .as_mut()
+            .setKeyValueForm(form.into())
+            .ok_or_err(PropertySetAttempt::AttentionLayerKeyValueForm)
+    }
+
+    #[cfg(feature = "v_1_5")]
+    /// See [`trtx_sys::nvinfer1::IAttention::getQueryForm`].
+    pub fn query_form(&self, network: &NetworkDefinition) -> AttentionIOForm {
+        check_network!(network, self);
+        self.inner.getQueryForm().into()
+    }
+
+    #[cfg(feature = "v_1_5")]
+    /// See [`trtx_sys::nvinfer1::IAttention::setKeyValueForm`].
+    pub fn key_value_form(&self, network: &NetworkDefinition) -> AttentionIOForm {
+        check_network!(network, self);
+        self.inner.getQueryForm().into()
+    }
+
+    #[cfg(feature = "v_1_5")]
+    /// See [`trtx_sys::nvinfer1::IAttention::getQueryLengths`].
+    pub fn query_lengths(&self, network: &NetworkDefinition) -> Result<Tensor<'network>> {
+        check_network!(network, self);
+        unsafe { Tensor::new(self.network, self.inner.getQueryLengths()) }
+    }
+
+    #[cfg(feature = "v_1_5")]
+    /// See [`trtx_sys::nvinfer1::IAttention::getKeyValueLengths`].
+    pub fn key_value_lengths(&self, network: &NetworkDefinition) -> Result<Tensor<'network>> {
+        check_network!(network, self);
+        unsafe { Tensor::new(self.network, self.inner.getKeyValueLengths()) }
+    }
+
+    #[cfg(feature = "v_1_5")]
+    /// See [`trtx_sys::nvinfer1::IAttention::setQueryLengths`].
+    pub fn set_query_lengths(
+        &mut self,
+        network: &mut NetworkDefinition,
+        lengths: &mut Tensor,
+    ) -> Result<()> {
+        check_network!(network, self);
+        unsafe {
+            self.inner
+                .as_mut()
+                .setQueryLengths(lengths.inner)
+                .ok_or_err(PropertySetAttempt::AttentionLayerQueryLengths)
+        }
+    }
+
+    #[cfg(feature = "v_1_5")]
+    /// See [`trtx_sys::nvinfer1::IAttention::setKeyValueLengths`].
+    pub fn set_key_value_lengths(
+        &mut self,
+        network: &mut NetworkDefinition,
+        lengths: &Tensor,
+    ) -> Result<()> {
+        check_network!(network, self);
+        unsafe {
+            self.inner
+                .as_mut()
+                .setKeyValueLengths(lengths.inner)
+                .ok_or_err(PropertySetAttempt::AttentionLayerKeyValueLengths)
+        }
+    }
+}
+
+impl<'network> KVCacheUpdateLayer<'network> {
+    /// See [`trtx_sys::nvinfer1::IKVCacheUpdateLayer::setCacheMode`].
+    pub fn set_cache_mode(
+        &mut self,
+        network: &mut NetworkDefinition,
+        mode: KVCacheMode,
+    ) -> Result<()> {
+        check_network!(network, self);
+        self.inner
+            .as_mut()
+            .setCacheMode(mode.into())
+            .ok_or_err(PropertySetAttempt::KVCacheUpdateMode)
+    }
+
+    /// See [`trtx_sys::nvinfer1::IKVCacheUpdateLayer::getCacheMode`].
+    pub fn cache_mode(&self, network: &NetworkDefinition) -> KVCacheMode {
+        check_network!(network, self);
+        self.inner.getCacheMode().into()
+    }
+
+    #[cfg(feature = "v_1_5")]
+    /// See [`trtx_sys::nvinfer1::IKVCacheUpdateLayer::setUpdateForm`].
+    pub fn set_update_form(
+        &mut self,
+        network: &mut NetworkDefinition,
+        form: AttentionIOForm,
+    ) -> Result<()> {
+        check_network!(network, self);
+        self.inner
+            .as_mut()
+            .setUpdateForm(form.into())
+            .ok_or_err(PropertySetAttempt::KVCacheUpdateUpdateForm)
+    }
+
+    #[cfg(feature = "v_1_5")]
+    /// See [`trtx_sys::nvinfer1::IKVCacheUpdateLayer::setUpdateForm`].
+    pub fn update_form(&self, network: &NetworkDefinition) -> AttentionIOForm {
+        check_network!(network, self);
+        self.inner.getUpdateForm().into()
+    }
+
+    #[cfg(feature = "v_1_5")]
+    /// See [`trtx_sys::nvinfer1::IKVCacheUpdateLayer::setUpdateLengths`].
+    pub fn set_update_lengths(
+        &mut self,
+        network: &mut NetworkDefinition,
+        lengths: &Tensor,
+    ) -> Result<()> {
+        check_network!(network, self);
+        unsafe {
+            self.inner
+                .as_mut()
+                .setUpdateLengths(lengths.inner)
+                .ok_or_err(PropertySetAttempt::KVCacheUpdateLayerUpdateLengths)
+        }
+    }
+
+    #[cfg(feature = "v_1_5")]
+    /// See [`trtx_sys::nvinfer1::IKVCacheUpdateLayer::getUpdateLengths`].
+    pub fn update_lengths(&self, network: &NetworkDefinition) -> Result<Tensor<'network>> {
+        check_network!(network, self);
+        unsafe { Tensor::new(self.network, self.inner.getUpdateLengths()) }
     }
 }
 
