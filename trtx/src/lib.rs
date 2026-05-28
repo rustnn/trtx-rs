@@ -95,7 +95,7 @@
 //!   $env:LIBCLANG_PATH="D:\programs\LLVM\bin"  # powershell windows
 //!   export LIBCLANG_PATH=/usr/lib/llvm-19/lib  # linux
 //!
-//!   See https://rust-lang.github.io/rust-bindgen/requirements.html (note that autocxx uses an older fork of bindgen)
+//!   See <https://rust-lang.github.io/rust-bindgen/requirements.html> (note that autocxx uses an older fork of bindgen)
 //!
 //! TensorRT is by default dynamically loaded. So, the TensorRT SDK is only required for building
 //! with Cargo features `link_tensorrt_rtx`/ `link_tensorrt_onnxparser` which would link the TensorRT libraries.
