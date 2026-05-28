@@ -8,7 +8,7 @@ This document defines the release process for `trtx-rs`.
    - Update workspace version in `Cargo.toml` (`[workspace.package].version`).
    - Update `trtx/Cargo.toml` dependency version for `trtx-sys` when needed.
    - Update `trtexec-rs/Cargo.toml` dependency version for `trtx` when needed.
-2. Add all relevant release notes to `CHANGELOG.md`.
+2. Add all relevant release notes to `CHANGELOG.md` (optionally use [git-cliff](https://git-cliff.org/docs/) for that)
 3. Ensure tests pass.
 4. Commit release changes, create tag `vMAJOR.MINOR.PATCH`, and push commit + tag.
 5. Publish the GitHub release with `gh release`.
