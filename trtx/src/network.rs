@@ -10,14 +10,16 @@ use cxx::UniquePtr;
 use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 use std::pin::Pin;
-use trtx_sys::nvinfer1::{IConcatenationLayer, INetworkDefinition, ITensor};
+use trtx_sys::nvinfer1::{IConcatenationLayer, IEinsumLayer, INetworkDefinition, ITensor};
 use trtx_sys::{nvinfer1, LayerType, SampleMode, Weights};
 use trtx_sys::{AsLayer, AsLayerTyped};
 #[cfg(feature = "v_1_5")]
 use trtx_sys::{AttentionIOForm, CausalMaskKind};
 #[cfg(feature = "v_1_4")]
 use trtx_sys::{CollectiveOperation, MoEActType, ReduceOperation};
-use trtx_sys::{DataType, Dims64, MatrixOperation, ScaleMode, TopKOperation};
+use trtx_sys::{
+    DataType, Dims64, FillOperation, GatherMode, MatrixOperation, ScaleMode, TopKOperation,
+};
 use trtx_sys::{InterpolationMode, KVCacheMode};
 
 /// Panics if the layer or tensor was created from a different network.
@@ -1526,6 +1528,47 @@ impl<'network> NetworkDefinition<'network> {
         ActivationLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addParametricReLU`].
+    pub fn add_parametric_relu(
+        &mut self,
+        input: &'_ Tensor,
+        slope: &'_ Tensor,
+    ) -> Result<ParametricReLULayer<'network>> {
+        check_network!(self, input);
+        check_network!(self, slope);
+        debug!(
+            "add_parametric_relu input={} slope={}",
+            tensor_dbg(self, input),
+            tensor_dbg(self, slope)
+        );
+        let layer_ptr = self
+            .inner
+            .pin_mut()
+            .addParametricReLU(input.pin_mut(), slope.pin_mut());
+        ParametricReLULayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addLRN`].
+    pub fn add_lrn(
+        &mut self,
+        input: &'_ Tensor,
+        window: i64,
+        alpha: f32,
+        beta: f32,
+        k: f32,
+    ) -> Result<LrnLayer<'network>> {
+        check_network!(self, input);
+        debug!(
+            "add_lrn input={} window={window} alpha={alpha} beta={beta} k={k}",
+            tensor_dbg(self, input)
+        );
+        let layer_ptr = self
+            .inner
+            .pin_mut()
+            .addLRN(input.pin_mut(), window, alpha, beta, k);
+        LrnLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addUnary`].
     pub fn add_unary(
         &mut self,
@@ -1896,7 +1939,10 @@ impl<'network> NetworkDefinition<'network> {
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConcatenation`].
-    pub fn add_concatenation(&self, inputs: &[&'_ Tensor]) -> Result<ConcatenationLayer<'network>> {
+    pub fn add_concatenation(
+        &'_ mut self,
+        inputs: &[&'_ Tensor],
+    ) -> Result<ConcatenationLayer<'network>> {
         for t in inputs.iter() {
             check_network!(self, t);
         }
@@ -1914,6 +1960,33 @@ impl<'network> NetworkDefinition<'network> {
             )
         } as *mut IConcatenationLayer;
         ConcatenationLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addEinsum`].
+    pub fn add_einsum(
+        &'_ mut self,
+        inputs: &[&'_ Tensor],
+        equation: &str,
+    ) -> Result<EinsumLayer<'network>> {
+        for t in inputs.iter() {
+            check_network!(self, t);
+        }
+        let input_names: Vec<String> = inputs.iter().map(|t| tensor_dbg(self, t)).collect();
+        debug!("add_einsum inputs={input_names:?} equation={equation:?}");
+        let equation_cstr = CString::new(equation)?;
+        let mut input_ptrs: Vec<*mut std::ffi::c_void> = inputs
+            .iter()
+            .map(|t| t.as_mut() as *mut ITensor as *mut _)
+            .collect();
+        let layer_ptr = unsafe {
+            trtx_sys::network_add_einsum(
+                self.inner.as_mut_ptr() as *mut std::ffi::c_void,
+                input_ptrs.as_mut_ptr(),
+                inputs.len() as i32,
+                equation_cstr.as_ptr(),
+            )
+        } as *mut IEinsumLayer;
+        EinsumLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConstant`].
@@ -2037,6 +2110,26 @@ impl<'network> NetworkDefinition<'network> {
         Ok(rtn)
     }
 
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addRaggedSoftMax`].
+    pub fn add_ragged_softmax(
+        &mut self,
+        input: &'_ Tensor,
+        bounds: &'_ Tensor,
+    ) -> Result<RaggedSoftMaxLayer<'network>> {
+        check_network!(self, input);
+        check_network!(self, bounds);
+        debug!(
+            "add_ragged_softmax input={} bounds={}",
+            tensor_dbg(self, input),
+            tensor_dbg(self, bounds)
+        );
+        let layer_ptr = self
+            .inner
+            .pin_mut()
+            .addRaggedSoftMax(input.pin_mut(), bounds.pin_mut());
+        RaggedSoftMaxLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addScale`].
     pub fn add_scale(
         &mut self,
@@ -2088,6 +2181,64 @@ impl<'network> NetworkDefinition<'network> {
             self.inner
                 .pin_mut()
                 .addScale(input.pin_mut(), mode.into(), shift_w, scale_w, power_w);
+        ScaleLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addScaleNd`].
+    pub fn add_scale_nd(
+        &mut self,
+        input: &'_ Tensor,
+        mode: ScaleMode,
+        shift: &[u8],
+        scale: &[u8],
+        power: &[u8],
+        channel_axis: i32,
+    ) -> Result<ScaleLayer<'network>> {
+        check_network!(self, input);
+        debug!(
+            "add_scale_nd input={} mode={mode:?} channel_axis={channel_axis} shift_len={} scale_len={} power_len={}",
+            tensor_dbg(self, input),
+            shift.len(),
+            scale.len(),
+            power.len()
+        );
+        let weight_count = match mode {
+            ScaleMode::kUNIFORM => 1i64,
+            ScaleMode::kCHANNEL => {
+                let input_dims = input.dimensions(self)?;
+                if input_dims.len() >= 4 {
+                    input_dims[1]
+                } else if !input_dims.is_empty() {
+                    input_dims[0]
+                } else {
+                    1i64
+                }
+            }
+            ScaleMode::kELEMENTWISE => {
+                let input_dims = input.dimensions(self)?;
+                input_dims.iter().product::<i64>()
+            }
+        };
+        let shift_w = trtx_sys::nvinfer1::Weights::new_float(
+            shift.as_ptr() as *const std::ffi::c_void,
+            weight_count,
+        );
+        let scale_w = trtx_sys::nvinfer1::Weights::new_float(
+            scale.as_ptr() as *const std::ffi::c_void,
+            weight_count,
+        );
+        let power_w = trtx_sys::nvinfer1::Weights::new_float(
+            power.as_ptr() as *const std::ffi::c_void,
+            weight_count,
+        );
+        let layer_ptr = self.inner.pin_mut().addScaleNd(
+            input.pin_mut(),
+            mode.into(),
+            shift_w,
+            scale_w,
+            power_w,
+            channel_axis,
+        );
         ScaleLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
@@ -2187,6 +2338,30 @@ impl<'network> NetworkDefinition<'network> {
         SliceLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addTopK1`].
+    pub fn add_topk_with_indices(
+        &mut self,
+        input: &'_ Tensor,
+        op: TopKOperation,
+        k: i32,
+        axes: crate::Axes,
+        indices_type: DataType,
+    ) -> Result<TopKLayer<'network>> {
+        check_network!(self, input);
+        debug!(
+            "add_topk input={} op={op:?} k={k} axes={axes:?} indices_type={indices_type:?}",
+            tensor_dbg(self, input)
+        );
+        let axes_bits = axes.to_bits();
+        let layer_ptr = self.inner.pin_mut().addTopK1(
+            input.pin_mut(),
+            op.into(),
+            k,
+            axes_bits,
+            indices_type.into(),
+        );
+        TopKLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addTopK`].
     pub fn add_topk(
         &mut self,
@@ -2261,6 +2436,27 @@ impl<'network> NetworkDefinition<'network> {
             .inner
             .pin_mut()
             .addGather(data.pin_mut(), indices.pin_mut(), axis);
+        GatherLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addGatherV2`].
+    pub fn add_gather_v2(
+        &mut self,
+        data: &'_ Tensor,
+        indices: &'_ Tensor,
+        mode: GatherMode,
+    ) -> Result<GatherLayer<'network>> {
+        check_network!(self, data);
+        check_network!(self, indices);
+        debug!(
+            "add_gather_v2 data={} indices={} mode={mode:?}",
+            tensor_dbg(self, data),
+            tensor_dbg(self, indices)
+        );
+        let layer_ptr =
+            self.inner
+                .pin_mut()
+                .addGatherV2(data.pin_mut(), indices.pin_mut(), mode.into());
         GatherLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
@@ -2346,6 +2542,55 @@ impl<'network> NetworkDefinition<'network> {
         DequantizeLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addDynamicQuantize`].
+    #[deprecated(note = "use add_dynamic_quantize_v2 instead")]
+    pub fn add_dynamic_quantize(
+        &mut self,
+        input: &'_ Tensor,
+        axis: i32,
+        block_size: i32,
+        output_type: DataType,
+        scale_type: DataType,
+    ) -> Result<DynamicQuantizeLayer<'network>> {
+        check_network!(self, input);
+        debug!(
+            "add_dynamic_quantize input={} axis={axis} block_size={block_size} output_type={output_type:?} scale_type={scale_type:?}",
+            tensor_dbg(self, input)
+        );
+        #[allow(deprecated)]
+        let layer_ptr = self.inner.pin_mut().addDynamicQuantize(
+            input.pin_mut(),
+            axis,
+            block_size,
+            output_type.into(),
+            scale_type.into(),
+        );
+        DynamicQuantizeLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addDynamicQuantizeV2`].
+    pub fn add_dynamic_quantize_v2(
+        &mut self,
+        input: &'_ Tensor,
+        block_shape: &[i64],
+        output_type: DataType,
+        scale_type: DataType,
+    ) -> Result<DynamicQuantizeLayer<'network>> {
+        check_network!(self, input);
+        debug!(
+            "add_dynamic_quantize_v2 input={} block_shape={block_shape:?} output_type={output_type:?} scale_type={scale_type:?}",
+            tensor_dbg(self, input)
+        );
+        let block_shape_dims = Dims64::from_slice(block_shape);
+        let layer_ptr = self.inner.pin_mut().addDynamicQuantizeV2(
+            input.pin_mut(),
+            &block_shape_dims,
+            output_type.into(),
+            scale_type.into(),
+        );
+        DynamicQuantizeLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addSelect`].
     pub fn add_select(
         &mut self,
@@ -2396,8 +2641,184 @@ impl<'network> NetworkDefinition<'network> {
         PaddingLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addFill`].
+    pub fn add_fill(
+        &mut self,
+        dimensions: &[i64],
+        op: FillOperation,
+        output_type: DataType,
+    ) -> Result<FillLayer<'network>> {
+        debug!("add_fill dimensions={dimensions:?} op={op:?} output_type={output_type:?}");
+        let dims = Dims64::from_slice(dimensions);
+        let layer_ptr = self
+            .inner
+            .pin_mut()
+            .addFill(&dims, op.into(), output_type.into());
+        FillLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addOneHot`].
+    pub fn add_one_hot(
+        &mut self,
+        indices: &'_ Tensor,
+        values: &'_ Tensor,
+        depth: &'_ Tensor,
+        axis: i32,
+    ) -> Result<OneHotLayer<'network>> {
+        check_network!(self, indices);
+        check_network!(self, values);
+        check_network!(self, depth);
+        debug!(
+            "add_one_hot indices={} values={} depth={} axis={axis}",
+            tensor_dbg(self, indices),
+            tensor_dbg(self, values),
+            tensor_dbg(self, depth)
+        );
+        let layer_ptr = self.inner.pin_mut().addOneHot(
+            indices.pin_mut(),
+            values.pin_mut(),
+            depth.pin_mut(),
+            axis,
+        );
+        OneHotLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addNonZero`].
+    pub fn add_non_zero(
+        &mut self,
+        input: &'_ Tensor,
+        indices_type: DataType,
+    ) -> Result<NonZeroLayer<'network>> {
+        check_network!(self, input);
+        debug!(
+            "add_non_zero input={} indices_type={indices_type:?}",
+            tensor_dbg(self, input)
+        );
+        let layer_ptr = self
+            .inner
+            .pin_mut()
+            .addNonZero1(input.pin_mut(), indices_type.into());
+        NonZeroLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addNMS`].
+    pub fn add_nms(
+        &mut self,
+        boxes: &'_ Tensor,
+        scores: &'_ Tensor,
+        max_output_boxes_per_class: &'_ Tensor,
+        indices_type: DataType,
+    ) -> Result<NMSLayer<'network>> {
+        check_network!(self, boxes);
+        check_network!(self, scores);
+        check_network!(self, max_output_boxes_per_class);
+        debug!(
+            "add_nms boxes={} scores={} max_output_boxes_per_class={} indices_type={indices_type:?}",
+            tensor_dbg(self, boxes),
+            tensor_dbg(self, scores),
+            tensor_dbg(self, max_output_boxes_per_class)
+        );
+        let layer_ptr = self.inner.pin_mut().addNMS1(
+            boxes.pin_mut(),
+            scores.pin_mut(),
+            max_output_boxes_per_class.pin_mut(),
+            indices_type.into(),
+        );
+        NMSLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addReverseSequence`].
+    pub fn add_reverse_sequence(
+        &mut self,
+        input: &'_ Tensor,
+        sequence_lens: &'_ Tensor,
+    ) -> Result<ReverseSequenceLayer<'network>> {
+        check_network!(self, input);
+        check_network!(self, sequence_lens);
+        debug!(
+            "add_reverse_sequence input={} sequence_lens={}",
+            tensor_dbg(self, input),
+            tensor_dbg(self, sequence_lens)
+        );
+        let layer_ptr = self
+            .inner
+            .pin_mut()
+            .addReverseSequence(input.pin_mut(), sequence_lens.pin_mut());
+        ReverseSequenceLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addSqueeze`].
+    pub fn add_squeeze(
+        &mut self,
+        input: &'_ Tensor,
+        axes: &'_ Tensor,
+    ) -> Result<SqueezeLayer<'network>> {
+        check_network!(self, input);
+        check_network!(self, axes);
+        debug!(
+            "add_squeeze input={} axes={}",
+            tensor_dbg(self, input),
+            tensor_dbg(self, axes)
+        );
+        let layer_ptr = self
+            .inner
+            .pin_mut()
+            .addSqueeze(input.pin_mut(), axes.pin_mut());
+        SqueezeLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addUnsqueeze`].
+    pub fn add_unsqueeze(
+        &mut self,
+        input: &'_ Tensor,
+        axes: &'_ Tensor,
+    ) -> Result<UnsqueezeLayer<'network>> {
+        check_network!(self, input);
+        check_network!(self, axes);
+        debug!(
+            "add_unsqueeze input={} axes={}",
+            tensor_dbg(self, input),
+            tensor_dbg(self, axes)
+        );
+        let layer_ptr = self
+            .inner
+            .pin_mut()
+            .addUnsqueeze(input.pin_mut(), axes.pin_mut());
+        UnsqueezeLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addKVCacheUpdate`].
+    pub fn add_kv_cache_update(
+        &mut self,
+        cache: &'_ Tensor,
+        update: &'_ Tensor,
+        write_indices: &'_ Tensor,
+        cache_mode: KVCacheMode,
+    ) -> Result<KVCacheUpdateLayer<'network>> {
+        check_network!(self, cache);
+        check_network!(self, update);
+        check_network!(self, write_indices);
+        debug!(
+            "add_kv_cache_update cache={} update={} write_indices={} cache_mode={cache_mode:?}",
+            tensor_dbg(self, cache),
+            tensor_dbg(self, update),
+            tensor_dbg(self, write_indices)
+        );
+        let layer_ptr = self.inner.pin_mut().addKVCacheUpdate(
+            cache.pin_mut(),
+            update.pin_mut(),
+            write_indices.pin_mut(),
+            cache_mode.into(),
+        );
+        KVCacheUpdateLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addAssertion`].
-    pub fn add_assertion(&mut self, condition: &'_ Tensor, message: &str) -> Result<()> {
+    pub fn add_assertion(
+        &mut self,
+        condition: &'_ Tensor,
+        message: &str,
+    ) -> Result<AssertionLayer<'network>> {
         check_network!(self, condition);
         debug!(
             "add_assertion condition={} message={message:?}",
@@ -2409,8 +2830,7 @@ impl<'network> NetworkDefinition<'network> {
                 .pin_mut()
                 .addAssertion(condition.pin_mut(), message_cstr.as_ptr())
         };
-        let _ = AssertionLayer::new(self.inner.as_ptr(), layer_ptr)?;
-        Ok(())
+        AssertionLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addLoop`].

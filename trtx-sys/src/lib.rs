@@ -99,6 +99,7 @@ better_enum!(WeightsRole);
 better_enum!(TripLimit);
 better_enum!(LoopOutput);
 better_enum!(KVCacheMode);
+better_enum!(FillOperation);
 #[cfg(feature = "v_1_4")]
 better_enum!(MoEActType);
 #[cfg(feature = "v_1_4")]
@@ -683,6 +684,13 @@ unsafe extern "C" {
         network: *mut std::ffi::c_void,
         inputs: *mut *mut std::ffi::c_void,
         nb_inputs: i32,
+    ) -> *mut std::ffi::c_void;
+
+    pub unsafe fn network_add_einsum(
+        network: *mut std::ffi::c_void,
+        inputs: *mut *mut std::ffi::c_void,
+        nb_inputs: i32,
+        equation: *const std::os::raw::c_char,
     ) -> *mut std::ffi::c_void;
 
     // Parser methods
