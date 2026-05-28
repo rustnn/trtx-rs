@@ -308,7 +308,7 @@ pub fn dynamically_load_tensorrt_onnxparser(_filename: Option<impl AsFilename>) 
 
 // Re-export TensorRT enums
 pub use trtx_sys::{
-    ActivationType, CumulativeOperation, DataType, ElementWiseOperation,
+    self, ActivationType, CumulativeOperation, DataType, ElementWiseOperation,
     ExecutionContextAllocationStrategy, GatherMode, InterpolationMode, LayerInformationFormat,
     LayerType, MatrixOperation, PaddingMode, PoolingType, ReduceOperation,
     ResizeCoordinateTransformation, ResizeMode, ResizeRoundMode, ResizeSelector, SampleMode,
