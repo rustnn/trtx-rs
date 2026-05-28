@@ -292,6 +292,25 @@ void *network_add_concatenation(void *network, void **inputs,
   }
 }
 
+void *network_add_einsum(void *network, void **inputs, int32_t nb_inputs,
+                         const char *equation) {
+  if (!network || !inputs || nb_inputs <= 0 || !equation)
+    return nullptr;
+  try {
+    auto *inetwork = static_cast<nvinfer1::INetworkDefinition *>(network);
+    std::vector<nvinfer1::ITensor *> tensors;
+    tensors.reserve(nb_inputs);
+    for (int32_t i = 0; i < nb_inputs; ++i) {
+      tensors.push_back(static_cast<nvinfer1::ITensor *>(inputs[i]));
+    }
+    auto *layer =
+        inetwork->addEinsum(tensors.data(), nb_inputs, equation);
+    return layer;
+  } catch (...) {
+    return nullptr;
+  }
+}
+
 uint32_t get_tensorrt_version() { return NV_TENSORRT_VERSION; }
 uint32_t get_tensorrt_major_version() { return NV_TENSORRT_MAJOR; }
 uint32_t get_tensorrt_minor_version() { return NV_TENSORRT_MINOR; }

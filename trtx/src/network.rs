@@ -10,7 +10,7 @@ use cxx::UniquePtr;
 use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 use std::pin::Pin;
-use trtx_sys::nvinfer1::{IConcatenationLayer, INetworkDefinition, ITensor};
+use trtx_sys::nvinfer1::{IConcatenationLayer, IEinsumLayer, INetworkDefinition, ITensor};
 use trtx_sys::{nvinfer1, LayerType, SampleMode, Weights};
 use trtx_sys::{AsLayer, AsLayerTyped};
 #[cfg(feature = "v_1_5")]
@@ -1939,7 +1939,10 @@ impl<'network> NetworkDefinition<'network> {
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConcatenation`].
-    pub fn add_concatenation(&self, inputs: &[&'_ Tensor]) -> Result<ConcatenationLayer<'network>> {
+    pub fn add_concatenation(
+        &'_ mut self,
+        inputs: &[&'_ Tensor],
+    ) -> Result<ConcatenationLayer<'network>> {
         for t in inputs.iter() {
             check_network!(self, t);
         }
@@ -1957,6 +1960,33 @@ impl<'network> NetworkDefinition<'network> {
             )
         } as *mut IConcatenationLayer;
         ConcatenationLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addEinsum`].
+    pub fn add_einsum(
+        &'_ mut self,
+        inputs: &[&'_ Tensor],
+        equation: &str,
+    ) -> Result<EinsumLayer<'network>> {
+        for t in inputs.iter() {
+            check_network!(self, t);
+        }
+        let input_names: Vec<String> = inputs.iter().map(|t| tensor_dbg(self, t)).collect();
+        debug!("add_einsum inputs={input_names:?} equation={equation:?}");
+        let equation_cstr = CString::new(equation)?;
+        let mut input_ptrs: Vec<*mut std::ffi::c_void> = inputs
+            .iter()
+            .map(|t| t.as_mut() as *mut ITensor as *mut _)
+            .collect();
+        let layer_ptr = unsafe {
+            trtx_sys::network_add_einsum(
+                self.inner.as_mut_ptr() as *mut std::ffi::c_void,
+                input_ptrs.as_mut_ptr(),
+                inputs.len() as i32,
+                equation_cstr.as_ptr(),
+            )
+        } as *mut IEinsumLayer;
+        EinsumLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConstant`].

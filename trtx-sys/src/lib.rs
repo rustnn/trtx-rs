@@ -686,6 +686,13 @@ unsafe extern "C" {
         nb_inputs: i32,
     ) -> *mut std::ffi::c_void;
 
+    pub unsafe fn network_add_einsum(
+        network: *mut std::ffi::c_void,
+        inputs: *mut *mut std::ffi::c_void,
+        nb_inputs: i32,
+        equation: *const std::os::raw::c_char,
+    ) -> *mut std::ffi::c_void;
+
     // Parser methods
     pub unsafe fn parser_parse(
         parser: *mut std::ffi::c_void,

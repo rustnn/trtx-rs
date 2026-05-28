@@ -107,7 +107,7 @@ impl ProgressMonitor {
     }
 }
 
-/// C callbacks for GpuAllocatorSubclass (bridge to Rust). `this` is *mut RefCell<GpuAllocator>.
+/// C callbacks for GpuAllocatorSubclass (bridge to Rust). `this` is `*mut RefCell<GpuAllocator>`.
 #[allow(non_snake_case)]
 unsafe extern "system" fn GpuAllocator_allocateAsync(
     this: *const std::ffi::c_void,
@@ -225,7 +225,7 @@ pub trait AllocateGpu: Send + Sync {
     ) -> bool;
 }
 
-/// C callbacks for ErrorRecorderSubclass (bridge to Rust). `this` is *mut RefCell<ErrorRecorder>.
+/// C callbacks for ErrorRecorderSubclass (bridge to Rust). `this` is `*mut RefCell<ErrorRecorder>`.
 #[allow(non_snake_case)]
 unsafe extern "system" fn ErrorRecorder_getNbErrors(this: *mut ErrorRecorder) -> i32 {
     this.as_ref().unwrap().rust_impl.nb_errors()
