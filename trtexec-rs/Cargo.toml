@@ -9,13 +9,16 @@ repository.workspace = true
 [dependencies]
 rustnn = { git = "https://github.com/rustnn/rustnn/", features = [
 	"trtx-runtime",
-], default-features = false, branch = "main" }
+], default-features = false, branch = "v1.5-prep" }
 
 nvidia-nvtx = { version = "0.2", git = "https://github.com/NVIDIA/NVTX", branch = "release-v3" }
 log = "0.4"
 pretty_env_logger = "0.5"
-trtx = { version = "0.5.0", path = "../trtx", default-features = true }
-trtx-sys = { version = "0.5.0", path = "../trtx-sys", default-features = true }
+
+# To upgrade the trtx version to new major version, create a PR with that bump to the RustNN repo
+# and switch the RustNN dep temporarily to that branch until RustNN main has that version bump
+trtx = { version = "0.6.0", path = "../trtx", default-features = true }
+trtx-sys = { version = "0.6.0", path = "../trtx-sys", default-features = true }
 indicatif = "0.18"
 anyhow = { version = "1.0", features = ["backtrace"] }
 clap = { version = "4.6", features = ["derive"] }

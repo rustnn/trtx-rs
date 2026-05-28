@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0+rtx1.5] - 2026-05-28
+
+<!-- Generated using git-cliff -->
+### 🚀 Features
+
+- Add support for `ShapeLayer` (#89)
+- Debug for API facing types (#93)
+- Add RuntimeConfig, RuntimeCache (#101)
+- [**breaking**] TensorRT RTX 1.5 support, make TRT RTX 1.5 the new default (#105)
+- Export `trtx_sys` (#103)
+- Add support for AttentionIOForm, CausalMaskKind (TRT RTX 1.5) (#107)
+
+### 🐛 Bug Fixes
+
+- Return error instead of panic in `Tensor::dimensions` for negative nbDims (#90)
+- [**breaking**] Error on `false` return value for `set_{input,output}_tensor_address` (#100)
+- Manage RuntimeConfig, RuntimeCache with Arc/Rc (#102)
+
+### 💼 Other
+
+- Disable RUST_LOG during autocxx (#95)
+- Bump version to 0.6.0+rtx1.5
+
+### 🚜 Refactor
+
+- Make failed library load emit `warn` log instead of `error` (#94)
+
+### 📚 Documentation
+
+- Fix link to TRT RTX documentation in README (#97)
+- Add README for trtexec-rs (#96)
+- Document build failures with libclang >= 22 (#99)
+- Update link to Rustdoc format (#106)
+
+### ⚙️ Miscellaneous Tasks
+
+- Update actions/cache to v5 (#108)
+
+
 ## [0.5.0] - 2026-04-30
 
 ### Added
