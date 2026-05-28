@@ -11,7 +11,6 @@ use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 use std::pin::Pin;
 use trtx_sys::nvinfer1::{IConcatenationLayer, INetworkDefinition, ITensor};
-use trtx_sys::InterpolationMode;
 use trtx_sys::{nvinfer1, LayerType, SampleMode, Weights};
 use trtx_sys::{AsLayer, AsLayerTyped};
 #[cfg(feature = "v_1_5")]
@@ -19,6 +18,7 @@ use trtx_sys::{AttentionIOForm, CausalMaskKind};
 #[cfg(feature = "v_1_4")]
 use trtx_sys::{CollectiveOperation, MoEActType, ReduceOperation};
 use trtx_sys::{DataType, Dims64, MatrixOperation, ScaleMode, TopKOperation};
+use trtx_sys::{InterpolationMode, KVCacheMode};
 
 /// Panics if the layer or tensor was created from a different network.
 macro_rules! check_network {
@@ -2911,6 +2911,25 @@ impl<'network> Attention<'network> {
 }
 
 impl<'network> KVCacheUpdateLayer<'network> {
+    /// See [`trtx_sys::nvinfer1::IKVCacheUpdateLayer::setCacheMode`].
+    pub fn set_cache_mode(
+        &mut self,
+        network: &mut NetworkDefinition,
+        mode: KVCacheMode,
+    ) -> Result<()> {
+        check_network!(network, self);
+        self.inner
+            .as_mut()
+            .setCacheMode(mode.into())
+            .ok_or_err(PropertySetAttempt::KVCacheUpdateMode)
+    }
+
+    /// See [`trtx_sys::nvinfer1::IKVCacheUpdateLayer::getCacheMode`].
+    pub fn cache_mode(&self, network: &NetworkDefinition) -> KVCacheMode {
+        check_network!(network, self);
+        self.inner.getCacheMode().into()
+    }
+
     #[cfg(feature = "v_1_5")]
     /// See [`trtx_sys::nvinfer1::IKVCacheUpdateLayer::setUpdateForm`].
     pub fn set_update_form(

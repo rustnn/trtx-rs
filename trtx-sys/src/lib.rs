@@ -98,6 +98,7 @@ better_enum!(SeekPosition);
 better_enum!(WeightsRole);
 better_enum!(TripLimit);
 better_enum!(LoopOutput);
+better_enum!(KVCacheMode);
 #[cfg(feature = "v_1_4")]
 better_enum!(MoEActType);
 #[cfg(feature = "v_1_4")]
@@ -245,6 +246,7 @@ include_cpp! {
     generate_pod!("nvinfer1::ExecutionContextAllocationStrategy")
     generate_pod!("nvinfer1::CausalMaskKind")
     generate_pod!("nvinfer1::AttentionIOForm")
+    generate_pod!("nvinfer1::KVCacheMode")
 
     generate_pod!("nvinfer1::Weights")
     generate_pod!("nvinfer1::Permutation")

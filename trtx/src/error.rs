@@ -40,6 +40,7 @@ pub enum PropertySetAttempt {
     AttentionLayerKeyValueForm,
     AttentionLayerQueryLengths,
     AttentionLayerKeyValueLengths,
+    KVCacheUpdateMode,
     KVCacheUpdateUpdateForm,
     KVCacheUpdateLayerUpdateLengths,
     AttentionLayerNormalizationOp,
