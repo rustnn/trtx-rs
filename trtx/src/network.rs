@@ -2978,9 +2978,10 @@ impl<'network> Attention<'network> {
     pub fn set_query_lengths(
         &mut self,
         network: &mut NetworkDefinition,
-        lengths: &mut Tensor,
+        lengths: &'_ Tensor,
     ) -> Result<()> {
         check_network!(network, self);
+        check_network!(network, lengths);
         unsafe {
             self.inner
                 .as_mut()
@@ -2994,9 +2995,10 @@ impl<'network> Attention<'network> {
     pub fn set_key_value_lengths(
         &mut self,
         network: &mut NetworkDefinition,
-        lengths: &Tensor,
+        lengths: &'_ Tensor,
     ) -> Result<()> {
         check_network!(network, self);
+        check_network!(network, lengths);
         unsafe {
             self.inner
                 .as_mut()
@@ -3055,6 +3057,7 @@ impl<'network> KVCacheUpdateLayer<'network> {
         lengths: &Tensor,
     ) -> Result<()> {
         check_network!(network, self);
+        check_network!(network, lengths);
         unsafe {
             self.inner
                 .as_mut()
