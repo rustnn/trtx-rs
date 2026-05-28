@@ -102,6 +102,10 @@ better_enum!(LoopOutput);
 better_enum!(MoEActType);
 #[cfg(feature = "v_1_4")]
 better_enum!(CollectiveOperation);
+#[cfg(feature = "v_1_5")]
+better_enum!(CausalMaskKind);
+#[cfg(feature = "v_1_5")]
+better_enum!(AttentionIOForm);
 
 pub use enums::ErrorCode;
 
@@ -239,6 +243,8 @@ include_cpp! {
     generate_pod!("nvinfer1::CudaGraphStrategy")
     generate_pod!("nvinfer1::DynamicShapesKernelSpecializationStrategy")
     generate_pod!("nvinfer1::ExecutionContextAllocationStrategy")
+    generate_pod!("nvinfer1::CausalMaskKind")
+    generate_pod!("nvinfer1::AttentionIOForm")
 
     generate_pod!("nvinfer1::Weights")
     generate_pod!("nvinfer1::Permutation")

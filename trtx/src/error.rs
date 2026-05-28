@@ -35,6 +35,13 @@ pub enum PropertySetAttempt {
     AttentionLayerMetadata,
     AttentionLayerMask,
     AttentionLayerCausal,
+    AttentionLayerCausalKind,
+    AttentionLayerQueryForm,
+    AttentionLayerKeyValueForm,
+    AttentionLayerQueryLengths,
+    AttentionLayerKeyValueLengths,
+    KVCacheUpdateUpdateForm,
+    KVCacheUpdateLayerUpdateLengths,
     AttentionLayerNormalizationOp,
     AttentionLayerDecomposable,
 }

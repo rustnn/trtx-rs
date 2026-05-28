@@ -135,6 +135,8 @@ namespace nvinfer1 {
     enum class ComputeCapability : int32_t;
     enum class CudaGraphStrategy : int32_t;
     enum class DynamicShapesKernelSpecializationStrategy : int32_t;
+    enum class CausalMaskKind : int32_t;
+    enum class AttentionIOForm : int32_t;
 }"#;
 
             // trimming of indentation is necessary, so that rustdoc doesn't interpret
@@ -177,6 +179,8 @@ fn generate_enum_bindings(crate_root: &str, out_path: &Path, include_dir: &Path)
     for pattern in [
         ".*Type",
         ".*Mode",
+        ".*Form",
+        ".*CausalMaskKind",
         ".*Operation",
         ".*Strategy",
         ".*Severity",
