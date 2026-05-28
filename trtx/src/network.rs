@@ -1526,6 +1526,26 @@ impl<'network> NetworkDefinition<'network> {
         ActivationLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addParametricReLU`].
+    pub fn add_parametric_relu(
+        &mut self,
+        input: &'_ Tensor,
+        slope: &'_ Tensor,
+    ) -> Result<ParametricReLULayer<'network>> {
+        check_network!(self, input);
+        check_network!(self, slope);
+        debug!(
+            "add_parametric_relu input={} slope={}",
+            tensor_dbg(self, input),
+            tensor_dbg(self, slope)
+        );
+        let layer_ptr = self
+            .inner
+            .pin_mut()
+            .addParametricReLU(input.pin_mut(), slope.pin_mut());
+        ParametricReLULayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addUnary`].
     pub fn add_unary(
         &mut self,
