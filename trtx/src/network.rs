@@ -2375,6 +2375,40 @@ impl<'network> NetworkDefinition<'network> {
         })
     }
 
+    #[cfg(feature = "v_1_5")]
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addAttentionV2`].
+    pub fn add_attention_v2(
+        &mut self,
+        query: &'_ Tensor,
+        key: &'_ Tensor,
+        value: &'_ Tensor,
+        norm_op: trtx_sys::AttentionNormalizationOp,
+        causal_kind: CausalMaskKind,
+    ) -> Result<Attention<'network>> {
+        check_network!(self, query);
+        check_network!(self, key);
+        check_network!(self, value);
+        debug!(
+            "add_attention_v2 query={} key={} value={} norm_op={norm_op:?} causal_kind={causal_kind:?}",
+            tensor_dbg(self, query),
+            tensor_dbg(self, key),
+            tensor_dbg(self, value)
+        );
+        let attn_ptr = self.inner.pin_mut().addAttentionV2(
+            query.pin_mut(),
+            key.pin_mut(),
+            value.pin_mut(),
+            norm_op.into(),
+            causal_kind.into(),
+        );
+        let attn = unsafe { attn_ptr.as_mut() }
+            .ok_or_else(|| Error::Runtime("Failed to add attention".to_string()))?;
+        Ok(Attention {
+            inner: unsafe { Pin::new_unchecked(attn) },
+            network: self.inner.as_ptr(),
+        })
+    }
+
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addAttention`].
     /// Creates an attention block (internally creates [`AttentionInputLayer`] and [`AttentionOutputLayer`]).
     pub fn add_attention(
