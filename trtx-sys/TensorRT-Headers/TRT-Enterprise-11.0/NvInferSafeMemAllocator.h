@@ -107,6 +107,9 @@ public:
     //!         - If an allocation request cannot be satisfied for any reason, nullptr must be returned.
     //!         - If a non-null address is returned, it is guaranteed to have the specified alignment.
     //!
+    //! \post If non-null returned, a block of at least \p size bytes with the requested alignment is allocated
+    //!       and owned by the caller until deallocate() is called. If nullptr returned, no allocation was made.
+    //!
     //! \warning The implementation must guarantee thread safety for concurrent allocate/deallocate
     //! requests.
     //!
@@ -117,7 +120,17 @@ public:
     virtual void* allocate(uint64_t const size, uint64_t const alignment, MemoryPlacement const flags,
         MemoryUsage const usage, ISafeRecorder& recorder) noexcept = 0;
 
+    //!
+    //! \brief Destructor for ISafeMemAllocator.
+    //! \pre none
+    //! \post Object is destroyed; allocator is no longer valid for use.
+    //!
     virtual ~ISafeMemAllocator() = default;
+    //!
+    //! \brief Default constructor for ISafeMemAllocator.
+    //! \pre none
+    //! \post Object is in default-constructed state; ready to handle allocate/deallocate requests.
+    //!
     ISafeMemAllocator() = default;
 
     //!
@@ -135,6 +148,9 @@ public:
     //!
     //! \return True if the acquired memory is released successfully, false otherwise.
     //!
+    //! \post If true, the memory at \p memory has been released and must not be used. If false, release failed
+    //!       or \p memory was nullptr.
+    //!
     //! \warning The implementation must guarantee thread safety for concurrent allocate/deallocate
     //! requests.
     //!
@@ -148,9 +164,29 @@ public:
     virtual bool deallocate(void* const memory, MemoryPlacement const flags, ISafeRecorder& recorder) noexcept = 0;
 
 protected:
+    //!
+    //! \brief Copy constructor (defaulted).
+    //! \pre none
+    //! \post This object is a copy of the source.
+    //!
     ISafeMemAllocator(ISafeMemAllocator const&) = default;
+    //!
+    //! \brief Move constructor (defaulted).
+    //! \pre none
+    //! \post This object has the state that the source had; source is in valid but unspecified state.
+    //!
     ISafeMemAllocator(ISafeMemAllocator&&) = default;
+    //!
+    //! \brief Copy assignment operator (defaulted).
+    //! \pre none
+    //! \post This object is a copy of the source.
+    //!
     ISafeMemAllocator& operator=(ISafeMemAllocator const&) & = default;
+    //!
+    //! \brief Move assignment operator (defaulted).
+    //! \pre none
+    //! \post This object has the state that the source had; source is in valid but unspecified state.
+    //!
     ISafeMemAllocator& operator=(ISafeMemAllocator&&) & = default;
 };
 } // namespace safe

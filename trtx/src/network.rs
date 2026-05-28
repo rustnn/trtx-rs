@@ -2242,12 +2242,12 @@ impl<'network> NetworkDefinition<'network> {
             tensor_dbg(self, input),
             tensor_dbg(self, scale)
         );
-        #[cfg(not(feature = "enterprise"))]
+        #[cfg(not(all(feature = "enterprise", not(feature = "v_1_5"))))]
         let layer_ptr =
             self.inner
                 .pin_mut()
                 .addQuantize(input.pin_mut(), scale.pin_mut(), output_type.into());
-        #[cfg(feature = "enterprise")]
+        #[cfg(all(feature = "enterprise", not(feature = "v_1_5")))]
         let layer_ptr =
             self.inner
                 .pin_mut()
@@ -2269,13 +2269,13 @@ impl<'network> NetworkDefinition<'network> {
             tensor_dbg(self, input),
             tensor_dbg(self, scale)
         );
-        #[cfg(not(feature = "enterprise"))]
+        #[cfg(not(all(feature = "enterprise", not(feature = "v_1_5"))))]
         let layer_ptr = self.inner.pin_mut().addDequantize(
             input.pin_mut(),
             scale.pin_mut(),
             output_type.into(),
         );
-        #[cfg(feature = "enterprise")]
+        #[cfg(all(feature = "enterprise", not(feature = "v_1_5")))]
         let layer_ptr = self.inner.pin_mut().addDequantize1(
             input.pin_mut(),
             scale.pin_mut(),
