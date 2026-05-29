@@ -66,7 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.0] - 2026-04-09
 
 ### Added
-- Support for TensorRT RTX 1.4 (see https://docs.nvidia.com/deeplearning/tensorrt-rtx/1.4/index.html#what-s-new-in-tensorrt-rtx-1-4)
+- Support for TensorRT RTX 1.4 (see https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/getting-started/release-notes-1/1.4.html)
 - Refitter API
 - IProgressMonitor, IErrorRecorder, IDebug, IGpuAllocator, IDebugListener exposed
 - More layers and layer methods exposed
