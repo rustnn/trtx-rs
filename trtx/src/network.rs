@@ -63,6 +63,13 @@ pub struct OwnedConvWeights {
     pub bias: Option<OwnedWeights>,
 }
 
+#[derive(Debug)]
+pub struct NamedOwnedConvWeights {
+    pub kernel: OwnedWeights,
+    pub bias: Option<OwnedWeights>,
+    pub name: String,
+}
+
 impl OwnedConvWeights {
     pub fn as_weights(&self) -> ConvWeights<'_> {
         ConvWeights {
@@ -1510,6 +1517,23 @@ impl<'network> NetworkDefinition<'network> {
         self.layer_type(layer_index)
     }
 
+    /// See [nvinfer1::INetworkDefinition::setWeightsName]
+    ///
+    /// Used by internal methods
+    ///
+    /// # Safety
+    ///
+    /// Weights needs to be in a valid state, and Weights must be valid until the engine build is finished
+    unsafe fn set_weights_name(&mut self, weights: nvinfer1::Weights, name: &str) -> Result<()> {
+        let cname = CString::new(name)?;
+        self.inner
+            .pin_mut()
+            .setWeightsName(weights, cname.as_ptr())
+            .ok_or(crate::Error::FailedToSetProperty(
+                PropertySetAttempt::NetworkWeightsName,
+            ))
+    }
+
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addActivation`].
     pub fn add_activation(
         &mut self,
@@ -1719,6 +1743,42 @@ impl<'network> NetworkDefinition<'network> {
             },
         );
         ConvolutionLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
+    /// Same as [`Self::add_convolution`] but takes ownership of weights
+    ///
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConvolutionNd`].
+    pub fn add_named_convolution_owned_weights(
+        &'_ mut self,
+        input: &'_ Tensor,
+        nb_output_maps: i32,
+        kernel_size: &[i32; 2],
+        weights: OwnedConvWeights,
+        name: &str,
+    ) -> Result<ConvolutionLayer<'network>> {
+        debug!(
+            "add_convolution_owned_weights input={} nb_output_maps={nb_output_maps} kernel_size={kernel_size:?}",
+            tensor_dbg(self, input)
+        );
+        let mut layer =
+            self.add_convolution_deferrred_weights(input, nb_output_maps, kernel_size)?;
+        let kernel = self
+            .add_constant_owned(
+                &weights.kernel.shape,
+                weights.kernel.values,
+                weights.kernel.data_type,
+            )?
+            .output(self, 0)?;
+        layer.set_input(self, 1, &kernel)?;
+
+        if let Some(bias) = weights.bias {
+            let bias = self
+                .add_named_constant_owned(&bias.shape, bias.values, bias.data_type, name)?
+                .output(self, 0)?;
+            layer.set_input(self, 2, &bias)?;
+        }
+
+        Ok(layer)
     }
 
     /// Same as [`Self::add_convolution`] but takes ownership of weights
@@ -2001,7 +2061,23 @@ impl<'network> NetworkDefinition<'network> {
             "add_small_constant_copied dims={dims:?} data_type={data_type:?} weights_len={}",
             weights.len()
         );
-        unsafe { self.add_constant_unsafe(dims, weights, data_type, true) }
+        unsafe { self.add_constant_unsafe(dims, weights, data_type, true, None) }
+    }
+
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConstant`].
+    /// Same as [`Self::add_constant`] just copying the provided weights for small weights like scalars
+    pub fn add_small_named_constant_copied(
+        &mut self,
+        dims: &[i64],
+        weights: &[u8],
+        data_type: trtx_sys::DataType,
+        name: &str,
+    ) -> Result<ConstantLayer<'network>> {
+        trace!(
+            "add_small_constant_copied dims={dims:?} data_type={data_type:?} weights_len={}",
+            weights.len()
+        );
+        unsafe { self.add_constant_unsafe(dims, weights, data_type, true, Some(name)) }
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConstant`].
@@ -2043,12 +2119,59 @@ impl<'network> NetworkDefinition<'network> {
         ConstantLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConstant`].
+    /// Same as [`Self::add_constant`] but takes ownership of weights
+    pub fn add_named_constant_owned(
+        &mut self,
+        dims: &[i64],
+        weights: Vec<u8>,
+        data_type: trtx_sys::DataType,
+        name: &str,
+    ) -> Result<ConstantLayer<'network>> {
+        trace!(
+            "add_constant_owned dims={dims:?} data_type={data_type:?} weights_len={}",
+            weights.len()
+        );
+        let element_count: i64 = dims.iter().product();
+        let expected_bytes = element_count * data_type.size_bits() as i64 / 8;
+        if weights.len() as i64 != expected_bytes {
+            panic!(
+                "Weight size mismatch: expected {expected_bytes} bytes, got {} bytes",
+                weights.len()
+            );
+        }
+        let dims_struct = trtx_sys::Dims::from_slice(dims);
+        let weights_struct = trtx_sys::nvinfer1::Weights::new_with_type(
+            data_type.into(),
+            {
+                self.small_copied_weights.push(weights);
+                self.small_copied_weights
+                    .last()
+                    .expect("can't be empty. we just pushed")
+                    .as_ptr()
+            } as *const std::ffi::c_void,
+            element_count,
+        );
+        let ptr = weights_struct.values;
+        let layer_ptr = self
+            .inner
+            .pin_mut()
+            .addConstant(&dims_struct, weights_struct);
+        let layer = ConstantLayer::new(self.inner.as_ptr(), layer_ptr)?;
+        let weights_struct =
+            trtx_sys::nvinfer1::Weights::new_with_type(data_type.into(), ptr, element_count);
+        unsafe { self.set_weights_name(weights_struct, name)? };
+
+        Ok(layer)
+    }
+
     unsafe fn add_constant_unsafe(
         &mut self,
         dims: &[i64],
         weights: &[u8],
         data_type: trtx_sys::DataType,
         copy: bool,
+        name: Option<&str>,
     ) -> Result<ConstantLayer<'network>> {
         let element_count: i64 = dims.iter().product();
         let expected_bytes = element_count * data_type.size_bits() as i64 / 8;
@@ -2072,11 +2195,19 @@ impl<'network> NetworkDefinition<'network> {
             } as *const std::ffi::c_void,
             element_count,
         );
+        let ptr = weights_struct.values;
         let layer_ptr = self
             .inner
             .pin_mut()
             .addConstant(&dims_struct, weights_struct);
-        ConstantLayer::new(self.inner.as_ptr(), layer_ptr)
+        let layer = ConstantLayer::new(self.inner.as_ptr(), layer_ptr)?;
+        if let Some(name) = name {
+            let weights_struct =
+                trtx_sys::nvinfer1::Weights::new_with_type(data_type.into(), ptr, element_count);
+            self.set_weights_name(weights_struct, name)?;
+        }
+
+        Ok(layer)
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConstant`].
@@ -2090,7 +2221,22 @@ impl<'network> NetworkDefinition<'network> {
             "add_constant dims={dims:?} data_type={data_type:?} weights_len={}",
             weights.len()
         );
-        unsafe { self.add_constant_unsafe(dims, weights, data_type, false) }
+        unsafe { self.add_constant_unsafe(dims, weights, data_type, false, None) }
+    }
+
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConstant`].
+    pub fn add_named_constant(
+        &mut self,
+        dims: &[i64],
+        weights: &'network [u8],
+        data_type: trtx_sys::DataType,
+        name: &str,
+    ) -> Result<ConstantLayer<'network>> {
+        trace!(
+            "add_named_constant dims={dims:?} data_type={data_type:?} weights_len={} name={name}",
+            weights.len()
+        );
+        unsafe { self.add_constant_unsafe(dims, weights, data_type, false, Some(name)) }
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addSoftMax`].
