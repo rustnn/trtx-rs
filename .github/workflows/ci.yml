@@ -74,7 +74,7 @@ jobs:
         shell: bash
         run: |
           # 1.3 is not on pip, only starting with 1.4
-          pip install tensorrt_rtx~=1.5
+          pip install tensorrt_rtx==1.5.0.114
           RTX_LIB_DIR=$(python -c 'from os.path import dirname;print(dirname(__import__("tensorrt_rtx_libs").__file__))')
           echo "RTX_LIB_DIR=$RTX_LIB_DIR"
           echo "RTX_LIB_DIR=$RTX_LIB_DIR" >> $GITHUB_ENV
