@@ -43,11 +43,13 @@ use log::{debug, trace};
 
 /// Kernel and optional bias weights for convolution and deconvolution layers.
 #[derive(Debug)]
-pub struct ConvWeights<'a> {
-    pub kernel_weights: &'a [u8],
+pub struct ConvWeights<'weights> {
+    pub kernel_weights: &'weights [u8],
     pub kernel_dtype: crate::DataType,
-    pub bias_weights: Option<&'a [u8]>,
+    pub kernel_name: Option<&'weights str>,
+    pub bias_weights: Option<&'weights [u8]>,
     pub bias_dtype: Option<crate::DataType>,
+    pub bias_name: Option<&'weights str>,
 }
 
 #[derive(Debug)]
@@ -55,6 +57,7 @@ pub struct OwnedWeights {
     pub shape: Vec<i64>,
     pub data_type: DataType,
     pub values: Vec<u8>,
+    pub name: Option<String>,
 }
 
 #[derive(Debug)]
@@ -68,8 +71,10 @@ impl OwnedConvWeights {
         ConvWeights {
             kernel_weights: &self.kernel.values,
             kernel_dtype: self.kernel.data_type,
+            kernel_name: self.kernel.name.as_deref(),
             bias_weights: self.bias.as_ref().map(|b| b.values.as_slice()),
             bias_dtype: self.bias.as_ref().map(|b| b.data_type),
+            bias_name: self.bias.as_ref().and_then(|b| b.name.as_deref()),
         }
     }
 }
@@ -1381,6 +1386,24 @@ impl<'network> NetworkDefinition<'network> {
             Err(Error::Runtime("markDebug failed".to_string()))
         }
     }
+
+    /// See [nvinfer1::INetworkDefinition::setWeightsName]
+    ///
+    /// Used by internal methods
+    ///
+    /// # Safety
+    ///
+    /// Weights needs to be in a valid state, and Weights must be valid until the engine build is finished
+    unsafe fn set_weights_name(&mut self, weights: nvinfer1::Weights, name: &str) -> Result<()> {
+        let cname = CString::new(name)?;
+        self.inner
+            .pin_mut()
+            .setWeightsName(weights, cname.as_ptr())
+            .ok_or(crate::Error::FailedToSetProperty(
+                PropertySetAttempt::NetworkWeightsName,
+            ))
+    }
+
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::isDebugTensor`].
     /// See [`trtx_sys::nvinfer1::IExecutionContext`] debug APIs (C++ [docs](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_execution_context.html)).
     pub fn is_debug_tensor(&self, tensor: &'_ Tensor) -> bool {
@@ -1742,13 +1765,19 @@ impl<'network> NetworkDefinition<'network> {
                 &weights.kernel.shape,
                 weights.kernel.values,
                 weights.kernel.data_type,
+                weights.kernel.name.as_deref(),
             )?
             .output(self, 0)?;
         layer.set_input(self, 1, &kernel)?;
 
         if let Some(bias) = weights.bias {
             let bias = self
-                .add_constant_owned(&bias.shape, bias.values, bias.data_type)?
+                .add_constant_owned(
+                    &bias.shape,
+                    bias.values,
+                    bias.data_type,
+                    bias.name.as_deref(),
+                )?
                 .output(self, 0)?;
             layer.set_input(self, 2, &bias)?;
         }
@@ -1924,13 +1953,19 @@ impl<'network> NetworkDefinition<'network> {
                 &weights.kernel.shape,
                 weights.kernel.values,
                 weights.kernel.data_type,
+                weights.kernel.name.as_deref(),
             )?
             .output(self, 0)?;
         layer.set_input(self, 1, &kernel)?;
 
         if let Some(bias) = weights.bias {
             let bias = self
-                .add_constant_owned(&bias.shape, bias.values, bias.data_type)?
+                .add_constant_owned(
+                    &bias.shape,
+                    bias.values,
+                    bias.data_type,
+                    bias.name.as_deref(),
+                )?
                 .output(self, 0)?;
             layer.set_input(self, 2, &bias)?;
         }
@@ -1996,12 +2031,13 @@ impl<'network> NetworkDefinition<'network> {
         dims: &[i64],
         weights: &[u8],
         data_type: trtx_sys::DataType,
+        name: Option<&str>,
     ) -> Result<ConstantLayer<'network>> {
         trace!(
-            "add_small_constant_copied dims={dims:?} data_type={data_type:?} weights_len={}",
+            "add_small_constant_copied dims={dims:?} data_type={data_type:?} weights_len={} name={name:?}",
             weights.len()
         );
-        unsafe { self.add_constant_unsafe(dims, weights, data_type, true) }
+        unsafe { self.add_constant_unsafe(dims, weights, data_type, true, name) }
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConstant`].
@@ -2011,9 +2047,10 @@ impl<'network> NetworkDefinition<'network> {
         dims: &[i64],
         weights: Vec<u8>,
         data_type: trtx_sys::DataType,
+        name: Option<&str>,
     ) -> Result<ConstantLayer<'network>> {
         trace!(
-            "add_constant_owned dims={dims:?} data_type={data_type:?} weights_len={}",
+            "add_constant_owned dims={dims:?} data_type={data_type:?} weights_len={} name={name:?}",
             weights.len()
         );
         let element_count: i64 = dims.iter().product();
@@ -2036,11 +2073,26 @@ impl<'network> NetworkDefinition<'network> {
             } as *const std::ffi::c_void,
             element_count,
         );
+        let ptr = weights_struct.values;
         let layer_ptr = self
             .inner
             .pin_mut()
             .addConstant(&dims_struct, weights_struct);
-        ConstantLayer::new(self.inner.as_ptr(), layer_ptr)
+        let layer = ConstantLayer::new(self.inner.as_ptr(), layer_ptr)?;
+        if let Some(name) = name {
+            unsafe {
+                self.set_weights_name(
+                    Weights {
+                        type_: data_type.into(),
+                        values: ptr,
+                        count: element_count,
+                    },
+                    name,
+                )?
+            };
+        }
+
+        Ok(layer)
     }
 
     unsafe fn add_constant_unsafe(
@@ -2049,6 +2101,7 @@ impl<'network> NetworkDefinition<'network> {
         weights: &[u8],
         data_type: trtx_sys::DataType,
         copy: bool,
+        name: Option<&str>,
     ) -> Result<ConstantLayer<'network>> {
         let element_count: i64 = dims.iter().product();
         let expected_bytes = element_count * data_type.size_bits() as i64 / 8;
@@ -2072,11 +2125,24 @@ impl<'network> NetworkDefinition<'network> {
             } as *const std::ffi::c_void,
             element_count,
         );
+        let ptr = weights_struct.values;
         let layer_ptr = self
             .inner
             .pin_mut()
             .addConstant(&dims_struct, weights_struct);
-        ConstantLayer::new(self.inner.as_ptr(), layer_ptr)
+        let layer = ConstantLayer::new(self.inner.as_ptr(), layer_ptr)?;
+        if let Some(name) = name {
+            self.set_weights_name(
+                Weights {
+                    type_: data_type.into(),
+                    values: ptr,
+                    count: element_count,
+                },
+                name,
+            )?;
+        }
+
+        Ok(layer)
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConstant`].
@@ -2085,12 +2151,13 @@ impl<'network> NetworkDefinition<'network> {
         dims: &[i64],
         weights: &'network [u8],
         data_type: trtx_sys::DataType,
+        name: Option<&str>,
     ) -> Result<ConstantLayer<'network>> {
         trace!(
-            "add_constant dims={dims:?} data_type={data_type:?} weights_len={}",
+            "add_constant dims={dims:?} data_type={data_type:?} weights_len={} name={name:?}",
             weights.len()
         );
-        unsafe { self.add_constant_unsafe(dims, weights, data_type, false) }
+        unsafe { self.add_constant_unsafe(dims, weights, data_type, false, name) }
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addSoftMax`].
@@ -2279,7 +2346,7 @@ impl<'network> NetworkDefinition<'network> {
         );
         let axis_bytes = axis.to_le_bytes();
         let axis_constant =
-            self.add_small_constant_copied(&[], &axis_bytes, trtx_sys::DataType::kINT32)?;
+            self.add_small_constant_copied(&[], &axis_bytes, trtx_sys::DataType::kINT32, None)?;
         let axis_tensor = axis_constant.output(self, 0)?;
         self.add_cumulative_with_axis_tensor(input, &axis_tensor, op, exclusive, reverse)
     }

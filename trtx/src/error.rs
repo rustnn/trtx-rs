@@ -27,6 +27,7 @@ pub enum PropertySetAttempt {
     RuntimeCacheDeserialize,
     DequantizeLayerBlockShape,
     QuantizeLayerBlockShape,
+    NetworkWeightsName,
     AttentionLayerInput,
     AttentionLayerNumRanks,
     AttentionLayerName,
