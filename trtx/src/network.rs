@@ -37,7 +37,7 @@ macro_rules! check_network {
 }
 pub(crate) use check_network;
 
-use crate::error::{Error, OkOrFailedSettingProperty, PropertySetAttempt, Result};
+use crate::error::{Error, OkOrElseError, OkOrFailedSettingProperty, PropertySetAttempt, Result};
 use crate::interfaces::ErrorRecorder;
 use log::{debug, trace};
 
@@ -1387,6 +1387,40 @@ impl<'network> NetworkDefinition<'network> {
         }
     }
 
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::markWeightsRefittable`].
+    pub fn mark_weights_refittable(&mut self, name: &str) -> Result<()> {
+        debug!("mark_weights_refittable: {name:?}");
+        let name_cstr = std::ffi::CString::new(name)?;
+        unsafe {
+            self.inner
+                .pin_mut()
+                .markWeightsRefittable(name_cstr.as_ptr())
+                .ok_or_else_err(|| Error::FailedToMarkWeightsRefittable {
+                    weight_name: name.to_string(),
+                })
+        }
+    }
+
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::unmarkWeightsRefittable`].
+    pub fn unmark_weights_refittable(&mut self, name: &str) -> Result<()> {
+        debug!("unmark_weights_refittable: {name:?}");
+        let name_cstr = std::ffi::CString::new(name)?;
+        unsafe {
+            self.inner
+                .pin_mut()
+                .unmarkWeightsRefittable(name_cstr.as_ptr())
+                .ok_or_else_err(|| Error::FailedToUnmarkWeightsRefittable {
+                    weight_name: name.to_string(),
+                })
+        }
+    }
+
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::areWeightsMarkedRefittable`].
+    pub fn are_weights_marked_refittable(&self, name: &str) -> Result<bool> {
+        let name_cstr = std::ffi::CString::new(name)?;
+        unsafe { Ok(self.inner.areWeightsMarkedRefittable(name_cstr.as_ptr())) }
+    }
+
     /// See [nvinfer1::INetworkDefinition::setWeightsName]
     ///
     /// Used by internal methods
@@ -1399,9 +1433,9 @@ impl<'network> NetworkDefinition<'network> {
         self.inner
             .pin_mut()
             .setWeightsName(weights, cname.as_ptr())
-            .ok_or(crate::Error::FailedToSetProperty(
-                PropertySetAttempt::NetworkWeightsName,
-            ))
+            .ok_or_else_err(|| Error::FailedToSetWeightsName {
+                weight_name: name.to_string(),
+            })
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::isDebugTensor`].
