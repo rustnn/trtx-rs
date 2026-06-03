@@ -9,7 +9,7 @@ repository.workspace = true
 [dependencies]
 rustnn = { git = "https://github.com/rustnn/rustnn/", features = [
 	"trtx-runtime",
-], default-features = false, branch = "main" }
+], default-features = false, branch = "hash-graph" }
 
 nvidia-nvtx = { version = "0.2", git = "https://github.com/NVIDIA/NVTX", branch = "release-v3" }
 log = "0.4"
