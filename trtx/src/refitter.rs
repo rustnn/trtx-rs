@@ -521,7 +521,7 @@ mod tests {
                 initial.len() * std::mem::size_of::<f32>(),
             )
         };
-        let mut const_layer = network.add_constant(&dims, weights_bytes, DataType::kFLOAT)?;
+        let mut const_layer = network.add_constant(&dims, weights_bytes, DataType::kFLOAT, None)?;
         const_layer.set_name(&mut network, "refit_const")?;
 
         let output = const_layer.output(&network, 0)?;

@@ -59,7 +59,19 @@ pub(crate) trait OkOrFailedSettingProperty: Into<bool> {
     }
 }
 
+// can be replaced once https://github.com/rust-lang/rust/issues/142748 becomes stable
+pub(crate) trait OkOrElseError: Into<bool> {
+    fn ok_or_else_err(self, e: impl Fn() -> Error) -> Result<()> {
+        if self.into() {
+            Ok(())
+        } else {
+            Err(e())
+        }
+    }
+}
+
 impl OkOrFailedSettingProperty for bool {}
+impl OkOrElseError for bool {}
 
 /// Errors that can occur when using TensorRT-RTX
 #[derive(Debug, Error)]
@@ -153,6 +165,15 @@ pub enum Error {
 
     #[error("Failed to reset to RuntimeCache")]
     FailedToResetRuntimeCache,
+
+    #[error("Failed to mark weights {weight_name:?} refittable")]
+    FailedToMarkWeightsRefittable { weight_name: String },
+
+    #[error("Failed to unmark weights {weight_name:?} refittable")]
+    FailedToUnmarkWeightsRefittable { weight_name: String },
+
+    #[error("Failed to set weights name {weight_name:?}")]
+    FailedToSetWeightsName { weight_name: String },
 }
 
 impl<T> From<std::sync::PoisonError<T>> for Error {

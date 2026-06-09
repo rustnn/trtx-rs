@@ -146,7 +146,7 @@ mod tests {
 
         for i in 1..=4 {
             let one_layer =
-                network.add_small_constant_copied(&[1], &one_bytes, DataType::kFLOAT)?;
+                network.add_small_constant_copied(&[1], &one_bytes, DataType::kFLOAT, None)?;
             let one_t = one_layer.output(&network, 0)?;
             let mut sum_layer =
                 network.add_elementwise(&tensor, &one_t, ElementWiseOperation::kSUM)?;
@@ -223,8 +223,10 @@ mod tests {
             let weights = crate::ConvWeights {
                 kernel_weights: kbytes,
                 kernel_dtype: DataType::kFLOAT,
+                kernel_name: None,
                 bias_weights: None,
                 bias_dtype: None,
+                bias_name: None,
             };
             let mut conv = network.add_convolution(&tensor, out_ch, &[3, 3], &weights)?;
             conv.set_padding(&mut network, &[1i64, 1i64]);
