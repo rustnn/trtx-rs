@@ -158,7 +158,7 @@ pub mod tensor;
 
 // Re-export commonly used types
 pub use axes::Axes;
-pub use builder::{Builder, BuilderConfig, ProfilingVerbosity};
+pub use builder::{Builder, BuilderConfig};
 pub use cuda::{default_stream, synchronize, DeviceBuffer};
 pub use error::{Error, Result};
 #[cfg(feature = "onnxparser")]
@@ -308,14 +308,24 @@ pub fn dynamically_load_tensorrt_onnxparser(_filename: Option<impl AsFilename>) 
 
 // Re-export TensorRT enums
 pub use trtx_sys::{
-    self, ActivationType, CumulativeOperation, DataType, ElementWiseOperation,
-    ExecutionContextAllocationStrategy, GatherMode, InterpolationMode, LayerInformationFormat,
-    LayerType, MatrixOperation, PaddingMode, PoolingType, ReduceOperation,
-    ResizeCoordinateTransformation, ResizeMode, ResizeRoundMode, ResizeSelector, SampleMode,
-    ScaleMode, ScatterMode, TensorFormat, TensorIOMode, TopKOperation, UnaryOperation,
+    self, ActivationType, AttentionNormalizationOp, BuilderFlag, CumulativeOperation, DataType,
+    DeviceType, ElementWiseOperation, EngineCapability, ExecutionContextAllocationStrategy,
+    FillOperation, GatherMode, HardwareCompatibilityLevel, InterpolationMode, KVCacheMode,
+    LayerInformationFormat, LayerType, LoopOutput, MatrixOperation, MemoryPoolType,
+    OptProfileSelector, PaddingMode, PoolingType, PreviewFeature, ProfilingVerbosity,
+    ReduceOperation, ResizeCoordinateTransformation, ResizeMode, ResizeRoundMode, ResizeSelector,
+    RuntimePlatform, SampleMode, ScaleMode, ScatterMode, SeekPosition, SerializationFlag,
+    TensorFormat, TensorIOMode, TensorLocation, TilingOptimizationLevel, TopKOperation, TripLimit,
+    UnaryOperation, WeightsRole,
 };
 
 #[cfg(not(feature = "enterprise"))]
 pub use trtx_sys::{
     ComputeCapability, CudaGraphStrategy, DynamicShapesKernelSpecializationStrategy,
 };
+
+#[cfg(feature = "v_1_4")]
+pub use trtx_sys::{CollectiveOperation, MoEActType};
+
+#[cfg(feature = "v_1_5")]
+pub use trtx_sys::{AttentionIOForm, CausalMaskKind};
