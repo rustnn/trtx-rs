@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0+rtx1.5] - 2026-06-12
+
+### 🚀 Features
+
+- Add impl for `RotaryEmbeddingLayer` (#110)
+- Add missing `NetworkDefinition::add_XXX` methods (#112)
+- [**breaking**] Allow to set constant weight name (#117)
+
+### 🐛 Bug Fixes
+
+- Add check_network calls to `set_{query,key_value,update}_lengths` (#111)
+
+### 💼 Other
+
+- Reexport all nvinfer1 enums used in API (#118)
+- Bump to 0.7.0 (#119)
+
+### 📚 Documentation
+
+- Update link to TRT RTX 1.4 release notes (#114)
+
+### ⚙️ Miscellaneous Tasks
+
+- Pin tensorrt_rtx to exact version (#113)
+- Switch trtexec-rs back to RustNN main (#116)
+
 ## [0.6.0+rtx1.5] - 2026-05-28
 
 <!-- Generated using git-cliff -->
