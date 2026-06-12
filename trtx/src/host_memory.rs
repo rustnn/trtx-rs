@@ -67,3 +67,70 @@ impl<'builder> Deref for HostMemory<'builder> {
         self.as_ref()
     }
 }
+
+pub enum HostMemoryOrVec<'memory> {
+    HostMemory(HostMemory<'memory>),
+    Vec(Vec<u8>),
+}
+
+impl<'memory> HostMemoryOrVec<'memory> {
+    /// Returns `true` if the host memory or vec is [`HostMemory`].
+    ///
+    /// [`HostMemory`]: HostMemoryOrVec::HostMemory
+    #[must_use]
+    pub fn is_host_memory(&self) -> bool {
+        matches!(self, Self::HostMemory(..))
+    }
+
+    pub fn as_host_memory(&self) -> Option<&HostMemory<'memory>> {
+        if let Self::HostMemory(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    /// Returns `true` if the host memory or vec is [`Vec`].
+    ///
+    /// [`Vec`]: HostMemoryOrVec::Vec
+    #[must_use]
+    pub fn is_vec(&self) -> bool {
+        matches!(self, Self::Vec(..))
+    }
+
+    pub fn as_vec(&self) -> Option<&Vec<u8>> {
+        if let Self::Vec(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}
+
+impl<'memory> AsRef<[u8]> for HostMemoryOrVec<'memory> {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            HostMemoryOrVec::HostMemory(host_memory) => host_memory.as_ref(),
+            HostMemoryOrVec::Vec(items) => items.as_ref(),
+        }
+    }
+}
+
+impl<'memory> Deref for HostMemoryOrVec<'memory> {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        self.as_ref()
+    }
+}
+
+impl<'buffer> From<HostMemory<'buffer>> for HostMemoryOrVec<'buffer> {
+    fn from(value: HostMemory<'buffer>) -> Self {
+        HostMemoryOrVec::HostMemory(value)
+    }
+}
+impl From<Vec<u8>> for HostMemoryOrVec<'_> {
+    fn from(value: Vec<u8>) -> Self {
+        HostMemoryOrVec::Vec(value)
+    }
+}

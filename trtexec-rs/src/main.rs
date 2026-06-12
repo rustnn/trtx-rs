@@ -10,14 +10,13 @@ use rustnn::load_graph_from_path;
 use std::ffi::{c_void, OsString};
 use std::fs::File;
 use std::io::{BufRead, Read, Write};
-use std::ops::Deref;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Instant;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{prelude::*, EnvFilter};
-use trtx::host_memory::HostMemory;
+use trtx::host_memory::HostMemoryOrVec;
 use trtx::{Builder, Logger, OnnxParser, ProfilingVerbosity};
 use trtx::{LayerInformationFormat, Runtime};
 
@@ -73,39 +72,6 @@ fn resolve_dynamic_input_shape(
 
 fn digest_hex(digest: &md5::Digest) -> String {
     format!("{digest:x}")
-}
-
-enum HostMemoryOrVec<'memory> {
-    HostMemory(HostMemory<'memory>),
-    Vec(Vec<u8>),
-}
-
-impl<'memory> AsRef<[u8]> for HostMemoryOrVec<'memory> {
-    fn as_ref(&self) -> &[u8] {
-        match self {
-            HostMemoryOrVec::HostMemory(host_memory) => host_memory.as_ref(),
-            HostMemoryOrVec::Vec(items) => items.as_ref(),
-        }
-    }
-}
-
-impl<'memory> Deref for HostMemoryOrVec<'memory> {
-    type Target = [u8];
-
-    fn deref(&self) -> &Self::Target {
-        self.as_ref()
-    }
-}
-
-impl<'buffer> From<HostMemory<'buffer>> for HostMemoryOrVec<'buffer> {
-    fn from(value: HostMemory<'buffer>) -> Self {
-        HostMemoryOrVec::HostMemory(value)
-    }
-}
-impl From<Vec<u8>> for HostMemoryOrVec<'_> {
-    fn from(value: Vec<u8>) -> Self {
-        HostMemoryOrVec::Vec(value)
-    }
 }
 
 fn main() -> Result<()> {
