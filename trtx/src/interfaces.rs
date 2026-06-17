@@ -314,6 +314,13 @@ impl std::fmt::Debug for ErrorRecorder {
     }
 }
 
+/// # Safety
+///
+/// Send and Sync since container only initialized in `new` and
+/// IErrorRecorder requires subclasses to be thread safe (we ensure this with RecordError: Send + Sync)
+unsafe impl Send for ErrorRecorder {}
+unsafe impl Sync for ErrorRecorder {}
+
 impl ErrorRecorder {
     pub fn new(inner: Box<dyn RecordError>) -> Result<Pin<Box<Self>>> {
         let mut rust_obj = Box::pin(ErrorRecorder {

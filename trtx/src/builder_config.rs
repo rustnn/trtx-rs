@@ -37,6 +37,13 @@ impl std::fmt::Debug for BuilderConfig<'_> {
     }
 }
 
+/// # Safety
+///
+/// Transferring to other thread is safe, as
+/// - it is safe for IBuilderConfig from C++ API
+/// - UniquePtr always holds a valid IBuilder and is only mutated in initializer
+unsafe impl Send for BuilderConfig<'_> {}
+
 impl<'builder> BuilderConfig<'builder> {
     pub(crate) fn new(builder_config: *mut nvinfer1::IBuilderConfig) -> Result<Self> {
         #[cfg(not(feature = "mock"))]

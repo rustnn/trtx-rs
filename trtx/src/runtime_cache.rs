@@ -16,6 +16,13 @@ pub struct RuntimeCache<'engine> {
     _engine: PhantomData<&'engine nvinfer1::ICudaEngine>,
 }
 
+/// # Safety
+///
+/// IRuntimeCache is internally protected by a shared mutex and
+/// UniquePtr holds after initialization a valid IRuntimeCache (or nullptr in mock mode)
+unsafe impl Send for RuntimeCache<'_> {}
+unsafe impl Sync for RuntimeCache<'_> {}
+
 impl std::fmt::Debug for RuntimeCache<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("RuntimeCache")
