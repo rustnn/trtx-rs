@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1+rtx1.5] - 2026-06-12
+### 🚀 Features
+
+- Make some types `Send` (#121)
+    - BuilderConfig
+    - Builder
+    - NetworkDefinition
+    - Runtime
+    - RuntimeConfig
+    - RuntimeCache (even Sync)
+    - ErrorRecorder (even Sync)
+
+### 🐛 Bug Fixes
+
+- Switch trtexec-rs back to RustNN main (#120)
+
+### 💼 Other
+
+- Bump to version v0.7.1
+
 ## [0.7.0+rtx1.5] - 2026-06-12
 
 ### 🚀 Features

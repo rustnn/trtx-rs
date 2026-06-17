@@ -17,8 +17,8 @@ pretty_env_logger = "0.5"
 
 # To upgrade the trtx version to new major version, create a PR with that bump to the RustNN repo
 # and switch the RustNN dep temporarily to that branch until RustNN main has that version bump
-trtx = { version = "0.7.0", path = "../trtx", default-features = true }
-trtx-sys = { version = "0.7.0", path = "../trtx-sys", default-features = true }
+trtx = { version = "0.7.1", path = "../trtx", default-features = true }
+trtx-sys = { version = "0.7.1", path = "../trtx-sys", default-features = true }
 indicatif = "0.18"
 anyhow = { version = "1.0", features = ["backtrace"] }
 clap = { version = "4.6", features = ["derive"] }
