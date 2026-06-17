@@ -45,6 +45,14 @@ impl std::fmt::Debug for Builder<'_> {
     }
 }
 
+/// # Safety
+///
+/// Transferring to other thread is safe, as
+/// - it is safe for IBuilder from C++ API
+/// - UniquePtr always holds a valid IBuilder and is only mutated in initializer
+/// - setting ErrorRecorder requires a unique reference and ErrorRecorder is Send+Sync
+unsafe impl Send for Builder<'_> {}
+
 impl<'builder> Builder<'builder> {
     #[cfg(not(feature = "link_tensorrt_rtx"))]
     #[cfg(not(feature = "dlopen_tensorrt_rtx"))]

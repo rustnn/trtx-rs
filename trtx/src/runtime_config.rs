@@ -27,7 +27,8 @@ pub struct RuntimeConfig<'engine> {
     // this also makes it safe when we modify through our mutex, while cpp calls are made through
     // IExecution calls
     #[cfg(not(feature = "enterprise"))]
-    _cache: Option<Arc<Mutex<RuntimeCache<'engine>>>>,
+    _cache: Option<Arc<Mutex<RuntimeCache<'engine>>>>, // Mutex, could now be removed with a
+                                                       // breaking change to set_runtime_cache
 }
 
 impl std::fmt::Debug for RuntimeConfig<'_> {
@@ -37,6 +38,14 @@ impl std::fmt::Debug for RuntimeConfig<'_> {
             .finish_non_exhaustive()
     }
 }
+
+/// # Safety
+///
+/// Transferring to other thread is safe, as
+/// - it is safe for IRuntimeConfig from C++ API
+/// - UniquePtr always holds a valid IBuilder and is only mutated in initializer
+/// - RuntimeCache is Send+Sync
+unsafe impl Send for RuntimeConfig<'_> {}
 
 impl<'engine> RuntimeConfig<'engine> {
     pub(crate) fn new(runtime_config: *mut nvinfer1::IRuntimeConfig) -> Result<Self> {

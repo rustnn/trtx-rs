@@ -32,6 +32,14 @@ impl std::fmt::Debug for Runtime<'_> {
     }
 }
 
+/// # Safety
+///
+/// Transferring to other thread is safe, as
+/// - it is safe for IRuntime from C++ API
+/// - UniquePtr always holds a valid IBuilder and is only mutated in initializer
+/// - setting ErrorRecorder requires a unique reference and ErrorRecorder is Send+Sync
+unsafe impl Send for Runtime<'_> {}
+
 impl<'runtime> Runtime<'runtime> {
     #[cfg(not(feature = "link_tensorrt_rtx"))]
     #[cfg(not(feature = "dlopen_tensorrt_rtx"))]
@@ -375,5 +383,22 @@ mod tests {
                 seen.iter().map(|(n, _)| n.as_str()).collect::<Vec<_>>()
             );
         }
+    }
+
+    fn assert_send_sync<T: Send + Sync>(_: &T) {}
+
+    #[test]
+    fn runtime_relevant_objects_send() {
+        let logger = crate::Logger::log_crate().unwrap();
+        let mut builder = crate::Builder::new(&logger).unwrap();
+        let config = builder.create_config().unwrap();
+        let builder = Arc::new(Mutex::new(builder));
+        let config = Arc::new(Mutex::new(config));
+        let network = Arc::new(Mutex::new(builder.lock().unwrap().create_network(0)));
+        let runtime = Arc::new(Mutex::new(crate::Runtime::new(&logger).unwrap()));
+        assert_send_sync(&config);
+        assert_send_sync(&runtime);
+        assert_send_sync(&network);
+        assert_send_sync(&builder);
     }
 }

@@ -1323,6 +1323,14 @@ pub struct NetworkDefinition<'builder> {
     error_recorder: Option<Pin<Box<ErrorRecorder>>>,
 }
 
+/// # Safety
+///
+/// Transferring to other thread is safe, as
+/// - it is safe for INetworkDefinition from C++ API
+/// - UniquePtr always holds a valid IBuilder and is only mutated in initializer
+/// - setting ErrorRecorder requires a unique reference and ErrorRecorder is Send+Sync
+unsafe impl Send for NetworkDefinition<'_> {}
+
 impl std::fmt::Debug for NetworkDefinition<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("NetworkDefinition")
