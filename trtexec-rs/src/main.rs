@@ -7,10 +7,12 @@ use cudarc::driver::CudaSlice;
 use cudarc::driver::DevicePtrMut;
 use log::{debug, info};
 use rustnn::load_graph_from_path;
-use std::ffi::{c_void, OsString};
+use rustnn::{GraphInfo, OperandKind};
+use std::ffi::c_void;
 use std::fs::File;
 use std::io::{BufRead, Read, Write};
 use std::ops::Deref;
+use std::path::Path;
 use std::sync::atomic::AtomicU32;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
@@ -75,6 +77,57 @@ fn digest_hex(digest: &md5::Digest) -> String {
     format!("{digest:x}")
 }
 
+fn is_webnn_path(path: &Path) -> bool {
+    matches!(
+        path.extension().and_then(|extension| extension.to_str()),
+        Some("json" | "webnn")
+    )
+}
+
+fn validate_weights_as_inputs(enabled: bool, inputs: &[impl AsRef<Path>]) -> Result<()> {
+    if enabled && (inputs.is_empty() || inputs.iter().any(|path| !is_webnn_path(path.as_ref()))) {
+        bail!("--weights-as-inputs is only valid with WebNN (.webnn or .json) input files");
+    }
+    Ok(())
+}
+
+fn promote_constants_to_inputs(graph: &mut GraphInfo) -> Result<()> {
+    let constant_ids: Vec<u32> = graph
+        .operands
+        .iter()
+        .enumerate()
+        .filter_map(|(id, operand)| (operand.kind == OperandKind::Constant).then_some(id as u32))
+        .collect();
+
+    for id in constant_ids {
+        let constant = graph
+            .constant_operand_ids_to_handles
+            .remove(&id)
+            .ok_or_else(|| anyhow!("constant operand {id} has no constant data"))?;
+        let operand = graph
+            .operands
+            .get_mut(id as usize)
+            .ok_or_else(|| anyhow!("constant operand {id} does not exist"))?;
+        let expected_len = operand.descriptor.byte_length().ok_or_else(|| {
+            anyhow!("cannot promote dynamically shaped constant operand {id} to an input")
+        })?;
+        if constant.data.len() != expected_len {
+            bail!(
+                "weight size mismatch for operand {id}: expected {expected_len} bytes, got {} bytes",
+                constant.data.len()
+            );
+        }
+
+        operand.kind = OperandKind::Input;
+        // Match TrtxConverter's stable constant weight name.
+        operand.name = Some(id.to_string());
+        graph.input_operands.push(id);
+    }
+    graph.input_operands.sort_unstable();
+
+    Ok(())
+}
+
 enum HostMemoryOrVec<'memory> {
     HostMemory(HostMemory<'memory>),
     Vec(Vec<u8>),
@@ -117,6 +170,8 @@ fn main() -> Result<()> {
         clap_complete::generate(shell, &mut cmd, bin_name, &mut std::io::stdout());
         return Ok(());
     }
+
+    validate_weights_as_inputs(args.weights_as_inputs, &args.inputs)?;
 
     if args.nvtx {
         // Send tracing/log events to nvtx
@@ -183,11 +238,12 @@ fn main() -> Result<()> {
             bail!("aborted");
         }
 
-        let digest = md5::compute(
-            std::fs::canonicalize(onnx_path)?
-                .to_string_lossy()
-                .as_bytes(),
-        );
+        let canonical_path = std::fs::canonicalize(onnx_path)?;
+        let mut cache_key = canonical_path.to_string_lossy().into_owned();
+        if args.weights_as_inputs {
+            cache_key.push_str(":weights-as-inputs");
+        }
+        let digest = md5::compute(cache_key.as_bytes());
         let hex_id = digest_hex(&digest);
         let cache_path = engine_dir.join(format!("{hex_id}.engine"));
 
@@ -202,17 +258,18 @@ fn main() -> Result<()> {
         let mut _graph = None;
         let mut network = builder.create_network(0)?;
         let mut _parser = None;
-        let file_extension = onnx_path.extension();
-        let network = if file_extension == Some(&OsString::from("json"))
-            || file_extension == Some(&OsString::from("webnn"))
-        {
+        let network = if is_webnn_path(onnx_path) {
             info!("Processing as RustNN file: {onnx_path:?}");
             let _span = tracing::info_span!(
                 "RustNN conversion",
                 graph_path = onnx_path.to_string_lossy().to_string()
             );
             let _enter = _span.enter();
-            _graph = Some(load_graph_from_path(onnx_path)?);
+            let mut graph = load_graph_from_path(onnx_path)?;
+            if args.weights_as_inputs {
+                promote_constants_to_inputs(&mut graph)?;
+            }
+            _graph = Some(graph);
             rustnn::converters::TrtxConverter::build_network(
                 _graph.as_ref().unwrap(),
                 &mut network,
@@ -421,4 +478,65 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rustnn::graph::Dimension;
+    use rustnn::{ConstantData, DataType, Operand, OperandDescriptor};
+    use std::collections::HashMap;
+    use std::path::PathBuf;
+
+    #[test]
+    fn promotes_constants_to_sorted_inputs() {
+        let mut constants = HashMap::new();
+        constants.insert(
+            1,
+            ConstantData {
+                data: vec![0; 8],
+                label: None,
+            },
+        );
+        let descriptor = OperandDescriptor {
+            data_type: DataType::Float32,
+            shape: vec![Dimension::Static(2)],
+            pending_permutation: Vec::new(),
+        };
+        let mut graph = GraphInfo {
+            operands: vec![
+                Operand {
+                    kind: OperandKind::Input,
+                    descriptor: descriptor.clone(),
+                    name: Some("input".into()),
+                },
+                Operand {
+                    kind: OperandKind::Constant,
+                    descriptor,
+                    name: Some("old-name".into()),
+                },
+            ],
+            input_operands: vec![0],
+            constant_operand_ids_to_handles: constants,
+            ..GraphInfo::default()
+        };
+
+        promote_constants_to_inputs(&mut graph).unwrap();
+
+        assert_eq!(graph.operands[1].kind, OperandKind::Input);
+        assert_eq!(graph.operands[1].name.as_deref(), Some("1"));
+        assert_eq!(graph.input_operands, vec![0, 1]);
+        assert!(graph.constant_operand_ids_to_handles.is_empty());
+    }
+
+    #[test]
+    fn weights_as_inputs_rejects_non_webnn_inputs() {
+        assert!(validate_weights_as_inputs(true, &[PathBuf::from("model.onnx")]).is_err());
+        assert!(validate_weights_as_inputs(true, &[] as &[PathBuf]).is_err());
+        assert!(validate_weights_as_inputs(
+            true,
+            &[PathBuf::from("one.webnn"), PathBuf::from("two.json")]
+        )
+        .is_ok());
+    }
 }

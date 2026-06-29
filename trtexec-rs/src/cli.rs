@@ -37,6 +37,12 @@ pub struct Args {
     #[arg(long)]
     pub no_cache: bool,
 
+    /// Expose all WebNN constants as engine inputs
+    ///
+    /// This option is only valid when every input is a WebNN (.webnn or .json) file.
+    #[arg(long)]
+    pub weights_as_inputs: bool,
+
     /// Don't run inference
     #[arg(long)]
     pub skip_inference: bool,
