@@ -22,6 +22,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      # Needed for RustNN snapshots for long test names
+      - name: Allow Windows long paths
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+          git config --system core.longpaths true
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@master
         with:
