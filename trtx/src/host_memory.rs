@@ -67,3 +67,8 @@ impl<'builder> Deref for HostMemory<'builder> {
         self.as_ref()
     }
 }
+
+/// # Safety:
+///
+/// This a wrapper around C++ container on the TRT side that is safe to send to another thread
+unsafe impl Send for HostMemory<'_> {}
