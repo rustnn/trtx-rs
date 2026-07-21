@@ -2,8 +2,6 @@
 //!
 //! [`RuntimeCache`] wraps [`trtx_sys::nvinfer1::IRuntimeCache`] (C++ [`nvinfer1::IRuntimeCache`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_runtime_cache.html).
 
-use std::marker::PhantomData;
-
 use crate::error::{PropertySetAttempt, Result};
 use crate::host_memory::HostMemory;
 use crate::Error;
@@ -11,19 +9,18 @@ use cxx::UniquePtr;
 use trtx_sys::nvinfer1::{self, IRuntimeCache};
 
 /// [`trtx_sys::nvinfer1::IRuntimeCache`] — C++ [`nvinfer1::IRuntimeCache`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_runtime_cache.html).
-pub struct RuntimeCache<'engine> {
+pub struct RuntimeCache {
     pub(crate) inner: UniquePtr<IRuntimeCache>,
-    _engine: PhantomData<&'engine nvinfer1::ICudaEngine>,
 }
 
 /// # Safety
 ///
 /// IRuntimeCache is internally protected by a shared mutex and
 /// UniquePtr holds after initialization a valid IRuntimeCache (or nullptr in mock mode)
-unsafe impl Send for RuntimeCache<'_> {}
-unsafe impl Sync for RuntimeCache<'_> {}
+unsafe impl Send for RuntimeCache {}
+unsafe impl Sync for RuntimeCache {}
 
-impl std::fmt::Debug for RuntimeCache<'_> {
+impl std::fmt::Debug for RuntimeCache {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("RuntimeCache")
             .field("inner", &format!("{:x}", self.inner.as_ptr() as usize))
@@ -31,7 +28,7 @@ impl std::fmt::Debug for RuntimeCache<'_> {
     }
 }
 
-impl<'engine> RuntimeCache<'engine> {
+impl RuntimeCache {
     pub(crate) fn new(cache: *mut nvinfer1::IRuntimeCache) -> Result<Self> {
         #[cfg(not(feature = "mock"))]
         if cache.is_null() {
@@ -39,12 +36,11 @@ impl<'engine> RuntimeCache<'engine> {
         }
         Ok(Self {
             inner: unsafe { UniquePtr::from_raw(cache) },
-            _engine: Default::default(),
         })
     }
 
     /// See [IRuntimeCache::serialize].
-    pub fn serialize(&self) -> Result<HostMemory<'engine>> {
+    pub fn serialize(&self) -> Result<HostMemory<'_>> {
         #[cfg(not(feature = "mock"))]
         {
             let host_mem = unsafe { self.inner.serialize().as_mut() }

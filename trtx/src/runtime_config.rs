@@ -27,8 +27,8 @@ pub struct RuntimeConfig<'engine> {
     // this also makes it safe when we modify through our mutex, while cpp calls are made through
     // IExecution calls
     #[cfg(not(feature = "enterprise"))]
-    _cache: Option<Arc<Mutex<RuntimeCache<'engine>>>>, // Mutex, could now be removed with a
-                                                       // breaking change to set_runtime_cache
+    _cache: Option<Arc<Mutex<RuntimeCache>>>, // Mutex, could now be removed with a
+                                              // breaking change to set_runtime_cache
 }
 
 impl std::fmt::Debug for RuntimeConfig<'_> {
@@ -83,7 +83,7 @@ impl<'engine> RuntimeConfig<'engine> {
 
     #[cfg(not(feature = "enterprise"))]
     /// See [IRuntimeConfig::createRuntimeCache].
-    pub fn create_runtime_cache(&self) -> Result<RuntimeCache<'engine>> {
+    pub fn create_runtime_cache(&self) -> Result<RuntimeCache> {
         #[cfg(not(feature = "mock"))]
         let cache_ptr = self.inner.createRuntimeCache();
         #[cfg(feature = "mock")]
@@ -93,7 +93,7 @@ impl<'engine> RuntimeConfig<'engine> {
 
     #[cfg(not(feature = "enterprise"))]
     /// See [IRuntimeConfig::setRuntimeCache].
-    pub fn set_runtime_cache(&mut self, cache: Arc<Mutex<RuntimeCache<'engine>>>) -> Result<()> {
+    pub fn set_runtime_cache(&mut self, cache: Arc<Mutex<RuntimeCache>>) -> Result<()> {
         if cfg!(not(feature = "mock")) {
             if self.inner.pin_mut().setRuntimeCache(
                 cache
