@@ -33,3 +33,4 @@ serde_json = "1.0"
 [features]
 default = ["rustnn"]
 rustnn = ["dep:rustnn"]
+enterprise = ["rustnn/trtx-enterprise", "trtx/enterprise"]
