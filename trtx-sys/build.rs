@@ -274,7 +274,7 @@ fn main() {
         .map(PathBuf::from)
         .unwrap_or_else(|| {
             PathBuf::from(if cfg!(feature = "enterprise") {
-                format!("{crate_root}/TensorRT-Headers/TRT-Enterprise-11.0")
+                format!("{crate_root}/TensorRT-Headers/TRT-Enterprise-11.1")
             } else {
                 format!("{crate_root}/TensorRT-Headers/TRT-RTX-{trt_version}")
             })

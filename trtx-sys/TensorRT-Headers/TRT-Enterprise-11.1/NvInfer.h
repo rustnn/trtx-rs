@@ -11364,6 +11364,78 @@ public:
         return mImpl->getRemoteAutoTuningConfig();
     }
 
+    //!
+    //! \brief Set the build route to be passed to the compiler.
+    //!
+    //! The build route string is a configuration string that changes the
+    //! compilation behavior to customize the engine building for different
+    //! models.
+    //!
+    //! \param buildRoute The build route string to be used during compilation.
+    //!
+    //! \return True if successful, false otherwise
+    //!
+    //! For example, the following is the format of the input:
+    //! "-conv_use_long_w=off -kgen:codegen:cuda_tile=2"
+    //!
+    //! \note Calling this method invalidates any pointer previously returned by
+    //! getBuildRoute().
+    //!
+    bool setBuildRoute(char const* buildRoute) noexcept
+    {
+        return mImpl->setBuildRoute(buildRoute);
+    }
+
+    //!
+    //! \brief Get the build route string.
+    //!
+    //! \return The current build route string, or an empty string if not set.
+    //!
+    //! The returned pointer is owned by the IBuilderConfig and remains valid
+    //! until the next call to setBuildRoute() or until the IBuilderConfig is
+    //! destroyed. The caller must not free it.
+    //!
+    char const* getBuildRoute() const noexcept
+    {
+        return mImpl->getBuildRoute();
+    }
+
+    //!
+    //! \brief Get all available build routes.
+    //!
+    //! This returns a JSON string containing all available build route options
+    //! supported by the compiler. This is initialized when the IBuilderConfig
+    //! is created.
+    //!
+    //! \return A JSON string containing all available build routes.
+    //!
+    //! For example, the below is the format of the output:
+    //! {
+    //!     "tuner_version": "2.19.15",
+    //!     "tuner_options": [
+    //!         {
+    //!             "option": "-conv_use_long_w",
+    //!             "allowed_values": "-conv_use_long_w=[on|off]",
+    //!             "default_value": "on",
+    //!             "help": "Convert Conv [N, C, X, 1] to [N, C, 1, X] in CASK params for perf."
+    //!         },
+    //!         {
+    //!             "option": "-kgen:codegen:cuda_tile",
+    //!             "allowed_values": "-kgen:codegen:cuda_tile=[0|1|2|3]",
+    //!             "default_value": "1",
+    //!             "help": "CUDA Tile codegen. 0: disable, 1: where profitable, 2: supported kdags, 3: force all."
+    //!         },
+    //!         ...
+    //! }
+    //!
+    //! The returned pointer is owned by the IBuilderConfig and remains valid
+    //! for the lifetime of the IBuilderConfig. The caller must not free it.
+    //!
+    char const* getAllBuildRoutes() const noexcept
+    {
+        return mImpl->getAllBuildRoutes();
+    }
+
 protected:
     apiv::VBuilderConfig* mImpl;
 };
