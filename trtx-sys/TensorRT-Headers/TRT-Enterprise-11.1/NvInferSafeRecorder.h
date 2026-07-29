@@ -30,20 +30,15 @@
 #ifndef NV_INFER_SAFE_RECORDER_H
 #define NV_INFER_SAFE_RECORDER_H
 
-#include <cstdint>
-// Define NV_INFER_SAFE_RECORDER_TYPES_ONLY before including this header to skip
-// the ISafeRecorder interface and its dependencies (NvInferForwardDecl.h
-// -> NvInferPluginBase.h / NvInferRuntimeBase.h).
-#ifndef NV_INFER_SAFE_RECORDER_TYPES_ONLY
 #include "NvInferForwardDecl.h"
-#endif
+#include "NvInferSafeRuntimeErrorType.h"
+#include <cstdint>
 
 namespace nvinfer2
 {
 namespace safe
 {
 
-#ifndef NV_INFER_SAFE_RECORDER_TYPES_ONLY
 using ErrorDesc = char const*; //!< Type alias for error description strings.
 using RefCount = int32_t;      //!< Type alias for reference count.
 
@@ -238,7 +233,6 @@ protected:
     Severity mSeverity; //!< Severity level of the recorder; messages above this level are filtered.
     int32_t const mId;  //!< Identifier of the recorder instance; used to distinguish recorders in multi-threaded use.
 };
-#endif // NV_INFER_SAFE_RECORDER_TYPES_ONLY
 
 //! \struct RuntimeErrorInformation
 //! \brief Holds information about runtime errors that occur during asynchronous kernel execution.
@@ -252,25 +246,6 @@ protected:
 struct RuntimeErrorInformation
 {
     uint64_t bitMask{0ULL}; //!< Bitmask of errors; see \ref RuntimeErrorType for bit positions.
-};
-
-//! \enum RuntimeErrorType
-//! \brief Enumerates types of runtime errors that can occur during kernel execution.
-//! \details
-//! - kNAN_CONSUMED error occurs when a NAN value is stored in an INT8 or FP4 quantized datatype.
-//! - kINF_CONSUMED error occurs when a +/-INF value is stored in an INT8 or FP4 quantized datatype.
-//! - kGATHER_OOB error occurs when a gather index tensor contains a value that is outside of the data tensor.
-//! - kSCATTER_OOB error occurs when a scatter index tensor contains a value that is outside of the data tensor.
-//! - kSCATTER_RACE error occurs when a scatter index tensor contains duplicate indices with reduction mode kNONE.
-//! - kDIV_ZERO error occurs when a division-by-zero happens and its output is of an integer type.
-enum class RuntimeErrorType : uint64_t
-{
-    kNAN_CONSUMED = 1ULL << 0, //!< NaN floating-point value was silently consumed
-    kINF_CONSUMED = 1ULL << 1, //!< Inf floating-point value was silently consumed
-    kGATHER_OOB = 1ULL << 2,   //!< Out-of-bounds access in gather operation
-    kSCATTER_OOB = 1ULL << 3,  //!< Out-of-bounds access in scatter operation
-    kSCATTER_RACE = 1ULL << 4, //!< Race condition in scatter operation
-    kDIV_ZERO = 1ULL << 5,     //!< Division-by-zero in int division
 };
 
 } // namespace safe
