@@ -110,6 +110,33 @@ impl<'runtime> Runtime<'runtime> {
             }
         }
     }
+
+    /// Controls whether subsequent engine deserializations defer allocating and copying weights
+    /// to the GPU.
+    ///
+    /// When enabled, an engine can create execution contexts, but inference will fail until
+    /// [`CudaEngine::load_weights`] or [`CudaEngine::load_weights_async`] loads its weights.
+    /// This setting must be changed before calling [`Self::deserialize_cuda_engine`].
+    ///
+    /// See [`nvinfer1::IRuntime::setDeferredWeightsLoading`].
+    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
+    pub fn set_deferred_weights_loading(&mut self, defer: bool) {
+        if !cfg!(feature = "mock_runtime") {
+            self.inner.pin_mut().setDeferredWeightsLoading(defer);
+        }
+    }
+
+    /// Returns whether subsequent engine deserializations defer loading weights onto the GPU.
+    ///
+    /// See [`nvinfer1::IRuntime::getDeferredWeightsLoading`].
+    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
+    pub fn deferred_weights_loading(&self) -> bool {
+        if cfg!(feature = "mock_runtime") {
+            false
+        } else {
+            self.inner.getDeferredWeightsLoading()
+        }
+    }
     //pub fn deserialize_cuda_engine_v2(
     //&'_ mut self,
     //stream_reader: &'runtime mut StreamReaderV2,
@@ -138,9 +165,112 @@ mod tests {
     use crate::builder::{Builder, MemoryPoolType};
     use crate::cuda::{synchronize, DeviceBuffer};
     use crate::interfaces::{ProcessDebugTensor, ProcessDebugTensorResult};
+    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
+    use crate::interfaces::{ReadStreamV2, StreamReaderV2};
     use crate::logger::Logger;
+    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
+    use crate::SeekPosition;
     use crate::{DataType, ElementWiseOperation, Runtime};
     use trtx_sys::{Dims64, TensorLocation};
+
+    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
+    struct EnginePlanReader {
+        data: Vec<u8>,
+        position: usize,
+        read_calls: Arc<std::sync::atomic::AtomicUsize>,
+        device_reads: Arc<std::sync::atomic::AtomicUsize>,
+    }
+
+    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
+    impl ReadStreamV2 for EnginePlanReader {
+        unsafe fn read(
+            &mut self,
+            destination: *mut std::ffi::c_void,
+            byte_count: i64,
+            _stream: *mut std::ffi::c_void,
+        ) -> i64 {
+            let Ok(byte_count) = usize::try_from(byte_count) else {
+                return -1;
+            };
+            let byte_count = byte_count.min(self.data.len() - self.position);
+            if byte_count == 0 {
+                return 0;
+            }
+            if destination.is_null() {
+                return -1;
+            }
+            let source = &self.data[self.position..self.position + byte_count];
+
+            // TensorRT may provide either host or device memory. A regular host pointer is not
+            // recognized by cuPointerGetAttribute, so an attribute-query failure means host.
+            let mut memory_type = 0_u32;
+            let attribute_result = unsafe {
+                cudarc::driver::sys::lib().cuPointerGetAttribute(
+                    (&mut memory_type as *mut u32).cast(),
+                    cudarc::driver::sys::CUpointer_attribute::CU_POINTER_ATTRIBUTE_MEMORY_TYPE,
+                    destination as usize as cudarc::driver::sys::CUdeviceptr,
+                )
+            };
+            let copy_succeeded = if attribute_result == cudarc::driver::sys::CUresult::CUDA_SUCCESS
+                && matches!(
+                    memory_type,
+                    value
+                        if value
+                            == cudarc::driver::sys::CUmemorytype::CU_MEMORYTYPE_DEVICE as u32
+                            || value
+                                == cudarc::driver::sys::CUmemorytype::CU_MEMORYTYPE_UNIFIED
+                                    as u32
+                ) {
+                self.device_reads
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                // A synchronous fallback is valid for a stream reader and avoids requiring this
+                // test's Vec allocation to be page-locked.
+                unsafe {
+                    cudarc::driver::result::memcpy_htod_sync(
+                        destination as usize as cudarc::driver::sys::CUdeviceptr,
+                        source,
+                    )
+                }
+                .is_ok()
+            } else {
+                unsafe {
+                    std::ptr::copy_nonoverlapping(
+                        source.as_ptr(),
+                        destination.cast::<u8>(),
+                        byte_count,
+                    );
+                }
+                true
+            };
+            if !copy_succeeded {
+                return -1;
+            }
+
+            self.position += byte_count;
+            self.read_calls
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            byte_count as i64
+        }
+
+        fn seek(&mut self, offset: i64, position: SeekPosition) -> bool {
+            let base = match position {
+                SeekPosition::kSET => 0,
+                SeekPosition::kCUR => self.position as i64,
+                SeekPosition::kEND => self.data.len() as i64,
+            };
+            let Some(position) = base.checked_add(offset) else {
+                return false;
+            };
+            let Ok(position) = usize::try_from(position) else {
+                return false;
+            };
+            if position > self.data.len() {
+                return false;
+            }
+            self.position = position;
+            true
+        }
+    }
 
     /// Builds a network: input tensor_0 [1] -> +1 -> tensor_1 -> +1 -> tensor_2 -> +1 -> tensor_3 -> +1 -> tensor_4 (output).
     /// Each intermediate tensor is named and marked for debug.
@@ -248,7 +378,7 @@ mod tests {
         network.mark_output(&tensor);
 
         let mut config = builder.create_config()?;
-        config.set_memory_pool_limit(MemoryPoolType::kWORKSPACE, 1 << 20);
+        config.set_memory_pool_limit(MemoryPoolType::kWORKSPACE, 1 << 28);
         let engine_data = builder.build_serialized_network(&mut network, &mut config)?;
         Ok((engine_data.to_vec(), debug_names))
     }
@@ -386,6 +516,85 @@ mod tests {
     }
 
     fn assert_send_sync<T: Send + Sync>(_: &T) {}
+
+    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
+    #[test]
+    fn deferred_weights_can_be_loaded_from_engine_plan() {
+        let logger = Logger::stderr().expect("logger");
+        let (engine_data, _) = build_plus1_chain(&logger).expect("build network");
+
+        let mut runtime = Runtime::new(&logger).expect("runtime");
+        assert!(!runtime.deferred_weights_loading());
+        runtime.set_deferred_weights_loading(true);
+        assert!(runtime.deferred_weights_loading());
+
+        let mut engine = runtime
+            .deserialize_cuda_engine(&engine_data)
+            .expect("deferred deserialize");
+        assert!(!engine.weights_loaded());
+
+        // Context JIT is supported before the deferred GPU weight copy.
+        let context = engine
+            .create_execution_context()
+            .expect("execution context");
+        drop(context);
+
+        engine.load_weights(&engine_data).expect("load weights");
+        assert!(engine.weights_loaded());
+    }
+
+    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
+    #[test]
+    fn deferred_weights_can_be_loaded_asynchronously() {
+        let logger = Logger::stderr().expect("logger");
+        let (engine_data, _) = build_conv_chain(&logger).expect("build network");
+
+        let mut runtime = Runtime::new(&logger).expect("runtime");
+        runtime.set_deferred_weights_loading(true);
+        let mut engine = runtime
+            .deserialize_cuda_engine(&engine_data)
+            .expect("deferred deserialize");
+        assert!(!engine.weights_loaded());
+
+        // TensorRT explicitly supports creating contexts before deferred weights are loaded.
+        let _context = engine
+            .create_execution_context()
+            .expect("execution context");
+        let read_calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let device_reads = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let mut stream_reader = StreamReaderV2::new(Box::new(EnginePlanReader {
+            data: engine_data,
+            position: 0,
+            read_calls: Arc::clone(&read_calls),
+            device_reads: Arc::clone(&device_reads),
+        }))
+        .expect("stream reader");
+
+        let cuda_device = cudarc::driver::CudaDevice::new(0).expect("CUDA device");
+        let cuda_stream = cuda_device
+            .fork_default_stream()
+            .expect("non-blocking CUDA stream");
+        let stream = cuda_stream.stream.cast();
+        unsafe {
+            engine
+                .load_weights_async(stream_reader.as_mut(), stream)
+                .expect("load weights asynchronously");
+        }
+        assert!(engine.weights_loaded());
+        assert!(
+            read_calls.load(std::sync::atomic::Ordering::Relaxed) > 0,
+            "TensorRT did not read from the stream reader"
+        );
+        assert!(
+            device_reads.load(std::sync::atomic::Ordering::Relaxed) > 0,
+            "TensorRT did not request any engine weights in device memory"
+        );
+
+        unsafe {
+            cudarc::driver::result::stream::synchronize(cuda_stream.stream)
+                .expect("synchronize asynchronous weight load");
+        }
+    }
 
     #[test]
     fn runtime_relevant_objects_send() {

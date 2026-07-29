@@ -362,6 +362,47 @@ void trtx_destroy_progress_monitor(void *self) {
 }
 
 //==============================================================================
+// IStreamReaderV2 subclass (bridge to Rust ReadStreamV2)
+//==============================================================================
+namespace nvinfer1 {
+class StreamReaderV2Subclass : public IStreamReaderV2 {
+public:
+  StreamReaderV2Subclass(void *self,
+                         int64_t (*read)(void *, void *, int64_t, void *),
+                         bool (*seek)(void *, int64_t, int32_t))
+      : self(self), m_read(read), m_seek(seek) {}
+  ~StreamReaderV2Subclass() = default;
+
+  void *self;
+  int64_t (*m_read)(void *, void *, int64_t, void *);
+  bool (*m_seek)(void *, int64_t, int32_t);
+
+  int64_t read(void *destination, int64_t nbBytes,
+               cudaStream_t stream) noexcept override {
+    return m_read(self, destination, nbBytes, stream);
+  }
+
+  bool seek(int64_t offset, SeekPosition where) noexcept override {
+    return m_seek(self, offset, static_cast<int32_t>(where));
+  }
+};
+} // namespace nvinfer1
+
+void *trtx_create_stream_reader_v2(void *self, void *read, void *seek) {
+  try {
+    return new nvinfer1::StreamReaderV2Subclass(
+        self, (int64_t (*)(void *, void *, int64_t, void *))read,
+        (bool (*)(void *, int64_t, int32_t))seek);
+  } catch (...) {
+    return nullptr;
+  }
+}
+
+void trtx_destroy_stream_reader_v2(void *obj) {
+  delete static_cast<nvinfer1::StreamReaderV2Subclass *>(obj);
+}
+
+//==============================================================================
 // ErrorRecorder subclass (bridge to Rust RecordError)
 //==============================================================================
 namespace nvinfer1 {
