@@ -46,6 +46,7 @@ pub enum PropertySetAttempt {
     AttentionLayerNormalizationOp,
     AttentionLayerDecomposable,
     RotaryEmbeddingLayerRotaryEmbeddingDim,
+    BuildRoute,
 }
 
 // can be replaced once https://github.com/rust-lang/rust/issues/142748 becomes stable

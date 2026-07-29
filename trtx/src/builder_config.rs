@@ -587,6 +587,36 @@ impl<'builder> BuilderConfig<'builder> {
     pub fn get_compute_capability(&self, index: i32) -> ComputeCapability {
         self.compute_capability(index)
     }
+
+    #[cfg(feature = "v_1_6")]
+    /// See [IBuilderConfig::setBuildRoute]
+    pub fn set_build_route(&mut self, build_route: &str) -> Result<()> {
+        use std::ffi::CString;
+
+        use crate::error::OkOrFailedSettingProperty;
+
+        let c_str = CString::new(build_route)?;
+        unsafe { self.inner.pin_mut().setBuildRoute(c_str.as_ptr()) }
+            .ok_or_err(PropertySetAttempt::BuildRoute)
+    }
+
+    #[cfg(feature = "v_1_6")]
+    /// See [IBuilderConfig::getBuildRoute]
+    pub fn build_route(&self) -> Result<&str> {
+        use std::ffi::CStr;
+
+        let c_str = unsafe { CStr::from_ptr(self.inner.getBuildRoute()) };
+        Ok(c_str.to_str()?)
+    }
+
+    #[cfg(feature = "v_1_6")]
+    /// See [IBuilderConfig::getAllBuildRoutes]
+    pub fn all_build_routes(&self) -> Result<&str> {
+        use std::ffi::CStr;
+
+        let c_str = unsafe { CStr::from_ptr(self.inner.getAllBuildRoutes()) };
+        Ok(c_str.to_str()?)
+    }
 }
 
 #[cfg(test)]
