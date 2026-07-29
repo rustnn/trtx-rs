@@ -33,4 +33,5 @@ enterprise = []
 
 [dependencies]
 autocxx = "0.30"
+bitflags = "2.13.1"
 cxx = "1.0"

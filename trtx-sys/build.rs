@@ -200,6 +200,8 @@ fn generate_enum_bindings(crate_root: &str, out_path: &Path, include_dir: &Path)
         ".*Role",
         ".*Limit",
         ".*AttentionNormalizationOp",
+        ".*EngineValidity",
+        ".*EngineInvalidityDiagnostics",
         ".*SeekPosition",
         ".*LoopOutput",
     ] {

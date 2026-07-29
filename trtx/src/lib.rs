@@ -322,6 +322,7 @@ pub use trtx_sys::{
 #[cfg(not(feature = "enterprise"))]
 pub use trtx_sys::{
     ComputeCapability, CudaGraphStrategy, DynamicShapesKernelSpecializationStrategy,
+    EngineInvalidityDiagnostics, EngineValidity,
 };
 
 #[cfg(feature = "v_1_4")]
