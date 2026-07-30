@@ -6,12 +6,13 @@
 use crate::{Error, Result};
 use cxx::UniquePtr;
 use std::ptr::null_mut;
-use std::{ffi::CStr, pin::Pin};
+use std::{ffi::CStr, marker::PhantomPinned, pin::Pin};
 use trtx_sys::{
     nvinfer1, trtx_create_debug_listener, trtx_create_error_recorder, trtx_create_gpu_allocator,
-    trtx_create_profiler, trtx_create_progress_monitor, trtx_destroy_profiler,
+    trtx_create_profiler, trtx_create_progress_monitor, trtx_create_stream_reader_v2,
+    trtx_destroy_profiler, trtx_destroy_stream_reader_v2,
 };
-use trtx_sys::{DataType, Dims64, ErrorCode, TensorLocation};
+use trtx_sys::{DataType, Dims64, ErrorCode, SeekPosition, TensorLocation};
 
 /// Rust trait implemented by [`ProgressMonitor`] for [`trtx_sys::nvinfer1::IProgressMonitor`]; C++ [`nvinfer1::v_1_0::IProgressMonitor`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1v__1__0_1_1_i_progress_monitor.html).
 ///
@@ -104,6 +105,133 @@ impl ProgressMonitor {
     }
     pub fn as_trt_progress_monitor(&self) -> *mut nvinfer1::IProgressMonitor {
         self.cpp_obj.as_mut_ptr()
+    }
+}
+
+/// Reads a serialized TensorRT engine plan for [`StreamReaderV2`].
+///
+/// TensorRT may request reads into either host or CUDA device memory. Implementations commonly
+/// use `cudaPointerGetAttributes` to determine the destination's memory location.
+pub trait ReadStreamV2: Send + Sync {
+    /// Reads up to `byte_count` bytes into `destination`, using `stream` for any asynchronous
+    /// CUDA work.
+    ///
+    /// Return the number of bytes read, `0` at end of stream, or a negative value for an
+    /// unrecoverable error.
+    ///
+    /// # Safety
+    ///
+    /// TensorRT supplies `destination` and `stream`. Implementations must treat them according to
+    /// CUDA's pointer and stream rules, write at most `byte_count` bytes, and ensure any
+    /// asynchronous work is enqueued on `stream`.
+    unsafe fn read(
+        &mut self,
+        destination: *mut std::ffi::c_void,
+        byte_count: i64,
+        stream: *mut std::ffi::c_void,
+    ) -> i64;
+
+    /// Moves the reader by `offset` bytes relative to `position`.
+    fn seek(&mut self, offset: i64, position: SeekPosition) -> bool;
+}
+
+#[allow(non_snake_case)]
+unsafe extern "system" fn StreamReaderV2_read(
+    this: *mut std::ffi::c_void,
+    destination: *mut std::ffi::c_void,
+    byte_count: i64,
+    stream: *mut std::ffi::c_void,
+) -> i64 {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let this = unsafe { &mut *this.cast::<StreamReaderV2>() };
+        unsafe { this.rust_impl.read(destination, byte_count, stream) }
+    }))
+    .unwrap_or(-1)
+}
+
+#[allow(non_snake_case)]
+unsafe extern "system" fn StreamReaderV2_seek(
+    this: *mut std::ffi::c_void,
+    offset: i64,
+    position: i32,
+) -> bool {
+    let position = match position {
+        0 => SeekPosition::kSET,
+        1 => SeekPosition::kCUR,
+        2 => SeekPosition::kEND,
+        _ => return false,
+    };
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let this = unsafe { &mut *this.cast::<StreamReaderV2>() };
+        this.rust_impl.seek(offset, position)
+    }))
+    .unwrap_or(false)
+}
+
+/// Rust implementation of TensorRT's `IStreamReaderV2` interface.
+///
+/// The returned object is pinned because its C++ bridge retains a pointer to the Rust wrapper.
+/// Use it with `CudaEngine::load_weights_async` or other stream-reader APIs.
+#[repr(C)]
+pub struct StreamReaderV2 {
+    cpp_obj: *mut nvinfer1::IStreamReaderV2,
+    rust_impl: Box<dyn ReadStreamV2>,
+    _pin: PhantomPinned,
+}
+
+impl std::fmt::Debug for StreamReaderV2 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StreamReaderV2")
+            .field("inner", &(self.cpp_obj as usize))
+            .finish_non_exhaustive()
+    }
+}
+
+impl StreamReaderV2 {
+    /// Creates a pinned TensorRT stream reader backed by `inner`.
+    pub fn new(inner: Box<dyn ReadStreamV2>) -> Result<Pin<Box<Self>>> {
+        let mut rust_obj = Box::pin(Self {
+            cpp_obj: null_mut(),
+            rust_impl: inner,
+            _pin: PhantomPinned,
+        });
+        let cpp_obj = unsafe {
+            trtx_create_stream_reader_v2(
+                rust_obj.as_mut().get_unchecked_mut() as *mut Self as *mut std::ffi::c_void,
+                StreamReaderV2_read,
+                StreamReaderV2_seek,
+            )
+        };
+        if cpp_obj.is_null() {
+            return Err(Error::Runtime(
+                "Failed to allocate object for IStreamReaderV2 subclass".to_string(),
+            ));
+        }
+        unsafe {
+            rust_obj.as_mut().get_unchecked_mut().cpp_obj = cpp_obj;
+        }
+        Ok(rust_obj)
+    }
+
+    #[allow(dead_code)] // Also used by stream APIs that are not wrapped yet.
+    pub(crate) fn as_trt_stream_reader(
+        self: Pin<&mut Self>,
+    ) -> Pin<&mut nvinfer1::IStreamReaderV2> {
+        let cpp_obj = self.as_ref().get_ref().cpp_obj;
+        // SAFETY: `new` establishes that this pointer is non-null and uniquely owned by `self`.
+        // The returned borrow cannot outlive the exclusive pinned borrow of the Rust wrapper.
+        unsafe { Pin::new_unchecked(&mut *cpp_obj) }
+    }
+}
+
+impl Drop for StreamReaderV2 {
+    fn drop(&mut self) {
+        if !self.cpp_obj.is_null() {
+            unsafe {
+                trtx_destroy_stream_reader_v2(self.cpp_obj);
+            }
+            self.cpp_obj = null_mut();
+        }
     }
 }
 
@@ -559,43 +687,90 @@ mod profiler_tests {
     }
 }
 
-//#[subclass]
-//#[derive(Default)]
-//pub struct StreamReaderV2 {
-//inner: Option<Box<dyn ReadStreamV2>>,
-//}
+#[cfg(test)]
+mod stream_reader_v2_tests {
+    use super::*;
 
-//impl StreamReaderV2 {
-//pub fn new(inner: Box<dyn ReadStreamV2>) -> Rc<RefCell<Self>> {
-//let rtn = Self::default_rust_owned();
-//rtn.borrow_mut().inner = Some(inner);
-//rtn
-//}
-//}
+    struct SliceReader {
+        data: Vec<u8>,
+        position: usize,
+    }
 
-//impl nvinfer1::IStreamReaderV2_methods for StreamReaderV2 {
-//unsafe fn read(
-//&mut self,
-//destination: *mut autocxx::c_void,
-//nbBytes: i64,
-//stream: *mut crate::ffi::CUstream_st,
-//) -> i64 {
-//self.inner
-//.as_mut()
-//.unwrap()
-//.read(destination, nbBytes, stream)
-//}
-//fn seek(&mut self, offset: i64, where_: nvinfer1::SeekPosition) -> bool {
-//self.inner.as_mut().unwrap().seek(offset, where_.into())
-//}
-//}
+    impl ReadStreamV2 for SliceReader {
+        unsafe fn read(
+            &mut self,
+            destination: *mut std::ffi::c_void,
+            byte_count: i64,
+            _stream: *mut std::ffi::c_void,
+        ) -> i64 {
+            let Ok(byte_count) = usize::try_from(byte_count) else {
+                return -1;
+            };
+            let byte_count = byte_count.min(self.data.len() - self.position);
+            unsafe {
+                std::ptr::copy_nonoverlapping(
+                    self.data.as_ptr().add(self.position),
+                    destination.cast::<u8>(),
+                    byte_count,
+                );
+            }
+            self.position += byte_count;
+            byte_count as i64
+        }
 
-//pub trait ReadStreamV2: Send + Sync {
-//unsafe fn read(
-//&mut self,
-//destination: *mut autocxx::c_void,
-//nbBytes: i64,
-//stream: *mut crate::ffi::CUstream_st,
-//) -> i64;
-//fn seek(&mut self, offset: i64, where_: crate::SeekPosition) -> bool;
-//}
+        fn seek(&mut self, offset: i64, position: SeekPosition) -> bool {
+            let base = match position {
+                SeekPosition::kSET => 0,
+                SeekPosition::kCUR => self.position as i64,
+                SeekPosition::kEND => self.data.len() as i64,
+            };
+            let Some(position) = base.checked_add(offset) else {
+                return false;
+            };
+            let Ok(position) = usize::try_from(position) else {
+                return false;
+            };
+            if position > self.data.len() {
+                return false;
+            }
+            self.position = position;
+            true
+        }
+    }
+
+    #[test]
+    fn callbacks_read_and_seek_the_rust_implementation() {
+        let mut reader = StreamReaderV2::new(Box::new(SliceReader {
+            data: b"engine-plan".to_vec(),
+            position: 0,
+        }))
+        .expect("stream reader");
+        let this = unsafe {
+            reader.as_mut().get_unchecked_mut() as *mut StreamReaderV2 as *mut std::ffi::c_void
+        };
+        let mut output = [0_u8; 4];
+
+        let read = unsafe {
+            StreamReaderV2_read(
+                this,
+                output.as_mut_ptr().cast(),
+                output.len() as i64,
+                null_mut(),
+            )
+        };
+        assert_eq!(read, 4);
+        assert_eq!(&output, b"engi");
+
+        assert!(unsafe { StreamReaderV2_seek(this, -4, SeekPosition::kEND as i32) });
+        let read = unsafe {
+            StreamReaderV2_read(
+                this,
+                output.as_mut_ptr().cast(),
+                output.len() as i64,
+                null_mut(),
+            )
+        };
+        assert_eq!(read, 4);
+        assert_eq!(&output, b"plan");
+    }
+}

@@ -575,6 +575,21 @@ unsafe extern "C" {
         ),
     ) -> *mut nvinfer1::IProgressMonitor;
     pub unsafe fn trtx_destroy_progress_monitor(cpp_obj: *mut nvinfer1::IProgressMonitor);
+    pub unsafe fn trtx_create_stream_reader_v2(
+        rust_impl: *mut std::ffi::c_void,
+        read: unsafe extern "system" fn(
+            this: *mut std::ffi::c_void,
+            destination: *mut std::ffi::c_void,
+            byte_count: i64,
+            stream: *mut std::ffi::c_void,
+        ) -> i64,
+        seek: unsafe extern "system" fn(
+            this: *mut std::ffi::c_void,
+            offset: i64,
+            position: i32,
+        ) -> bool,
+    ) -> *mut nvinfer1::IStreamReaderV2;
+    pub unsafe fn trtx_destroy_stream_reader_v2(cpp_obj: *mut nvinfer1::IStreamReaderV2);
     pub unsafe fn trtx_create_gpu_allocator(
         rust_impl: *mut std::ffi::c_void,
         allocateAsync: unsafe extern "system" fn(

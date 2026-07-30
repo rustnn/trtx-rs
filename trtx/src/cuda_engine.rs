@@ -4,11 +4,15 @@
 //! [`SerializationConfig`] wraps [`nvinfer1::ISerializationConfig`] (C++ [`nvinfer1::ISerializationConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_serialization_config.html)).
 
 use std::rc::Rc;
+#[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
+use std::{ffi::c_void, pin::Pin};
 use std::{ffi::CStr, marker::PhantomData};
 
 use crate::engine_inspector::EngineInspector;
 use crate::error::PropertySetAttempt;
 use crate::host_memory::HostMemory;
+#[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
+use crate::interfaces::StreamReaderV2;
 use crate::runtime_config::RuntimeConfig;
 use crate::{DataType, Error, ExecutionContext, Result};
 use autocxx::cxx::UniquePtr;
@@ -424,6 +428,88 @@ impl<'engine> CudaEngine<'engine> {
         #[cfg(feature = "mock")]
         let config_ptr = std::ptr::null_mut();
         RuntimeConfig::new(config_ptr)
+    }
+
+    /// Returns whether this engine's weights have been loaded onto the GPU.
+    ///
+    /// This is normally `true`. It is `false` after deserializing an engine while
+    /// [`crate::Runtime::deferred_weights_loading`] is enabled and before loading its weights.
+    ///
+    /// See [`nvinfer1::ICudaEngine::areWeightsLoaded`].
+    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
+    pub fn weights_loaded(&self) -> bool {
+        if cfg!(feature = "mock_runtime") {
+            true
+        } else {
+            self.inner.areWeightsLoaded()
+        }
+    }
+
+    /// Synchronously loads this engine's weights onto the GPU from its serialized plan.
+    ///
+    /// `plan` must contain the same serialized engine plan that was originally passed to
+    /// [`crate::Runtime::deserialize_cuda_engine`]. TensorRT synchronizes its internal CUDA
+    /// stream before this method returns, so the plan buffer need not remain alive afterward.
+    ///
+    /// Returns an error if this engine was not deserialized in deferred mode, its weights were
+    /// already loaded, the supplied plan does not match, or the GPU copy fails.
+    ///
+    /// See [`nvinfer1::ICudaEngine::loadWeights`].
+    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
+    pub fn load_weights(&mut self, plan: &[u8]) -> Result<()> {
+        if cfg!(feature = "mock_runtime") {
+            return Ok(());
+        }
+        let size = i64::try_from(plan.len())
+            .map_err(|_| Error::InvalidArgument("Engine plan is too large".to_string()))?;
+        let loaded = unsafe {
+            self.inner
+                .pin_mut()
+                .loadWeights(plan.as_ptr().cast::<autocxx::c_void>(), size)
+        };
+        if loaded {
+            Ok(())
+        } else {
+            Err(Error::Runtime(
+                "Failed to load deferred engine weights".to_string(),
+            ))
+        }
+    }
+
+    /// Asynchronously loads this engine's weights onto the GPU using a stream reader.
+    ///
+    /// See [`nvinfer1::ICudaEngine::loadWeightsAsync`].
+    ///
+    /// # Safety
+    ///
+    /// `stream_reader` must read from the same serialized engine plan originally passed to
+    /// TensorRT when this engine was deserialized. `stream` must be a valid, non-null CUDA stream;
+    /// CUDA's null/default stream is not accepted. The caller must keep any source memory used by
+    /// asynchronous reader operations alive until those operations complete on `stream`.
+    ///
+    /// The caller must ensure that any work using the loaded weights is ordered after the transfer
+    /// on that stream, or explicitly synchronize across streams. After this returns successfully,
+    /// [`Self::weights_loaded`] is `true` even though the transfer may still be in flight.
+    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
+    pub unsafe fn load_weights_async(
+        &mut self,
+        stream_reader: Pin<&mut StreamReaderV2>,
+        stream: *mut c_void,
+    ) -> Result<()> {
+        if cfg!(feature = "mock_runtime") {
+            return Ok(());
+        }
+        let loaded = self
+            .inner
+            .pin_mut()
+            .loadWeightsAsync(stream_reader.as_trt_stream_reader(), stream.cast());
+        if loaded {
+            Ok(())
+        } else {
+            Err(Error::Runtime(
+                "Failed to enqueue deferred engine weight loading".to_string(),
+            ))
+        }
     }
 
     /// Returns an iterator over all IO tensor names.
