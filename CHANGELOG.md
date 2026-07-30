@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0+rtx1.6] - 2026-07-30
+
+See what's new in TensorRT RTX 1.6 https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/index.html#what-s-new-in-nvidia-tensorrt-rtx-1-6
+
+### 🚀 Features
+
+- *(trtexec-rs)* --weights-as-inputs for webnn files (#123)
+- Implement `Send` for HostMemory (#127)
+- Support for build routes (#133)
+- Implement deferred weight loading and StreamReaderV2 (#134)
+- Implement EngineValidity, EngineInvalidityDiagnostics (#135)
+
+### 🐛 Bug Fixes
+
+- Remove lifetime from RuntimeCache (#129)
+
+### 💼 Other
+
+- Use RustNN's new trtx-enterprise feature (#130)
+- Bump TensorRT-RTX version to 1.6 (#131)
+- Bump TensorRT enterprise to version 11.1 (#132)
+
+### 📚 Documentation
+
+- Update doc links to TensorRT RTX documentation (#136)
+
+### ⚙️ Miscellaneous Tasks
+
+- Allow long path names under Windows (#128)
+
 ## [0.7.1+rtx1.5] - 2026-06-12
 ### 🚀 Features
 
@@ -165,6 +195,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CUDA Integration**: Migrated CUDA memory and stream management to cudarc to align with modern Rust GPU tooling.
 - **Improved Portability**: Expanded the mock mode to include stubbed TensorRT types, allowing the library to be compiled non-NVIDIA platforms (e.g., macOS).
 
-[0.4.0]: https://github.com/rustnn/trtx-rs/releases/tag/v0.4.0
 [0.3.0]: https://github.com/rustnn/trtx-rs/releases/tag/v0.3.0
 [0.3.1]: https://github.com/rustnn/trtx-rs/releases/tag/v0.3.1
+[0.4.0]: https://github.com/rustnn/trtx-rs/releases/tag/v0.4.0
+[0.5.0]: https://github.com/rustnn/trtx-rs/releases/tag/v0.5.0
+[0.6.0+rtx1.5]: https://github.com/rustnn/trtx-rs/releases#release-v0.6.0+rtx1.5
+[0.7.0+rtx1.5]: https://github.com/rustnn/trtx-rs/releases#release-v0.7.0+rtx1.5
+[0.7.1+rtx1.5]: https://github.com/rustnn/trtx-rs/releases#release-v0.7.1+rtx1.5
+[0.8.0+rtx1.5]: https://github.com/rustnn/trtx-rs/releases#release-v0.8.0+rtx1.6
