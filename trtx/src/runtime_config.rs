@@ -4,7 +4,7 @@
 
 use std::marker::PhantomData;
 #[cfg(not(feature = "enterprise"))]
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 #[cfg(not(feature = "enterprise"))]
 use crate::error::PropertySetAttempt;
@@ -27,8 +27,7 @@ pub struct RuntimeConfig<'engine> {
     // this also makes it safe when we modify through our mutex, while cpp calls are made through
     // IExecution calls
     #[cfg(not(feature = "enterprise"))]
-    _cache: Option<Arc<Mutex<RuntimeCache>>>, // Mutex, could now be removed with a
-                                              // breaking change to set_runtime_cache
+    _cache: Option<Arc<RuntimeCache>>,
 }
 
 impl std::fmt::Debug for RuntimeConfig<'_> {
@@ -93,12 +92,10 @@ impl<'engine> RuntimeConfig<'engine> {
 
     #[cfg(not(feature = "enterprise"))]
     /// See [IRuntimeConfig::setRuntimeCache].
-    pub fn set_runtime_cache(&mut self, cache: Arc<Mutex<RuntimeCache>>) -> Result<()> {
+    pub fn set_runtime_cache(&mut self, cache: Arc<RuntimeCache>) -> Result<()> {
         if cfg!(not(feature = "mock")) {
             if self.inner.pin_mut().setRuntimeCache(
                 cache
-                    .lock()
-                    .unwrap()
                     .inner
                     .as_ref()
                     .expect("RuntimeCache inner must be non-null"),

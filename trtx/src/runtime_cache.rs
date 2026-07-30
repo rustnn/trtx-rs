@@ -52,11 +52,10 @@ impl RuntimeCache {
     }
 
     /// See [IRuntimeCache::deserialize].
-    pub fn deserialize(&mut self, blob: &[u8]) -> Result<()> {
+    pub fn deserialize(&self, blob: &[u8]) -> Result<()> {
         if cfg!(not(feature = "mock")) {
             if unsafe {
                 self.inner
-                    .pin_mut()
                     .deserialize(blob.as_ptr() as *const autocxx::c_void, blob.len())
             } {
                 Ok(())
@@ -71,9 +70,9 @@ impl RuntimeCache {
     }
 
     /// See [IRuntimeCache::reset].
-    pub fn reset(&mut self) -> Result<()> {
+    pub fn reset(&self) -> Result<()> {
         if cfg!(not(feature = "mock")) {
-            if self.inner.pin_mut().reset() {
+            if self.inner.reset() {
                 Ok(())
             } else {
                 Err(Error::FailedToResetRuntimeCache)
