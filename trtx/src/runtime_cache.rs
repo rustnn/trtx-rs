@@ -1,6 +1,6 @@
 //! Runtime cache for TensorRT JIT compilation (serialize / deserialize).
 //!
-//! [`RuntimeCache`] wraps [`trtx_sys::nvinfer1::IRuntimeCache`] (C++ [`nvinfer1::IRuntimeCache`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_runtime_cache.html).
+//! [`RuntimeCache`] wraps [`trtx_sys::nvinfer1::IRuntimeCache`] (C++ [`nvinfer1::IRuntimeCache`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_runtime_cache.html).
 
 use crate::error::{PropertySetAttempt, Result};
 use crate::host_memory::HostMemory;
@@ -8,7 +8,7 @@ use crate::Error;
 use cxx::UniquePtr;
 use trtx_sys::nvinfer1::{self, IRuntimeCache};
 
-/// [`trtx_sys::nvinfer1::IRuntimeCache`] — C++ [`nvinfer1::IRuntimeCache`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_runtime_cache.html).
+/// [`trtx_sys::nvinfer1::IRuntimeCache`] — C++ [`nvinfer1::IRuntimeCache`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_runtime_cache.html).
 pub struct RuntimeCache {
     pub(crate) inner: UniquePtr<IRuntimeCache>,
 }

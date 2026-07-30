@@ -1,7 +1,7 @@
 //! Rust implementations of TensorRT callback / allocator interfaces (bridged to C++).
 //!
 //! Versioned runtime interfaces live under `nvinfer1::v_1_0` in C++; see the
-//! [annotated class list](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/annotated.html).
+//! [annotated class list](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/annotated.html).
 
 use crate::{Error, Result};
 use cxx::UniquePtr;
@@ -14,15 +14,15 @@ use trtx_sys::{
 };
 use trtx_sys::{DataType, Dims64, ErrorCode, SeekPosition, TensorLocation};
 
-/// Rust trait implemented by [`ProgressMonitor`] for [`trtx_sys::nvinfer1::IProgressMonitor`]; C++ [`nvinfer1::v_1_0::IProgressMonitor`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1v__1__0_1_1_i_progress_monitor.html).
+/// Rust trait implemented by [`ProgressMonitor`] for [`trtx_sys::nvinfer1::IProgressMonitor`]; C++ [`nvinfer1::v_1_0::IProgressMonitor`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1v__1__0_1_1_i_progress_monitor.html).
 ///
 /// Use with [`crate::BuilderConfig::set_progress_monitor`].
 pub trait MonitorProgress: Send + Sync {
-    /// See [`trtx_sys::nvinfer1::IProgressMonitor`] / C++ [`phaseStart`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1v__1__0_1_1_i_progress_monitor.html).
+    /// See [`trtx_sys::nvinfer1::IProgressMonitor`] / C++ [`phaseStart`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1v__1__0_1_1_i_progress_monitor.html).
     fn phase_start(&self, phase_name: &str, parent_phase: Option<&str>, num_steps: i32);
-    /// See [`trtx_sys::nvinfer1::IProgressMonitor`] / C++ [`stepComplete`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1v__1__0_1_1_i_progress_monitor.html). Return whether to continue building or cancel.
+    /// See [`trtx_sys::nvinfer1::IProgressMonitor`] / C++ [`stepComplete`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1v__1__0_1_1_i_progress_monitor.html). Return whether to continue building or cancel.
     fn step_complete(&self, phase_name: &str, step: i32) -> std::ops::ControlFlow<()>;
-    /// See [`trtx_sys::nvinfer1::IProgressMonitor`] / C++ [`phaseFinish`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1v__1__0_1_1_i_progress_monitor.html).
+    /// See [`trtx_sys::nvinfer1::IProgressMonitor`] / C++ [`phaseFinish`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1v__1__0_1_1_i_progress_monitor.html).
     fn phase_finish(&self, phase_name: &str);
 }
 
@@ -70,7 +70,7 @@ unsafe extern "system" fn ProgressMonitor_phaseFinish(
         .phase_finish(&phase_name.to_string_lossy());
 }
 
-/// Bridges to [`trtx_sys::nvinfer1::IProgressMonitor`]; C++ [`nvinfer1::v_1_0::IProgressMonitor`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1v__1__0_1_1_i_progress_monitor.html).
+/// Bridges to [`trtx_sys::nvinfer1::IProgressMonitor`]; C++ [`nvinfer1::v_1_0::IProgressMonitor`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1v__1__0_1_1_i_progress_monitor.html).
 ///
 /// Construct with a [`MonitorProgress`] implementation.
 #[repr(C)]
@@ -276,7 +276,7 @@ unsafe extern "system" fn GpuAllocator_deallocateAsync(
         .deallocate_async(memory, cuda_stream)
 }
 
-/// Bridges to [`trtx_sys::nvinfer1::IGpuAllocator`]; C++ [`nvinfer1::v_1_0::IGpuAllocator`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1v__1__0_1_1_i_gpu_allocator.html).
+/// Bridges to [`trtx_sys::nvinfer1::IGpuAllocator`]; C++ [`nvinfer1::v_1_0::IGpuAllocator`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1v__1__0_1_1_i_gpu_allocator.html).
 ///
 /// Construct with an [`AllocateGpu`] implementation.
 #[repr(C)]
@@ -321,7 +321,7 @@ impl GpuAllocator {
     }
 }
 
-/// Implemented by [`GpuAllocator`] for [`trtx_sys::nvinfer1::IGpuAllocator`]; C++ [`nvinfer1::v_1_0::IGpuAllocator`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1v__1__0_1_1_i_gpu_allocator.html).
+/// Implemented by [`GpuAllocator`] for [`trtx_sys::nvinfer1::IGpuAllocator`]; C++ [`nvinfer1::v_1_0::IGpuAllocator`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1v__1__0_1_1_i_gpu_allocator.html).
 pub trait AllocateGpu: Send + Sync {
     // we omit the following deprecated methods
     //fn allocate(&mut self, size: u64, alignment: u64, flags: u32) -> *mut autocxx::c_void;
@@ -425,7 +425,7 @@ unsafe extern "system" fn ErrorRecorder_decRefCount(this: *mut ErrorRecorder) ->
     this.as_mut().unwrap().rust_impl.dec_ref_count()
 }
 
-/// Bridges to [`trtx_sys::nvinfer1::IErrorRecorder`]; C++ [`nvinfer1::v_1_0::IErrorRecorder`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1v__1__0_1_1_i_error_recorder.html).
+/// Bridges to [`trtx_sys::nvinfer1::IErrorRecorder`]; C++ [`nvinfer1::v_1_0::IErrorRecorder`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1v__1__0_1_1_i_error_recorder.html).
 ///
 /// Construct with a [`RecordError`] implementation.
 #[repr(C)]
@@ -483,7 +483,7 @@ impl ErrorRecorder {
     }
 }
 
-/// Implemented by [`ErrorRecorder`] for [`trtx_sys::nvinfer1::IErrorRecorder`]; C++ [`nvinfer1::v_1_0::IErrorRecorder`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1v__1__0_1_1_i_error_recorder.html).
+/// Implemented by [`ErrorRecorder`] for [`trtx_sys::nvinfer1::IErrorRecorder`]; C++ [`nvinfer1::v_1_0::IErrorRecorder`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1v__1__0_1_1_i_error_recorder.html).
 pub trait RecordError: Send + Sync {
     fn nb_errors(&self) -> i32;
     fn error_code(&self, error_idx: i32) -> ErrorCode;
@@ -522,7 +522,7 @@ unsafe extern "system" fn DebugListener_processDebugTensor(
         .is_ok()
 }
 
-/// Bridges to [`trtx_sys::nvinfer1::IDebugListener`]; C++ [`nvinfer1::v_1_0::IDebugListener`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1v__1__0_1_1_i_debug_listener.html).
+/// Bridges to [`trtx_sys::nvinfer1::IDebugListener`]; C++ [`nvinfer1::v_1_0::IDebugListener`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1v__1__0_1_1_i_debug_listener.html).
 #[repr(C)]
 pub struct DebugListener {
     cpp_obj: *mut nvinfer1::IDebugListener,
@@ -566,7 +566,7 @@ impl DebugListener {
     }
 }
 
-/// Implemented by [`DebugListener`] for [`trtx_sys::nvinfer1::IDebugListener`] (`processDebugTensor`); C++ [`nvinfer1::v_1_0::IDebugListener`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1v__1__0_1_1_i_debug_listener.html).
+/// Implemented by [`DebugListener`] for [`trtx_sys::nvinfer1::IDebugListener`] (`processDebugTensor`); C++ [`nvinfer1::v_1_0::IDebugListener`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1v__1__0_1_1_i_debug_listener.html).
 pub trait ProcessDebugTensor: Send + Sync {
     /// # Safety
     ///
@@ -602,7 +602,7 @@ unsafe extern "system" fn Profiler_reportLayerTime(
         .report_layer_time(name.as_ref(), ms);
 }
 
-/// Bridges to [`trtx_sys::nvinfer1::IProfiler`]; C++ [`nvinfer1::v_1_0::IProfiler`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1v__1__0_1_1_i_profiler.html).
+/// Bridges to [`trtx_sys::nvinfer1::IProfiler`]; C++ [`nvinfer1::v_1_0::IProfiler`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1v__1__0_1_1_i_profiler.html).
 #[repr(C)]
 pub struct Profiler {
     cpp_obj: *mut nvinfer1::IProfiler,
@@ -654,7 +654,7 @@ impl Drop for Profiler {
     }
 }
 
-/// Implemented by [`Profiler`] for [`trtx_sys::nvinfer1::IProfiler`] (`reportLayerTime`); C++ [`nvinfer1::v_1_0::IProfiler`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1v__1__0_1_1_i_profiler.html).
+/// Implemented by [`Profiler`] for [`trtx_sys::nvinfer1::IProfiler`] (`reportLayerTime`); C++ [`nvinfer1::v_1_0::IProfiler`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1v__1__0_1_1_i_profiler.html).
 pub trait ReportLayerTime: Send + Sync {
     /// Layer name from the network (or a decimal layer index if the engine was built with profiling
     /// verbosity [`crate::ProfilingVerbosity::kNONE`]). `ms` is execution time for that layer in

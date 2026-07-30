@@ -1,7 +1,7 @@
 //! Runtime for deserializing and managing TensorRT engines.
 //!
-//! [`Runtime`] wraps [`trtx_sys::nvinfer1::IRuntime`] (C++ [`nvinfer1::IRuntime`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_runtime.html)).
-//! [`ExecutionContext`] wraps [`trtx_sys::nvinfer1::IExecutionContext`] (C++ [`nvinfer1::IExecutionContext`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_execution_context.html)).
+//! [`Runtime`] wraps [`trtx_sys::nvinfer1::IRuntime`] (C++ [`nvinfer1::IRuntime`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_runtime.html)).
+//! [`ExecutionContext`] wraps [`trtx_sys::nvinfer1::IExecutionContext`] (C++ [`nvinfer1::IExecutionContext`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_execution_context.html)).
 
 use std::marker::PhantomData;
 
@@ -18,7 +18,7 @@ use crate::logger::Logger;
 pub use crate::runtime_cache::RuntimeCache;
 pub use crate::runtime_config::RuntimeConfig;
 
-/// [`trtx_sys::nvinfer1::IRuntime`] — C++ [`nvinfer1::IRuntime`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_runtime.html).
+/// [`trtx_sys::nvinfer1::IRuntime`] — C++ [`nvinfer1::IRuntime`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_runtime.html).
 pub struct Runtime<'logger> {
     inner: UniquePtr<nvinfer1::IRuntime>,
     _logger: PhantomData<&'logger Logger>,

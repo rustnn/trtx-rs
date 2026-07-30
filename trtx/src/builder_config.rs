@@ -1,6 +1,6 @@
 //! Builder configuration for TensorRT engine builds.
 //!
-//! Wraps [`trtx_sys::nvinfer1::IBuilderConfig`]; C++: [`nvinfer1::IBuilderConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_builder_config.html).
+//! Wraps [`trtx_sys::nvinfer1::IBuilderConfig`]; C++: [`nvinfer1::IBuilderConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_builder_config.html).
 
 use std::marker::PhantomData;
 use std::pin::Pin;
@@ -22,7 +22,7 @@ use trtx_sys::{
 #[cfg(not(feature = "enterprise"))]
 use trtx_sys::ComputeCapability;
 
-/// [`trtx_sys::nvinfer1::IBuilderConfig`] — C++ [`nvinfer1::IBuilderConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_builder_config.html).
+/// [`trtx_sys::nvinfer1::IBuilderConfig`] — C++ [`nvinfer1::IBuilderConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_builder_config.html).
 pub struct BuilderConfig<'builder> {
     pub(crate) inner: UniquePtr<IBuilderConfig>,
     progress_monitor: Option<Pin<Box<ProgressMonitor>>>,

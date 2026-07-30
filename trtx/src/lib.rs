@@ -116,7 +116,7 @@
 //!
 //! Rust types in this crate wrap TensorRT for RTX C++ interfaces. The authoritative class list and
 //! method documentation is the
-//! [TensorRT for RTX C++ API (annotated)](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/annotated.html).
+//! [TensorRT for RTX C++ API (annotated)](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/annotated.html).
 //! Each wrapper’s docs also link the Rust FFI type in [`trtx_sys::nvinfer1`] or [`trtx_sys::nvonnxparser`]
 //! alongside the matching C++ class on NVIDIA’s site.
 

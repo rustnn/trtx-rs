@@ -1,6 +1,6 @@
 //! ONNX model parser for TensorRT.
 //!
-//! [`OnnxParser`] wraps [`trtx_sys::nvonnxparser::IParser`] (C++ [`nvonnxparser::IParser`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvonnxparser_1_1_i_parser.html)).
+//! [`OnnxParser`] wraps [`trtx_sys::nvonnxparser::IParser`] (C++ [`nvonnxparser::IParser`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvonnxparser_1_1_i_parser.html)).
 
 use std::path::PathBuf;
 
@@ -12,7 +12,7 @@ use crate::error::{Error, Result};
 use crate::logger::Logger;
 use crate::network::NetworkDefinition;
 
-/// [`trtx_sys::nvonnxparser::IParser`] — C++ [`nvonnxparser::IParser`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvonnxparser_1_1_i_parser.html).
+/// [`trtx_sys::nvonnxparser::IParser`] — C++ [`nvonnxparser::IParser`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvonnxparser_1_1_i_parser.html).
 pub struct OnnxParser<'network> {
     inner: UniquePtr<nvonnxparser::IParser>,
     network: NetworkDefinition<'network>,

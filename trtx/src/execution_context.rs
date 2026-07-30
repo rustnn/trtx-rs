@@ -13,7 +13,7 @@ use crate::interfaces::{
 };
 use crate::RuntimeConfig;
 
-/// [`trtx_sys::nvinfer1::IExecutionContext`] — C++ [`nvinfer1::IExecutionContext`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_execution_context.html).
+/// [`trtx_sys::nvinfer1::IExecutionContext`] — C++ [`nvinfer1::IExecutionContext`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_execution_context.html).
 ///
 /// `inner` is declared last so it is dropped first (see [`Drop`]): TensorRT must release
 /// [DebugListener] / [Profiler]

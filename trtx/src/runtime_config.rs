@@ -1,6 +1,6 @@
 //! Runtime configuration for execution context creation.
 //!
-//! [`RuntimeConfig`] wraps [`trtx_sys::nvinfer1::IRuntimeConfig`] (C++ [`nvinfer1::IRuntimeConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_runtime_config.html)).
+//! [`RuntimeConfig`] wraps [`trtx_sys::nvinfer1::IRuntimeConfig`] (C++ [`nvinfer1::IRuntimeConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_runtime_config.html)).
 
 use std::marker::PhantomData;
 #[cfg(not(feature = "enterprise"))]
@@ -19,7 +19,7 @@ use trtx_sys::ExecutionContextAllocationStrategy;
 #[cfg(not(feature = "enterprise"))]
 use trtx_sys::{CudaGraphStrategy, DynamicShapesKernelSpecializationStrategy};
 
-/// [`trtx_sys::nvinfer1::IRuntimeConfig`] — C++ [`nvinfer1::IRuntimeConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_runtime_config.html).
+/// [`trtx_sys::nvinfer1::IRuntimeConfig`] — C++ [`nvinfer1::IRuntimeConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_runtime_config.html).
 pub struct RuntimeConfig<'engine> {
     pub(crate) inner: UniquePtr<IRuntimeConfig>,
     _engine: PhantomData<&'engine nvinfer1::ICudaEngine>,

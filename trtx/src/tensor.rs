@@ -3,7 +3,7 @@ use std::pin::Pin;
 use crate::{network::check_network, Error, NetworkDefinition, Result};
 use trtx_sys::{nvinfer1, DataType, Dims64};
 
-/// [`trtx_sys::nvinfer1::ITensor`] — C++ [`nvinfer1::ITensor`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_tensor.html).
+/// [`trtx_sys::nvinfer1::ITensor`] — C++ [`nvinfer1::ITensor`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_tensor.html).
 #[derive(Clone, Copy)]
 pub struct Tensor<'network> {
     pub(crate) inner: *mut nvinfer1::ITensor,
