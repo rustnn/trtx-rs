@@ -52,6 +52,7 @@ macro_rules! better_enum {
 
 use std::mem::transmute;
 use std::pin::Pin;
+
 better_enum!(LayerType);
 better_enum!(ActivationType);
 better_enum!(DataType);
@@ -59,6 +60,39 @@ better_enum!(ProfilingVerbosity);
 better_enum!(MemoryPoolType);
 better_enum!(DeviceType);
 better_enum!(EngineCapability);
+#[cfg(not(feature = "enterprise"))]
+better_enum!(EngineValidity);
+#[cfg(not(feature = "enterprise"))]
+use bitflags::bitflags;
+#[cfg(not(feature = "enterprise"))]
+bitflags! {
+    /// Bitmask indicating the reason(s) why an engine is invalid.
+    ///
+    /// See https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/namespacenvinfer1.html#a1ad7701ca8f1b97b3909323096d8d6f8
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct EngineInvalidityDiagnostics: u64 {
+        /// TensorRT-RTX version mismatch to when engine was built.
+        const VERSION_MISMATCH = 1 << 0;
+
+        /// Unsupported compute capability on current system.
+        const UNSUPPORTED_CC = 1 << 1;
+
+        /// CUDA driver too old (driver downgrade compared to when engine was built).
+        const OLD_CUDA_DRIVER = 1 << 2;
+
+        /// CUDA runtime too old (runtime downgrade compared to when engine was built).
+        const OLD_CUDA_RUNTIME = 1 << 3;
+
+        /// Insufficient GPU memory to hold all engine weights.
+        const INSUFFICIENT_GPU_MEMORY = 1 << 4;
+
+        /// Serialized engine does not conform to the expected format.
+        const MALFORMED_ENGINE = 1 << 5;
+
+        /// Incorrect installation of the CUDA driver or runtime.
+        const CUDA_ERROR = 1 << 6;
+    }
+}
 better_enum!(BuilderFlag);
 better_enum!(PreviewFeature);
 better_enum!(HardwareCompatibilityLevel);

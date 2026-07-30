@@ -8,6 +8,8 @@ use std::marker::PhantomData;
 use cxx::UniquePtr;
 use log::trace;
 use trtx_sys::nvinfer1;
+#[cfg(not(feature = "enterprise"))]
+use trtx_sys::EngineInvalidityDiagnostics;
 
 pub use crate::cuda_engine::CudaEngine;
 pub use crate::engine_inspector::EngineInspector;
@@ -136,6 +138,61 @@ impl<'runtime> Runtime<'runtime> {
         } else {
             self.inner.getDeferredWeightsLoading()
         }
+    }
+
+    /// Returns the number of bytes required to inspect a serialized engine's header.
+    ///
+    /// See [`nvinfer1::IRuntime::getEngineHeaderSize`].
+    #[cfg(not(feature = "enterprise"))]
+    pub fn engine_header_size(&self) -> usize {
+        if cfg!(feature = "mock_runtime") {
+            0
+        } else {
+            self.inner.getEngineHeaderSize() as usize
+        }
+    }
+
+    /// Checks whether a serialized engine is likely to be valid on the current system.
+    ///
+    /// Returns the header-based validity classification and a bitmask of
+    /// [`crate::EngineInvalidityDiagnostics`] values. The diagnostics bitmask is zero for valid
+    /// and suboptimal engines.
+    ///
+    /// This only inspects the engine header and cannot detect corruption in the engine body.
+    ///
+    /// See [`nvinfer1::IRuntime::getEngineValidity`].
+    #[cfg(not(feature = "enterprise"))]
+    pub fn engine_validity(
+        &self,
+        data: &[u8],
+    ) -> Result<(crate::EngineValidity, EngineInvalidityDiagnostics)> {
+        let header_size = self.engine_header_size();
+        if data.len() < header_size {
+            return Err(Error::InvalidArgument(format!(
+                "engine buffer must contain at least {header_size} bytes, got {}",
+                data.len()
+            )));
+        }
+
+        if cfg!(feature = "mock_runtime") {
+            return Ok((
+                crate::EngineValidity::kVALID,
+                EngineInvalidityDiagnostics::empty(),
+            ));
+        }
+
+        let mut diagnostics = 0;
+        let validity = unsafe {
+            self.inner.getEngineValidity(
+                data.as_ptr() as *const autocxx::c_void,
+                data.len() as i64,
+                &mut diagnostics,
+            )
+        };
+        Ok((
+            validity.into(),
+            EngineInvalidityDiagnostics::from_bits_retain(diagnostics),
+        ))
     }
     //pub fn deserialize_cuda_engine_v2(
     //&'_ mut self,
