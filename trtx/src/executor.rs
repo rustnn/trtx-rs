@@ -3,7 +3,7 @@
 //! This module orchestrates [`crate::Builder`], [`crate::OnnxParser`], [`crate::Runtime`], and
 //! [`crate::CudaEngine`], which wrap [`trtx_sys::nvinfer1::IBuilder`], [`trtx_sys::nvonnxparser::IParser`],
 //! [`trtx_sys::nvinfer1::IRuntime`], and [`trtx_sys::nvinfer1::ICudaEngine`]. See the
-//! [TensorRT for RTX C++ API](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/annotated.html).
+//! [TensorRT for RTX C++ API](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/annotated.html).
 
 use crate::builder::network_flags;
 use crate::error::Result;

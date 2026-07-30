@@ -1,6 +1,6 @@
 //! Engine inspector (layer / engine introspection as text or JSON).
 //!
-//! [`EngineInspector`] wraps [`trtx_sys::nvinfer1::IEngineInspector`] (C++ [`nvinfer1::IEngineInspector`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_engine_inspector.html)).
+//! [`EngineInspector`] wraps [`trtx_sys::nvinfer1::IEngineInspector`] (C++ [`nvinfer1::IEngineInspector`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_engine_inspector.html)).
 
 use crate::{Error, Result};
 use std::{ffi::CStr, marker::PhantomData};
@@ -8,7 +8,7 @@ use std::{ffi::CStr, marker::PhantomData};
 use autocxx::cxx::UniquePtr;
 use trtx_sys::{nvinfer1, LayerInformationFormat};
 
-/// [`trtx_sys::nvinfer1::IEngineInspector`] — C++ [`nvinfer1::IEngineInspector`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_engine_inspector.html).
+/// [`trtx_sys::nvinfer1::IEngineInspector`] — C++ [`nvinfer1::IEngineInspector`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_engine_inspector.html).
 pub struct EngineInspector<'engine> {
     pub(crate) inner: UniquePtr<nvinfer1::IEngineInspector>,
     pub(crate) _engine: PhantomData<&'engine nvinfer1::ICudaEngine>,

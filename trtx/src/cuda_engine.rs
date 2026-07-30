@@ -1,7 +1,7 @@
 //! CUDA engine and serialization config.
 //!
-//! [`CudaEngine`] wraps [`nvinfer1::ICudaEngine`] (C++ [`nvinfer1::ICudaEngine`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_cuda_engine.html)).
-//! [`SerializationConfig`] wraps [`nvinfer1::ISerializationConfig`] (C++ [`nvinfer1::ISerializationConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_serialization_config.html)).
+//! [`CudaEngine`] wraps [`nvinfer1::ICudaEngine`] (C++ [`nvinfer1::ICudaEngine`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_cuda_engine.html)).
+//! [`SerializationConfig`] wraps [`nvinfer1::ISerializationConfig`] (C++ [`nvinfer1::ISerializationConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_serialization_config.html)).
 
 use std::rc::Rc;
 #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
@@ -22,7 +22,7 @@ use trtx_sys::{
 };
 use trtx_sys::{TensorFormat, TensorLocation};
 
-/// [`nvinfer1::ISerializationConfig`] — C++ [`nvinfer1::ISerializationConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_serialization_config.html).
+/// [`nvinfer1::ISerializationConfig`] — C++ [`nvinfer1::ISerializationConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_serialization_config.html).
 pub struct SerializationConfig<'cuda_engine> {
     inner: UniquePtr<nvinfer1::ISerializationConfig>,
     _runtime: PhantomData<&'cuda_engine nvinfer1::ICudaEngine>,
@@ -76,7 +76,7 @@ impl SerializationConfig<'_> {
     }
 }
 
-/// [nvinfer1::ICudaEngine] — C++ [`nvinfer1::ICudaEngine`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/cpp-api/classnvinfer1_1_1_i_cuda_engine.html).
+/// [nvinfer1::ICudaEngine] — C++ [`nvinfer1::ICudaEngine`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_cuda_engine.html).
 pub struct CudaEngine<'runtime> {
     pub(crate) inner: UniquePtr<ICudaEngine>,
     _runtime: PhantomData<&'runtime nvinfer1::IRuntime>,
