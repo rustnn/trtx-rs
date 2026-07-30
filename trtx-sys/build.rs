@@ -94,6 +94,13 @@ fn prepare_transformed_headers(header_dir: &Path, out_dir: &Path) -> PathBuf {
                     "void log(Severity severity, AsciiChar const* msg)",
                     "void log(int32_t severity, char const* msg)",
                 )
+                // RuntimeCache is internally synchronized via shared_mutex
+                .replace(
+                    "bool deserialize(void const* blob, size_t size) noexcept",
+                    "bool deserialize(void const* blob, size_t size) const noexcept",
+                )
+                // RuntimeCache is internally synchronized via shared_mutex
+                .replace("bool reset() noexcept", "bool reset() const noexcept")
                 .replace("//!", "///")
                 .replace(r"\returns", " - Returns ");
 
