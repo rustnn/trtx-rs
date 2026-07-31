@@ -7,7 +7,7 @@ authors.workspace = true
 repository.workspace = true
 
 [dependencies]
-rustnn = { git = "https://github.com/rustnn/rustnn/", branch = "update-trtx-1.6", features = [
+rustnn = { git = "https://github.com/rustnn/rustnn/", branch = "main", features = [
 	"trtx-runtime",
 ], default-features = false, optional = true }
 
