@@ -4,6 +4,7 @@
 //! [`ExecutionContext`] wraps [`trtx_sys::nvinfer1::IExecutionContext`] (C++ [`nvinfer1::IExecutionContext`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_execution_context.html)).
 
 use std::marker::PhantomData;
+use std::pin::Pin;
 
 use cxx::UniquePtr;
 use log::trace;
@@ -15,6 +16,7 @@ pub use crate::cuda_engine::CudaEngine;
 pub use crate::engine_inspector::EngineInspector;
 use crate::error::{Error, Result};
 pub use crate::execution_context::ExecutionContext;
+use crate::interfaces::GpuAllocator;
 use crate::logger::Logger;
 #[cfg(not(feature = "enterprise"))]
 pub use crate::runtime_cache::RuntimeCache;
@@ -24,6 +26,9 @@ pub use crate::runtime_config::RuntimeConfig;
 pub struct Runtime<'logger> {
     inner: UniquePtr<nvinfer1::IRuntime>,
     _logger: PhantomData<&'logger Logger>,
+    // TensorRT retains this pointer and uses it for every engine deserialized by this runtime.
+    // Keep the Rust implementation alive until after `inner` has been destroyed.
+    gpu_allocator: Option<Pin<Box<GpuAllocator>>>,
 }
 
 impl std::fmt::Debug for Runtime<'_> {
@@ -87,15 +92,36 @@ impl<'runtime> Runtime<'runtime> {
             Ok(Runtime {
                 inner: unsafe { UniquePtr::from_raw(runtime_ptr) },
                 _logger: Default::default(),
+                gpu_allocator: None,
             })
         }
         #[cfg(feature = "mock_runtime")]
         Ok(Runtime {
             inner: UniquePtr::null(),
             _logger: Default::default(),
+            gpu_allocator: None,
         })
     }
 
+    /// Sets the allocator used by this runtime and all engines it deserializes.
+    ///
+    /// The allocator is retained by the runtime and therefore remains valid for the
+    /// lifetime TensorRT requires. Call this before [`Self::deserialize_cuda_engine`].
+    ///
+    /// See [nvinfer1::IRuntime::setGpuAllocator]
+    pub fn set_gpu_allocator(&mut self, allocator: Pin<Box<GpuAllocator>>) {
+        #[cfg(not(feature = "mock_runtime"))]
+        // SAFETY: `GpuAllocator` owns the C++ allocator bridge, and storing it below
+        // keeps that bridge valid for the complete lifetime of this runtime.
+        unsafe {
+            self.inner
+                .pin_mut()
+                .setGpuAllocator(allocator.as_ref().get_ref().as_trt_gpu_allocator());
+        }
+        self.gpu_allocator = Some(allocator);
+    }
+
+    /// See [nvinfer1::IRuntime::deserializeCudaEngine]
     pub fn deserialize_cuda_engine(&'_ mut self, data: &[u8]) -> Result<CudaEngine<'runtime>> {
         trace!("deserializing engine of size {}", data.len());
         if cfg!(feature = "mock_runtime") {
