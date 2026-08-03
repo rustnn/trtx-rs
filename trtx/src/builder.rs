@@ -4,7 +4,7 @@
 
 use crate::error::{Error, Result};
 use crate::host_memory::HostMemory;
-use crate::interfaces::{ErrorRecorder, RecordError};
+use crate::interfaces::{ErrorRecorder, GpuAllocator, RecordError};
 use crate::logger::Logger;
 use crate::network::NetworkDefinition;
 use crate::optimization_profile::OptimizationProfile;
@@ -35,6 +35,7 @@ pub struct Builder<'a> {
     inner: UniquePtr<IBuilder>,
     _logger: PhantomData<&'a Logger>,
     error_recorder: Option<Pin<Box<ErrorRecorder>>>,
+    gpu_allocator: Option<Pin<Box<GpuAllocator>>>,
 }
 
 impl std::fmt::Debug for Builder<'_> {
@@ -100,6 +101,7 @@ impl<'builder> Builder<'builder> {
                 inner: unsafe { UniquePtr::from_raw(builder_ptr) },
                 error_recorder: None,
                 _logger: Default::default(),
+                gpu_allocator: None,
             })
         }
         #[cfg(feature = "mock")]
@@ -107,6 +109,7 @@ impl<'builder> Builder<'builder> {
             inner: UniquePtr::null(),
             _logger: Default::default(),
             error_recorder: None,
+            gpu_allocator: None,
         })
     }
 
@@ -197,5 +200,18 @@ impl<'builder> Builder<'builder> {
             self.inner.pin_mut().setErrorRecorder(rec)
         };
         Ok(())
+    }
+
+    /// See [IBuilder::setGpuAllocator]
+    pub fn set_gpu_allocator(&mut self, allocator: Pin<Box<GpuAllocator>>) {
+        #[cfg(not(feature = "mock_runtime"))]
+        // SAFETY: `GpuAllocator` owns the C++ allocator bridge, and storing it below
+        // keeps that bridge valid for the complete lifetime of this builder.
+        unsafe {
+            self.inner
+                .pin_mut()
+                .setGpuAllocator(allocator.as_ref().get_ref().as_trt_gpu_allocator());
+        }
+        self.gpu_allocator = Some(allocator);
     }
 }
