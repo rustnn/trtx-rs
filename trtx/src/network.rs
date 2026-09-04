@@ -10,6 +10,7 @@ use cxx::UniquePtr;
 use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 use std::pin::Pin;
+use std::ptr::null;
 use trtx_sys::nvinfer1::{IConcatenationLayer, IEinsumLayer, INetworkDefinition, ITensor};
 use trtx_sys::{nvinfer1, LayerType, SampleMode, Weights};
 use trtx_sys::{AsLayer, AsLayerTyped};
@@ -2079,7 +2080,7 @@ impl<'network> NetworkDefinition<'network> {
             "add_small_constant_copied dims={dims:?} data_type={data_type:?} weights_len={} name={name:?}",
             weights.len()
         );
-        unsafe { self.add_constant_unsafe(dims, weights, data_type, true, name) }
+        unsafe { self.add_constant_unsafe(dims, Some(weights), data_type, true, name) }
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConstant`].
@@ -2140,39 +2141,49 @@ impl<'network> NetworkDefinition<'network> {
     unsafe fn add_constant_unsafe(
         &mut self,
         dims: &[i64],
-        weights: &[u8],
+        weights: Option<&[u8]>,
         data_type: trtx_sys::DataType,
         copy: bool,
         name: Option<&str>,
     ) -> Result<ConstantLayer<'network>> {
         let element_count: i64 = dims.iter().product();
         let expected_bytes = element_count * data_type.size_bits() as i64 / 8;
-        if weights.len() as i64 != expected_bytes {
-            panic!(
-                "Weight size mismatch: expected {expected_bytes} bytes, got {} bytes",
-                weights.len()
-            );
-        }
         let dims_struct = trtx_sys::Dims::from_slice(dims);
+        if let Some(weights) = weights {
+            if weights.len() as i64 != expected_bytes {
+                panic!(
+                    "Weight size mismatch: expected {expected_bytes} bytes, got {} bytes",
+                    weights.len()
+                );
+            }
+        }
         let weights_struct = trtx_sys::nvinfer1::Weights::new_with_type(
             data_type.into(),
-            if copy {
-                self.small_copied_weights.push(weights.to_vec());
-                self.small_copied_weights
-                    .last()
-                    .expect("can't be empty. we just pushed")
-                    .as_ptr()
+            if let Some(weights) = weights {
+                if copy {
+                    self.small_copied_weights.push(weights.to_vec());
+                    self.small_copied_weights
+                        .last()
+                        .expect("can't be empty. we just pushed")
+                        .as_ptr()
+                } else {
+                    weights.as_ptr()
+                }
             } else {
-                weights.as_ptr()
+                null()
             } as *const std::ffi::c_void,
             element_count,
         );
-        let ptr = weights_struct.values;
         let layer_ptr = self
             .inner
             .pin_mut()
             .addConstant(&dims_struct, weights_struct);
         let layer = ConstantLayer::new(self.inner.as_ptr(), layer_ptr)?;
+
+        // requesting the weights struct from the layer is necessary to fill out a potential nullptr
+        // if we didn't provide the weight data
+        let weights_struct = layer.weights(self);
+        let ptr = weights_struct.values;
         if let Some(name) = name {
             self.set_weights_name(
                 Weights {
@@ -2199,7 +2210,23 @@ impl<'network> NetworkDefinition<'network> {
             "add_constant dims={dims:?} data_type={data_type:?} weights_len={} name={name:?}",
             weights.len()
         );
-        unsafe { self.add_constant_unsafe(dims, weights, data_type, false, name) }
+        unsafe { self.add_constant_unsafe(dims, Some(weights), data_type, false, name) }
+    }
+
+    #[cfg(feature = "v_1_7")]
+    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConstant`] with nullptr.
+    ///
+    /// Requires building with IBuilderConfig kSTRIP_PLAN+kREFIT_INDIVIDUAL on TensorRT RTX 1.7+ or
+    /// TensorRT 11.3+
+    pub fn add_constant_placeholder(
+        &mut self,
+        dims: &[i64],
+        data_type: trtx_sys::DataType,
+        name: &str,
+    ) -> Result<ConstantLayer<'network>> {
+        trace!("add_constant_placeholder dims={dims:?} data_type={data_type:?} name={name:?}");
+        // nullptr weights must be named to build the engine!
+        unsafe { self.add_constant_unsafe(dims, None, data_type, false, Some(name)) }
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addSoftMax`].
@@ -3537,6 +3564,38 @@ impl<'network> Attention<'network> {
     }
 }
 
+impl<'network> ConstantLayer<'network> {
+    /// See [`trtx_sys::nvinfer1::IConstantLayer::setWeights`].
+    ///
+    /// # Safety
+    ///
+    /// `weights.values` must point to data valid for the lifetime of the network, or until the
+    /// engine has been built. The data type and element count must also agree with the constant
+    /// layer's dimensions.
+    pub unsafe fn set_weights(&mut self, network: &mut NetworkDefinition, weights: Weights) {
+        check_network!(network, self);
+        self.inner.as_mut().setWeights(weights);
+    }
+
+    /// See [`trtx_sys::nvinfer1::IConstantLayer::getWeights`].
+    pub fn weights(&self, network: &NetworkDefinition) -> Weights {
+        check_network!(network, self);
+        self.inner.as_ref().getWeights()
+    }
+
+    /// See [`trtx_sys::nvinfer1::IConstantLayer::setDimensions`].
+    pub fn set_dimensions(&mut self, network: &mut NetworkDefinition, dimensions: &Dims64) {
+        check_network!(network, self);
+        self.inner.as_mut().setDimensions(dimensions);
+    }
+
+    /// See [`trtx_sys::nvinfer1::IConstantLayer::getDimensions`].
+    pub fn dimensions(&self, network: &NetworkDefinition) -> Dims64 {
+        check_network!(network, self);
+        self.inner.as_ref().getDimensions()
+    }
+}
+
 impl<'network> KVCacheUpdateLayer<'network> {
     /// See [`trtx_sys::nvinfer1::IKVCacheUpdateLayer::setCacheMode`].
     pub fn set_cache_mode(
@@ -4107,5 +4166,39 @@ mod test {
         assert_eq!(network.layers().len(), 2);
         let types: Vec<_> = network.layers().map(|l| l.layer_type_dynamic()).collect();
         assert_eq!(types, [LayerType::kACTIVATION, LayerType::kACTIVATION]);
+    }
+
+    #[test]
+    #[cfg(all(feature = "v_1_7", not(feature = "mock")))]
+    fn test_add_constant_placeholder() {
+        let logger = Logger::stderr().unwrap();
+        let mut builder = Builder::new(&logger).unwrap();
+        let mut network = builder.create_network(0).unwrap();
+        let constant = network
+            .add_constant_placeholder(&[2, 3], trtx_sys::DataType::kFLOAT, "placeholder")
+            .unwrap();
+
+        let weights = constant.weights(&network);
+        assert!(weights.type_ == trtx_sys::DataType::kFLOAT.into());
+        assert_eq!(weights.count, 6);
+        assert!(!weights.values.is_null());
+        let dimensions = constant.dimensions(&network);
+        assert_eq!(dimensions.nbDims, 2);
+        assert_eq!(&dimensions.d[..2], [2, 3]);
+        assert_eq!(network.layers().len(), 1);
+        assert_eq!(constant.layer_type(), LayerType::kCONSTANT);
+
+        let output = constant.output(&network, 0).unwrap();
+        output.set_name(&mut network, "output").unwrap();
+        network.mark_output(&output);
+
+        let mut config = builder.create_config().unwrap();
+        config.set_flag(trtx_sys::BuilderFlag::kSTRIP_PLAN);
+        config.set_flag(trtx_sys::BuilderFlag::kREFIT_INDIVIDUAL);
+
+        let engine = builder
+            .build_serialized_network(&mut network, &mut config)
+            .unwrap();
+        assert!(!engine.is_empty());
     }
 }
