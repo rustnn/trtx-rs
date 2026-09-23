@@ -135,13 +135,10 @@
 pub mod axes;
 pub mod builder;
 pub mod builder_config;
-pub mod cuda;
 pub mod cuda_engine;
 pub mod engine_inspector;
 pub mod error;
 pub mod execution_context;
-#[cfg(feature = "onnxparser")]
-pub mod executor;
 pub mod host_memory;
 pub mod interfaces;
 pub mod logger;
@@ -159,12 +156,7 @@ pub mod tensor;
 // Re-export commonly used types
 pub use axes::Axes;
 pub use builder::{Builder, BuilderConfig};
-pub use cuda::{default_stream, synchronize, DeviceBuffer};
 pub use error::{Error, Result};
-#[cfg(feature = "onnxparser")]
-pub use executor::{run_onnx_with_tensorrt, run_onnx_zeroed};
-#[cfg(feature = "onnxparser")]
-pub use executor::{TensorInput, TensorOutput};
 #[cfg(feature = "dlopen_tensorrt_rtx")]
 use libloading::AsFilename;
 pub use logger::{LogHandler, Logger, Severity, StderrLogger};

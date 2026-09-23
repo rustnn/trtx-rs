@@ -243,10 +243,10 @@ impl<'runtime> Runtime<'runtime> {
 #[cfg(test)]
 #[cfg(not(feature = "mock_runtime"))]
 mod tests {
+    use std::ffi::c_void;
     use std::sync::{Arc, Mutex};
 
     use crate::builder::{Builder, MemoryPoolType};
-    use crate::cuda::{synchronize, DeviceBuffer};
     use crate::interfaces::{ProcessDebugTensor, ProcessDebugTensorResult};
     #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
     use crate::interfaces::{ReadStreamV2, StreamReaderV2};
@@ -254,6 +254,7 @@ mod tests {
     #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
     use crate::SeekPosition;
     use crate::{DataType, ElementWiseOperation, Runtime};
+    use cudarc::driver::{CudaContext, CudaSlice, DevicePtrMut};
     use trtx_sys::{Dims64, TensorLocation};
 
     #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
@@ -288,7 +289,7 @@ mod tests {
             // recognized by cuPointerGetAttribute, so an attribute-query failure means host.
             let mut memory_type = 0_u32;
             let attribute_result = unsafe {
-                cudarc::driver::sys::lib().cuPointerGetAttribute(
+                cudarc::driver::sys::cuPointerGetAttribute(
                     (&mut memory_type as *mut u32).cast(),
                     cudarc::driver::sys::CUpointer_attribute::CU_POINTER_ATTRIBUTE_MEMORY_TYPE,
                     destination as usize as cudarc::driver::sys::CUdeviceptr,
@@ -489,6 +490,9 @@ mod tests {
         context.set_all_tensors_debug_state(true).unwrap();
         context.set_unfused_tensors_debug_state(true).unwrap();
 
+        let ctx = CudaContext::new(0).unwrap();
+        let stream = ctx.new_stream().unwrap();
+
         // input: 1 channel 4x4, output: 4 channels 4x4
         let input_elems = 4 * 4;
         let output_elems = 4 * 4 * 4;
@@ -496,24 +500,31 @@ mod tests {
         let input_bytes: Vec<u8> = std::iter::repeat_n(1.0f32, input_elems)
             .flat_map(|v| v.to_le_bytes())
             .collect();
-        let mut input_device = DeviceBuffer::new(input_elems * elem_size).expect("input buffer");
-        let output_device = DeviceBuffer::new(output_elems * elem_size).expect("output buffer");
-        input_device
-            .copy_from_host(&input_bytes)
-            .expect("copy input");
+
+        let mut output_device: CudaSlice<u8> = stream
+            .alloc_zeros(output_elems * elem_size)
+            .expect("output buffer");
+
+        let mut input_device = stream.clone_htod(&input_bytes).expect("copy input");
 
         unsafe {
             context
-                .set_tensor_address("input", input_device.as_ptr())
+                .set_tensor_address(
+                    "input",
+                    input_device.device_ptr_mut(&stream).0 as *mut c_void,
+                )
                 .expect("set input");
             context
-                .set_tensor_address("conv_out_2", output_device.as_ptr())
+                .set_tensor_address(
+                    "conv_out_2",
+                    output_device.device_ptr_mut(&stream).0 as *mut c_void,
+                )
                 .expect("set output");
             context
-                .enqueue_v3(crate::cuda::default_stream())
+                .enqueue_v3(stream.cu_stream() as *mut c_void)
                 .expect("enqueue");
         }
-        synchronize().expect("sync");
+        stream.synchronize().expect("sync");
 
         let seen = seen.lock().unwrap();
         assert!(
@@ -551,29 +562,37 @@ mod tests {
         context.set_all_tensors_debug_state(true).unwrap();
         context.set_unfused_tensors_debug_state(true).unwrap();
 
-        let elem_size = std::mem::size_of::<f32>();
-        let mut input_device = DeviceBuffer::new(elem_size).expect("input buffer");
-        let output_device = DeviceBuffer::new(elem_size).expect("output buffer");
-        input_device
-            .copy_from_host(&0.0f32.to_le_bytes())
+        let ctx = CudaContext::new(0).expect("CUDA context");
+        let stream = ctx.new_stream().expect("CUDA stream");
+        let mut input_device = stream
+            .clone_htod(&0.0f32.to_le_bytes())
             .expect("copy input");
+        let mut output_device: CudaSlice<u8> = stream
+            .alloc_zeros(std::mem::size_of::<f32>())
+            .expect("output buffer");
 
         unsafe {
             context
-                .set_tensor_address("tensor_0", input_device.as_ptr())
+                .set_tensor_address(
+                    "tensor_0",
+                    input_device.device_ptr_mut(&stream).0 as *mut c_void,
+                )
                 .expect("set input");
             context
-                .set_tensor_address("tensor_4", output_device.as_ptr())
+                .set_tensor_address(
+                    "tensor_4",
+                    output_device.device_ptr_mut(&stream).0 as *mut c_void,
+                )
                 .expect("set output");
             context
-                .enqueue_v3(crate::cuda::default_stream())
+                .enqueue_v3(stream.cu_stream() as *mut c_void)
                 .expect("enqueue");
         }
-        synchronize().expect("sync");
+        stream.synchronize().expect("sync");
 
         let mut output_bytes = [0u8; 4];
-        output_device
-            .copy_to_host(&mut output_bytes)
+        stream
+            .memcpy_dtoh(&output_device, &mut output_bytes)
             .expect("copy output");
         let output_val = f32::from_le_bytes(output_bytes);
         assert!(
@@ -653,14 +672,12 @@ mod tests {
         }))
         .expect("stream reader");
 
-        let cuda_device = cudarc::driver::CudaDevice::new(0).expect("CUDA device");
-        let cuda_stream = cuda_device
-            .fork_default_stream()
-            .expect("non-blocking CUDA stream");
-        let stream = cuda_stream.stream.cast();
+        let ctx = CudaContext::new(0).unwrap();
+        let stream = ctx.new_stream().unwrap();
+
         unsafe {
             engine
-                .load_weights_async(stream_reader.as_mut(), stream)
+                .load_weights_async(stream_reader.as_mut(), stream.cu_stream() as *mut _)
                 .expect("load weights asynchronously");
         }
         assert!(engine.weights_loaded());
@@ -673,10 +690,7 @@ mod tests {
             "TensorRT did not request any engine weights in device memory"
         );
 
-        unsafe {
-            cudarc::driver::result::stream::synchronize(cuda_stream.stream)
-                .expect("synchronize asynchronous weight load");
-        }
+        stream.synchronize().unwrap();
     }
 
     #[test]

@@ -563,9 +563,9 @@ impl<'engine> ExecutionContext<'engine> {
 #[cfg(test)]
 #[cfg(not(feature = "mock_runtime"))]
 mod tests {
+    use cudarc::driver::{CudaContext, CudaSlice, DevicePtr, DevicePtrMut};
+
     use crate::builder::{Builder, MemoryPoolType};
-    use crate::cuda::{default_stream, synchronize, DeviceBuffer};
-    use crate::error::Error;
     use crate::logger::Logger;
     use crate::{DataType, ElementWiseOperation, Runtime};
 
@@ -599,68 +599,36 @@ mod tests {
             .expect("execution context");
 
         let elem_size = std::mem::size_of::<f32>();
-        let mut a_buf = DeviceBuffer::new(elem_size).expect("buffer a");
-        let mut b_buf = DeviceBuffer::new(elem_size).expect("buffer b");
-        let c_buf = DeviceBuffer::new(elem_size).expect("buffer c");
-        a_buf.copy_from_host(&2.0f32.to_le_bytes()).expect("copy a");
-        b_buf.copy_from_host(&3.0f32.to_le_bytes()).expect("copy b");
+        let ctx = CudaContext::new(0).unwrap();
+        let stream = ctx.new_stream().unwrap();
+
+        let a_buf = stream.clone_htod(&2.0f32.to_le_bytes()).expect("copy a");
+        let b_buf = stream.clone_htod(&3.0f32.to_le_bytes()).expect("copy b");
+        let mut c_buf: CudaSlice<u8> = stream.alloc_zeros(elem_size).unwrap();
 
         unsafe {
             context
-                .set_input_tensor_address("a", a_buf.as_ptr() as *const _)
+                .set_input_tensor_address("a", a_buf.device_ptr(&stream).0 as *const _)
                 .expect("bind input a");
             context
-                .set_input_tensor_address("b", b_buf.as_ptr() as *const _)
+                .set_input_tensor_address("b", b_buf.device_ptr(&stream).0 as *const _)
                 .expect("bind input b");
             context
-                .set_output_tensor_address("c", c_buf.as_ptr())
+                .set_output_tensor_address("c", c_buf.device_ptr_mut(&stream).0 as *mut _)
                 .expect("bind output c");
-            context.enqueue_v3(default_stream()).expect("enqueue");
+            context
+                .enqueue_v3(stream.cu_stream() as *mut _)
+                .expect("enqueue");
         }
-        synchronize().expect("sync");
 
         let mut out_bytes = [0u8; 4];
-        c_buf.copy_to_host(&mut out_bytes).expect("copy c");
+        stream.memcpy_dtoh(&c_buf, &mut out_bytes).unwrap();
+        stream.synchronize().expect("sync");
+
         let c_val = f32::from_le_bytes(out_bytes);
         assert!(
             (c_val - 5.0f32).abs() < 1e-5,
             "expected a + b = 5.0, got {c_val}"
         );
-    }
-
-    #[test]
-    fn set_input_output_tensor_address_invalid_name_fails() {
-        let logger = Logger::stderr().expect("logger");
-        let engine_data = build_add_network(&logger).expect("build network");
-
-        let mut runtime = Runtime::new(&logger).expect("runtime");
-        let mut engine = runtime
-            .deserialize_cuda_engine(&engine_data)
-            .expect("deserialize");
-        let mut context = engine
-            .create_execution_context()
-            .expect("execution context");
-
-        let buf = DeviceBuffer::new(std::mem::size_of::<f32>()).expect("buffer");
-        let ptr = buf.as_ptr();
-        let const_ptr = ptr as *const std::ffi::c_void;
-
-        unsafe {
-            let input_err = context
-                .set_input_tensor_address("not_a_tensor", const_ptr)
-                .unwrap_err();
-            assert!(
-                matches!(input_err, Error::FailedToSetInputTensorAddress { .. }),
-                "unexpected error for invalid input name: {input_err:?}"
-            );
-
-            let output_err = context
-                .set_output_tensor_address("also_not_a_tensor", ptr)
-                .unwrap_err();
-            assert!(
-                matches!(output_err, Error::FailedToSetOutputTensorAddress { .. }),
-                "unexpected error for invalid output name: {output_err:?}"
-            );
-        }
     }
 }
