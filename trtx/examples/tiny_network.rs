@@ -9,12 +9,12 @@
 //! Network architecture:
 //! Input [1, 3, 4, 4] -> ReLU -> Output [1, 3, 4, 4]
 
+use cudarc::driver::{CudaContext, CudaSlice, DevicePtr, DevicePtrMut};
 use trtx::builder::MemoryPoolType;
-use trtx::cuda::{synchronize, DeviceBuffer};
 use trtx::error::Result;
 use trtx::{ActivationType, Builder, DataType, Logger, Runtime};
 
-fn main() -> Result<()> {
+fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     pretty_env_logger::init();
     println!("=== Tiny Network Example ===\n");
 
@@ -67,45 +67,33 @@ fn main() -> Result<()> {
     println!("   Input shape: [1, 3, 4, 4] ({} elements)", input_size);
     println!("   First 8 input values: {:?}", &input_data[..8]);
 
-    // Allocate device memory
-    let mut input_device = DeviceBuffer::new(input_size * std::mem::size_of::<f32>())?;
-    let output_device = DeviceBuffer::new(output_size * std::mem::size_of::<f32>())?;
+    let ctx = CudaContext::new(0)?;
+    let stream = ctx.new_stream()?;
 
-    // Copy input to device (convert f32 slice to bytes)
-    let input_bytes = unsafe {
-        std::slice::from_raw_parts(
-            input_data.as_ptr() as *const u8,
-            input_data.len() * std::mem::size_of::<f32>(),
-        )
-    };
-    input_device.copy_from_host(input_bytes)?;
+    // Allocate device memory
+    let input_device = stream.clone_htod(&input_data)?;
+    let mut output_device: CudaSlice<f32> = stream.alloc_zeros(output_size)?;
 
     // 7. Set tensor addresses
     println!("\n7. Binding tensors...");
     unsafe {
-        context.set_tensor_address("input", input_device.as_ptr())?;
-        context.set_tensor_address("output", output_device.as_ptr())?;
+        context
+            .set_input_tensor_address("input", input_device.device_ptr(&stream).0 as *const _)?;
+        context.set_tensor_address("output", output_device.device_ptr_mut(&stream).0 as *mut _)?;
     }
 
     // 8. Execute inference
     println!("8. Running inference...");
-    let stream = trtx::cuda::default_stream();
     unsafe {
-        context.enqueue_v3(stream)?;
+        context.enqueue_v3(stream.cu_stream() as *mut _)?;
     }
-    synchronize()?;
+    stream.synchronize()?;
     println!("   ✓ Inference completed");
 
     // 9. Copy output back to host
     println!("\n9. Reading results...");
     let mut output_data: Vec<f32> = vec![0.0; output_size];
-    let output_bytes = unsafe {
-        std::slice::from_raw_parts_mut(
-            output_data.as_mut_ptr() as *mut u8,
-            output_data.len() * std::mem::size_of::<f32>(),
-        )
-    };
-    output_device.copy_to_host(output_bytes)?;
+    stream.memcpy_dtoh(&output_device, &mut output_data)?;
 
     println!("   Output shape: [1, 3, 4, 4] ({} elements)", output_size);
     println!("   First 8 output values: {:?}", &output_data[..8]);
