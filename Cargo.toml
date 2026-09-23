@@ -9,10 +9,6 @@ license = "Apache-2.0"
 authors = ["Tarek Ziade", "Markus Tavenrath", "Stephan Seitz"]
 repository = "https://github.com/rustnn/trtx-rs"
 
-[workspace.dependencies]
-trtx-sys = { path = "trtx-sys" }
-trtexec-rs = { path = "trtx" }
-
 [profile.release]
 opt-level = 3
 lto = true
