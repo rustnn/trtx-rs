@@ -288,14 +288,6 @@ cargo test --features mock
 cargo run --features mock --example basic_workflow
 ```
 
-## Examples
-
-See the `trtx/examples/` directory for complete examples:
-
-- `basic_workflow.rs`: Build and serialize an engine (optionally from ONNX), then run inference
-- `tiny_network.rs`: Build a small ReLU-based network from scratch using the Network API (no ONNX)
-- `rustnn_executor.rs`: rustnn-compatible executor integration
-
 ## Architecture
 
 ### trtx-sys (FFI Layer)
@@ -375,10 +367,6 @@ The GPU tests workflow:
 - Runs tests and examples with actual GPU acceleration
 - Can be triggered manually or runs automatically on code changes
 
-## Contributing
-
-Contributions are welcome! Please see [docs/DESIGN.md](docs/DESIGN.md) for architecture details.
-
 ## License
 
 This project is licensed under the Apache License, Version 2.0 - see the [LICENSE](LICENSE) file for details.
@@ -410,8 +398,6 @@ This project is in early development. APIs may change before 1.0 release.
 
 ### Planned
 
-- ⬜ Dynamic shape support
-- ⬜ INT8 quantization support
 - ⬜ Comprehensive examples with real models
 - ⬜ Performance benchmarking
 - ⬜ Documentation improvements
