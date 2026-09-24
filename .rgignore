@@ -1,0 +1,3 @@
+# Ignore TensorRT-Headers, except for the newest to avoid copies of the same definition when grepping
+trtx-sys/TensorRT-Headers/*
+!trtx-sys/TensorRT-Headers/TRT-RTX-1.6
