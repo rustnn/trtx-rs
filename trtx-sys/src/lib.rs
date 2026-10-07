@@ -575,6 +575,7 @@ unsafe extern "C" {
     pub unsafe fn get_tensorrt_major_version() -> u32;
     pub unsafe fn get_tensorrt_minor_version() -> u32;
     pub unsafe fn get_tensorrt_patch_version() -> u32;
+    pub unsafe fn get_tensorrt_build_version() -> u32;
 
     pub unsafe fn get_nvonnxparser_version() -> u32;
     pub unsafe fn get_nvonnxparser_major_version() -> u32;
