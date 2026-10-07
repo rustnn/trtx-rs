@@ -58,8 +58,8 @@
 #include <NvOnnxParser.h>
 #include <cstdint>
 #include <cstring>
-#include <vector>
 #include <string>
+#include <vector>
 
 //==============================================================================
 // SECTION 1: LOGGER BRIDGE (NECESSARY - Virtual Methods)
@@ -303,8 +303,7 @@ void *network_add_einsum(void *network, void **inputs, int32_t nb_inputs,
     for (int32_t i = 0; i < nb_inputs; ++i) {
       tensors.push_back(static_cast<nvinfer1::ITensor *>(inputs[i]));
     }
-    auto *layer =
-        inetwork->addEinsum(tensors.data(), nb_inputs, equation);
+    auto *layer = inetwork->addEinsum(tensors.data(), nb_inputs, equation);
     return layer;
   } catch (...) {
     return nullptr;
@@ -315,6 +314,7 @@ uint32_t get_tensorrt_version() { return NV_TENSORRT_VERSION; }
 uint32_t get_tensorrt_major_version() { return NV_TENSORRT_MAJOR; }
 uint32_t get_tensorrt_minor_version() { return NV_TENSORRT_MINOR; }
 uint32_t get_tensorrt_patch_version() { return NV_TENSORRT_PATCH; }
+uint32_t get_tensorrt_build_version() { return NV_TENSORRT_BUILD; }
 uint32_t get_nvonnxparser_version() { return NV_ONNX_PARSER_VERSION; }
 uint32_t get_nvonnxparser_major_version() { return NV_ONNX_PARSER_MAJOR; }
 uint32_t get_nvonnxparser_minor_version() { return NV_ONNX_PARSER_MINOR; }
@@ -542,7 +542,8 @@ void trtx_destroy_gpu_allocator(void *obj) {
 namespace nvinfer1 {
 class ProfilerSubclass : public IProfiler {
 public:
-  ProfilerSubclass(void *self, void (*reportLayerTime)(void *, char const *, float))
+  ProfilerSubclass(void *self,
+                   void (*reportLayerTime)(void *, char const *, float))
       : self(self),
         m_reportLayerTime((decltype(m_reportLayerTime))reportLayerTime) {}
   ~ProfilerSubclass() = default;
@@ -556,8 +557,9 @@ public:
 };
 } // namespace nvinfer1
 
-void *trtx_create_profiler(
-    void *self, void (*reportLayerTime)(void *, char const *, float)) {
+void *trtx_create_profiler(void *self,
+                           void (*reportLayerTime)(void *, char const *,
+                                                   float)) {
   try {
     return new nvinfer1::ProfilerSubclass(
         self, (void (*)(void *, char const *, float))reportLayerTime);
