@@ -1374,8 +1374,8 @@ public:
     //!
     //! Default: (0, 0, ..., 0)
     //!
-    //! If executing this layer on DLA, only support 2D padding, both height and width of padding must be in the range
-    //! [0,7].
+    //! If executing this layer on DLA, only 2D padding is supported; both height and width must be in [0,7] and must
+    //! be strictly less than the corresponding window size dimension.
     //!
     //! \see getPrePadding()
     //!
@@ -1402,8 +1402,8 @@ public:
     //!
     //! Default: (0, 0, ..., 0)
     //!
-    //! If executing this layer on DLA, only support 2D padding, both height and width of padding must be in the range
-    //! [0,7].
+    //! If executing this layer on DLA, only 2D padding is supported; both height and width must be in [0,7] and must
+    //! be strictly less than the corresponding window size dimension.
     //!
     //! \see getPostPadding()
     //!
@@ -1449,8 +1449,8 @@ public:
     //!
     //! \brief Set the multi-dimension window size for pooling.
     //!
-    //! If executing this layer on DLA, only support 2D window size, both height and width of window size must be in the
-    //! range [1,8].
+    //! If executing this layer on DLA, only 2D window size is supported. For average pooling, both height and width
+    //! must be in [1,8]. For max pooling, both height and width must be in [1,16].
     //!
     //! \see getWindowSizeNd() setWindowSize() getWindowSize()
     //!
@@ -1474,8 +1474,7 @@ public:
     //!
     //! Default: (1, 1, ..., 1)
     //!
-    //! If executing this layer on DLA, only support 2D stride, both height and width of stride must be in the range
-    //! [1,16].
+    //! If executing this layer on DLA, only 2D stride is supported; both height and width must be in [1,16].
     //!
     //! \see getStrideNd()
     //!
@@ -1503,8 +1502,8 @@ public:
     //!
     //! Default: (0, 0, ..., 0)
     //!
-    //! If executing this layer on DLA, only support 2D padding, both height and width of padding must be in the range
-    //! [0,7].
+    //! If executing this layer on DLA, only 2D padding is supported; both height and width must be in [0,7] and must
+    //! be strictly less than the corresponding window size dimension.
     //!
     //! \see getPaddingNd() setPadding() getPadding()
     //!
@@ -3904,7 +3903,7 @@ enum class InterpolationMode : int32_t
 {
     kNEAREST = 0, //!< ND (0 < N <= 8) nearest neighbor resizing.
     kLINEAR = 1,  //!< Supports linear (1D), bilinear (2D), and trilinear (3D) interpolation
-    kCUBIC = 2    //!< Supports bicubic (2D) interpolation
+    kCUBIC = 2    //!< Supports bicubic (2D) and tricubic (3D) interpolation
 };
 
 //!
@@ -6072,7 +6071,7 @@ inline IOneHotLayer::~IOneHotLayer() noexcept = default;
 //! \brief A GridSample layer in a network definition.
 //!
 //! This layer uses an input tensor and a grid tensor to produce an interpolated output tensor.
-//! The input and grid tensors must be shape tensors of rank 4. The only supported SampleMode
+//! The input and grid tensors must be tensors of rank 4 or 5. The only supported SampleMode
 //! values are SampleMode::kCLAMP, SampleMode::kFILL, and SampleMode::kREFLECT.
 //!
 //! \warning Do not inherit from this class, as doing so will break forward-compatibility of the API and ABI.
@@ -6525,6 +6524,9 @@ inline INormalizationLayer::~INormalizationLayer() noexcept = default;
 //! \brief Layer that represents a squeeze operation, removing unit dimensions of the first input tensor
 //! on a set of axes specified by the second input tensor.
 //!
+//! When the axes input is a nullptr, all dimensions of the first input whose size is statically 1 in
+//! the network definition are removed.
+//!
 //! \warning Do not inherit from this class, as doing so will break forward-compatibility of the API and ABI.
 //!
 class ISqueezeLayer : public ILayer
@@ -6541,6 +6543,9 @@ public:
     //!
     //! - 0: Input data tensor.
     //! - 1: The axes to remove. Must resolve to a constant Int32 or Int64 1D shape tensor.
+    //!
+    //! When the axes input is set to a nullptr, all dimensions of the first input whose size is statically 1 in
+    //! the network definition are removed.
     //!
     using ILayer::setInput;
 
@@ -9482,7 +9487,7 @@ public:
     //! \see IGridSampleLayer
     //!
     //! Creates a GridSample layer with a InterpolationMode::kLINEAR, unaligned corners,
-    //! and SampleMode::kFILL for 4d-shape input tensors.
+    //! and SampleMode::kFILL for rank 4 or 5 input tensors.
     //!
     //! \return The new GridSample layer, or nullptr if it could not be created.
     //!
@@ -9638,17 +9643,18 @@ public:
     //!
     //! \brief Add an attention to the network with explicit causal mask kind.
     //!
-    //! \param query A 4d input query tensor to the layer.
-    //! \param key A 4d input key tensor to the layer.
-    //! \param value A 4d input value tensor to the layer.
+    //! \param query A 3D or 4D input query tensor to the layer.
+    //! \param key A 3D or 4D input key tensor to the layer.
+    //! \param value A 3D or 4D input value tensor to the layer.
     //! \param normOp The normalization operation to perform.
     //! \param causalKind The causal mask alignment orientation. Use kNONE for no causal masking,
     //!        kUPPER_LEFT for diagonal anchored at upper-left corner (legacy default),
     //!        or kLOWER_RIGHT for diagonal anchored at lower-right corner (for LLM generation with s_q != s_kv).
     //!
-    //! query must have shape [batchSize, numHeadsQuery, sequenceLengthQuery, dimHead].
-    //! key and value must have shape [batchSize, numHeadsKeyValue, sequenceLengthKeyValue, dimHead].
-    //! pastKey and pastValue must have shape [batchSize, numHeadsKeyValue, sequenceLengthKeyValue, dimHead].
+    //! For padded (BHND) form, query must have shape [batchSize, numHeadsQuery, sequenceLengthQuery, dimHead].
+    //! For packed (NHD) form, query must have shape [totalTokens, numHeadsQuery, dimHead].
+    //! key and value follow the same convention based on their form.
+    //! Use IAttention::setQueryForm() and IAttention::setKeyValueForm() to configure the tensor layout.
     //! normOp defaults to kSOFTMAX, causalKind defaults to kNONE.
     //!
     //! By default, IAttention is not decomposable and TensorRT will try to use a single fused kernel, which may be more
@@ -9794,6 +9800,8 @@ public:
     //!
     //! \param name The name of the weights.
     //!
+    //! \warning Engine build will fail if IConstantLayer weights used to compute a shape tensor are marked refittable.
+    //!
     //! \return True if the weights were successfully marked as refittable, false if the weights do not exist or cannot
     //! be refitted.
     //!
@@ -9807,7 +9815,8 @@ public:
     //!
     //! \param name The name of the weights.
     //!
-    //! \return True if the weights were successfully marked as unrefittable, false if the weights do not exist.
+    //! \return True if the weights were successfully marked as unrefittable, false if the weights do not exist or
+    //! are null build-time weight placeholders.
     //!
     bool unmarkWeightsRefittable(char const* name) noexcept
     {
@@ -9844,6 +9853,35 @@ public:
     ISqueezeLayer* addSqueeze(ITensor& input, ITensor& axes) noexcept
     {
         return mImpl->addSqueeze(input, axes);
+    }
+
+    //!
+    //! \brief Add a squeeze layer to the network, with axes given by a tensor or a nullptr.
+    //!
+    //! \param input The input tensor to the layer.
+    //! \param axes The axes to remove unit dimensions on, or nullptr to remove every dimension that is
+    //! statically 1 in the network definition.
+    //!
+    //! \see ISqueezeLayer
+    //!
+    //! When axes is non-null, the behavior is identical to addSqueeze(ITensor&, ITensor&): axes must
+    //! be resolvable to a constant Int32 or Int64 1D shape tensor, values in axes must be unique and
+    //! in the range of [-r, r-1] where r is the rank of the input tensor, and for each axis value the
+    //! corresponding dimension in the input tensor must be one.
+    //!
+    //! When axes is nullptr, removes every dimension of the input tensor whose size is statically 1 in
+    //! the network definition. The set of removed dimensions, and hence the output rank, is decided
+    //! when the layer is added or its input is replaced; it does not depend on the optimization
+    //! profile. Dynamic dimensions are retained and must not be 1, because removing one would change
+    //! the output rank. That requirement is validated at build time when the optimization profile
+    //! decides it, and otherwise at runtime. To squeeze a dynamic dimension, provide an explicit axes
+    //! tensor. Zero-sized dimensions are retained, so empty tensors are supported.
+    //!
+    //! \return The new Squeeze layer, or nullptr if it could not be created.
+    //!
+    ISqueezeLayer* addSqueeze(ITensor& input, ITensor* axes) noexcept
+    {
+        return mImpl->addSqueezeV2(input, axes);
     }
 
     //!
@@ -9940,6 +9978,7 @@ struct impl::EnumMaxImpl<RuntimePlatform>
     static constexpr int32_t kVALUE = 2;
 };
 
+
 //!
 //! \brief Represents one or more BuilderFlag values using binary OR
 //! operations, e.g., 1U << BuilderFlag::kDEBUG.
@@ -10023,7 +10062,11 @@ enum class BuilderFlag : int32_t
     //! BuilderFlag::DISABLE_TIMING_CACHE is not set.
     kDISABLE_COMPILATION_CACHE = 17,
 
-    //! Strip the refittable weights from the engine plan file.
+    //! Strip refittable weights from the engine plan file. If no refit mode is specified, kREFIT_IDENTICAL is enabled
+    //! by default. When used with kREFIT_INDIVIDUAL, weights explicitly marked with
+    //! INetworkDefinition::markWeightsRefittable and null build-time weight placeholders are stripped. When used with
+    //! kREFIT or kREFIT_IDENTICAL, TensorRT determines which refittable weights are stripped according to the selected
+    //! refit mode.
     kSTRIP_PLAN = 18,
 
     //! Create a refittable engine under the assumption that the refit weights will be identical to those provided at
@@ -10065,7 +10108,8 @@ enum class BuilderFlag : int32_t
     //! Enable building a refittable engine and provide fine-grained control. This allows
     //! control over which weights are refittable or not using INetworkDefinition::markWeightsRefittable and
     //! INetworkDefinition::unmarkWeightsRefittable. By default, all weights are non-refittable when this flag is
-    //! enabled. This flag cannot be used together with kREFIT or kREFIT_IDENTICAL.
+    //! enabled, except null build-time weight placeholders, which are implicitly refittable. This flag cannot be used
+    //! together with kREFIT or kREFIT_IDENTICAL.
     kREFIT_INDIVIDUAL = 22,
 
     //!  Disable floating-point optimizations: 0*x => 0, x-x => 0, or x/x => 1. These identities are
@@ -10096,6 +10140,7 @@ enum class BuilderFlag : int32_t
     //! For layers that perform einsum:
     //! Let n be the leftmost reduction axis. The axes to the left of n are distributive axes.
     kDISTRIBUTIVE_INDEPENDENCE = 27,
+
 
 
 };
@@ -10299,6 +10344,7 @@ enum class MemoryPoolType : int32_t
     //! The size of this pool must be at least 4 KiB and must be a power of 2.
     //! This defaults to 1 MiB.
     //! Orin has capacity of 1 MiB per core.
+    //! Each loadable is given the whole pool.
     //!
     kDLA_MANAGED_SRAM = 1,
 
@@ -10306,6 +10352,8 @@ enum class MemoryPoolType : int32_t
     //! kDLA_LOCAL_DRAM is host RAM used by DLA to share intermediate tensor data across operations.
     //! The size of this pool must be at least 4 KiB and must be a power of 2.
     //! This defaults to 1 GiB.
+    //! \note the compiled loadable may require less than this amount; at runtime, TensorRT will
+    //! allocate only as much as is required.
     //!
     kDLA_LOCAL_DRAM = 2,
 
@@ -10313,6 +10361,8 @@ enum class MemoryPoolType : int32_t
     //! kDLA_GLOBAL_DRAM is host RAM used by DLA to store weights and metadata for execution.
     //! The size of this pool must be at least 4 KiB and must be a power of 2.
     //! This defaults to 512 MiB.
+    //! \note the compiled loadable may require less than this amount; at runtime, TensorRT will
+    //! allocate only as much as is required.
     //!
     kDLA_GLOBAL_DRAM = 3,
 
@@ -10419,6 +10469,9 @@ enum class HardwareCompatibilityLevel : int32_t
     //! This option will disable cuDNN, cuBLAS, and cuBLASLt as tactic sources.
     //!
     //! This option is only supported for engines built on NVIDIA Turing and later GPUs.
+    //!
+    //! \warning CUDA green context profile streams are not supported with this option. The build will continue, but
+    //! the resulting engine may cause crashes or other undefined behavior during execution.
     //!
     kSAME_COMPUTE_CAPABILITY = 2,
 };
@@ -10805,21 +10858,48 @@ public:
     //!
     //! \brief Set the CUDA stream that is used to profile this network.
     //!
+    //! This is the default engine-level profile stream. A stream set through
+    //! IOptimizationProfile::setProfileStream() overrides it for that optimization profile.
+    //!
+    //! If \p stream belongs to a CUDA green context, TensorRT automatically queries the context's SM count and
+    //! co-scheduled-SM alignment, profiles each optimization profile that inherits this stream on it, and stores the
+    //! resulting execution-resource contract for each such profile in the engine. The contract conservatively limits
+    //! CGA size to the number of SMs guaranteed to be co-scheduled. If an optimization profile's effective stream is
+    //! not associated with a CUDA green context, that profile is built without a CUDA green context execution
+    //! contract.
+    //!
+    //! Using a CUDA green context requires both a TensorRT build based on CUDA Toolkit 13.0 or newer and a CUDA driver
+    //! compatible with CUDA 13.0 or newer. Ordinary profile streams remain supported with older CUDA Toolkit and
+    //! driver versions supported by TensorRT. TensorRT uses the provided stream for tactic profiling and creates
+    //! auxiliary profiling streams in the same CUDA green context.
+    //!
+    //! At runtime, TensorRT compares a CUDA green context stream's resources with the active optimization profile's
+    //! stored execution contract. If the stream has fewer SMs or a smaller CGA size, TensorRT emits a warning and
+    //! continues the enqueue. Enqueuing a profile built without CUDA green context constraints on a CUDA green context
+    //! stream also emits a warning. In either case, the configuration may cause enqueue crashes or other undefined
+    //! behavior.
+    //!
+    //! TensorRT does not inspect, redirect, or constrain CUDA streams, library handles, or kernel tactics created by
+    //! user plugins; each plugin is responsible for keeping its own CUDA work within the intended CUDA green context
+    //! and its resource limits.
+    //!
+    //! The application must keep the stream and its CUDA green context alive until the build completes.
+    //!
     //! \param stream The CUDA stream used for profiling by the builder.
     //!
-    //! \see getProfileStream()
+    //! \see getProfileStream(), IOptimizationProfile::setProfileStream()
     //!
-    void setProfileStream(const cudaStream_t stream) noexcept
+    void setProfileStream(cudaStream_t const stream) noexcept
     {
         return mImpl->setProfileStream(stream);
     }
 
     //!
-    //! \brief Get the CUDA stream that is used to profile this network.
+    //! \brief Get the default engine-level CUDA stream used to profile this network.
     //!
-    //! \return The CUDA stream set by setProfileStream, nullptr if setProfileStream has not been called.
+    //! \return The CUDA stream set by setProfileStream, or nullptr if setProfileStream has not been called.
     //!
-    //! \see setProfileStream()
+    //! \see setProfileStream(), IOptimizationProfile::getProfileStream()
     //!
     cudaStream_t getProfileStream() const noexcept
     {
@@ -11364,6 +11444,7 @@ public:
         return mImpl->getRemoteAutoTuningConfig();
     }
 
+
     //!
     //! \brief Set the build route to be passed to the compiler.
     //!
@@ -11491,6 +11572,7 @@ struct impl::EnumMaxImpl<NetworkDefinitionCreationFlag>
     static constexpr int32_t kVALUE = 3;
 };
 
+
 //!
 //! \class IBuilder
 //!
@@ -11554,6 +11636,7 @@ public:
     {
         return mImpl->createBuilderConfig();
     }
+
 
     //!
     //! \brief Create a network definition object
@@ -11646,11 +11729,12 @@ public:
     //! \param network Network definition.
     //! \param config Builder configuration.
     //!
-    //! \return A pointer to a IHostMemory object that contains a serialized network.
+    //! \return A pointer to a IHostMemory object that contains a serialized engine.
     //!
-    //! \note This function will synchronize the CUDA stream returned by \p config.getProfileStream() before returning.
+    //! \note This function will synchronize the CUDA stream returned by \p config.getProfileStream() and every
+    //!       profile-specific stream before returning.
     //!
-    //! \see INetworkDefinition, IBuilderConfig, IHostMemory
+    //! \see INetworkDefinition, IBuilderConfig, IHostMemory, ICudaEngine
     //!
     nvinfer1::IHostMemory* buildSerializedNetwork(INetworkDefinition& network, IBuilderConfig& config) noexcept
     {
@@ -11658,10 +11742,10 @@ public:
     }
 
     //!
-    //! \brief Builds and serializes a network into stream for the given INetworkDefinition and IBuilderConfig.
+    //! \brief Builds \p network using the \p config configuration, and serializes an engine into \p writer.
     //!
-    //! This function allows building and serialization of a network without creating an engine. The engine is
-    //! finally serialized into the writer stream.
+    //! This function allows building and serialization of a network without returning an engine. The engine is
+    //! finally serialized into the \p writer stream.
     //!
     //! \param network Network definition.
     //! \param config Builder configuration.
@@ -11669,9 +11753,10 @@ public:
     //!
     //! \return true if build succeed, otherwise false.
     //!
-    //! \note This function will synchronize the CUDA stream returned by \p config.getProfileStream() before returning.
+    //! \note This function will synchronize the CUDA stream returned by \p config.getProfileStream() and every
+    //!       profile-specific stream before returning.
     //!
-    //! \see INetworkDefinition, IBuilderConfig, IStreamWriter
+    //! \see INetworkDefinition, IBuilderConfig, IStreamWriter, ICudaEngine
     //!
     bool buildSerializedNetworkToStream(
         INetworkDefinition& network, IBuilderConfig& config, IStreamWriter& writer) noexcept
@@ -11680,28 +11765,30 @@ public:
     }
 
     //!
-    //! \brief Extended form of buildSerializedNetwork that optionally permits getting the kernelText.
+    //! \brief Extended form of buildSerializedNetwork that optionally permits getting the kernel text.
     //!
     //! Similar to two-argument form, except that if an engine with safe capability is successfully built
-    //! and there are kernels, sets kernelText to ..... Otherwise sets kernelText=nullptr.
+    //! and there are kernels, sets \p kernelText to the kernel source code. Otherwise leaves \p kernelText unmodified.
     //!
-    //! This function allows building and serialization of a network without creating an engine.
+    //! This function allows building and serialization of a network without returning an engine.
     //!
     //! \param network Network definition.
     //! \param config Builder configuration.
     //! \param kernelText A reference to a pointer to a IHostMemory object that will be set to the kernel CPP code text
     //!
-    //! \return A pointer to a IHostMemory object that contains a serialized network.
+    //! \return A pointer to a IHostMemory object that contains a serialized engine.
     //!
-    //! \note This function will synchronize the CUDA stream returned by \p config.getProfileStream() before returning.
+    //! \note This function will synchronize the CUDA stream returned by \p config.getProfileStream() and every
+    //!       profile-specific stream before returning.
     //!
-    //! \see INetworkDefinition, IBuilderConfig, IHostMemory
+    //! \see INetworkDefinition, IBuilderConfig, IHostMemory, ICudaEngine
     //!
     nvinfer1::IHostMemory* buildSerializedNetwork(
         INetworkDefinition& network, IBuilderConfig& config, IHostMemory*& kernelText) noexcept
     {
         return mImpl->buildSerializedNetworkWithKernelText(network, config, kernelText);
     }
+
 
     //!
     //! \brief Builds a network for the given INetworkDefinition and IBuilderConfig.
@@ -11711,7 +11798,8 @@ public:
     //!
     //! \return A pointer to a ICudaEngine object that contains an engine.
     //!
-    //! \note This function will synchronize the CUDA stream returned by \p config.getProfileStream() before returning.
+    //! \note This function will synchronize the CUDA stream returned by \p config.getProfileStream() and every
+    //!       profile-specific stream before returning.
     //!
     //! \note This function does not support \p BuilderFlag::kVERSION_COMPATIBLE.
     //! Please use \p buildSerializedNetwork to get a version compatible engine.

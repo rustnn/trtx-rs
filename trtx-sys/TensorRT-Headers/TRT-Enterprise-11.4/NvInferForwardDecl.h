@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: Copyright (c) 1993-2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+ * SPDX-FileCopyrightText: Copyright (c) 1993-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
  * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,30 +32,32 @@ namespace nvinfer2
 namespace safe
 {
 // NvInferRuntimeBase.h classes
-using Dims = nvinfer1::Dims;
-using IVersionedInterface = nvinfer1::IVersionedInterface;
-using AsciiChar = nvinfer1::AsciiChar;
-using InterfaceInfo = nvinfer1::InterfaceInfo;
-using DataType = nvinfer1::DataType;
-using TensorIOMode = nvinfer1::TensorIOMode;
-using ErrorCode = nvinfer1::ErrorCode;
-using IErrorRecorder = nvinfer1::IErrorRecorder;
+using nvinfer1::Dims;
+using nvinfer1::IVersionedInterface;
+using nvinfer1::AsciiChar;
+using nvinfer1::InterfaceInfo;
+using nvinfer1::DataType;
+using nvinfer1::TensorIOMode;
+using nvinfer1::ErrorCode;
+using nvinfer1::IErrorRecorder;
 
 // NvInferPluginBase.h classes
-using IPluginResource = nvinfer1::IPluginResource;
-using IPluginCreatorInterface = nvinfer1::IPluginCreatorInterface;
-using IPluginV3 = nvinfer1::IPluginV3;
-using IPluginCapability = nvinfer1::IPluginCapability;
-using PluginField = nvinfer1::PluginField;
-using PluginFieldCollection = nvinfer1::PluginFieldCollection;
-using TensorRTPhase = nvinfer1::TensorRTPhase;
+using nvinfer1::IPluginResource;
+using nvinfer1::IPluginCreatorInterface;
+using nvinfer1::IPluginV3;
+using nvinfer1::IPluginCapability;
+using nvinfer1::PluginField;
+using nvinfer1::PluginFieldCollection;
+using nvinfer1::TensorRTPhase;
 
 // Re implement EnumMax in the nvinfer2::safe namespace
 namespace impl
 {
 //! Declaration of EnumMaxImpl struct to store maximum number of elements in an enumeration type.
 template <typename T>
-struct EnumMaxImpl;
+struct EnumMaxImpl
+{
+};
 } // namespace impl
 
 //! Maximum number of elements in an enumeration type.
