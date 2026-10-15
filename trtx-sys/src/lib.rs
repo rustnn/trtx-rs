@@ -173,6 +173,7 @@ include_cpp! {
     generate!("nvinfer1::ISerializationConfig")
     generate!("nvinfer1::IOptimizationProfile")
     generate!("nvinfer1::IRefitter")
+    generate!("nvinfer1::IWeightsManager")
 
     // Derived layer types - for inheritance support
     generate!("nvinfer1::IActivationLayer")

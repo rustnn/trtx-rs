@@ -152,6 +152,8 @@ pub mod runtime;
 pub mod runtime_cache;
 pub mod runtime_config;
 pub mod tensor;
+#[cfg(all(feature = "v_1_7", not(feature = "enterprise")))]
+pub mod weights_manager;
 
 // Re-export commonly used types
 pub use axes::Axes;
@@ -167,6 +169,8 @@ pub use refitter::Refitter;
 #[cfg(not(feature = "enterprise"))]
 pub use runtime::RuntimeCache;
 pub use runtime::{CudaEngine, EngineInspector, ExecutionContext, Runtime, RuntimeConfig};
+#[cfg(all(feature = "v_1_7", not(feature = "enterprise")))]
+pub use weights_manager::WeightsManager;
 
 #[cfg(feature = "dlopen_tensorrt_rtx")]
 #[cfg(not(any(feature = "link_tensorrt_rtx", feature = "mock")))]
