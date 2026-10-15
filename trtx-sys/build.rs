@@ -121,6 +121,7 @@ fn prepare_transformed_headers(header_dir: &Path, out_dir: &Path) -> PathBuf {
                 "INetworkDefinition",
                 "IBuilderConfig",
                 "ISerializationConfig",
+                "IWeightsManager",
             ] {
                 replaced = replaced
                     .replace(
