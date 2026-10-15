@@ -322,3 +322,6 @@ pub use trtx_sys::{CollectiveOperation, MoEActType};
 
 #[cfg(feature = "v_1_5")]
 pub use trtx_sys::{AttentionIOForm, CausalMaskKind};
+
+#[cfg(feature = "v_1_7")]
+pub use trtx_sys::DLAWorkspaceAllocationStrategy;

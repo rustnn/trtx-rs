@@ -139,6 +139,40 @@ impl<'runtime> Runtime<'runtime> {
         }
     }
 
+    /// Sets the DLA workspace allocation strategy for subsequent engine deserializations.
+    /// Previously deserialized engines retain their strategy.
+    ///
+    /// # Safety
+    /// Engines sharing a static workspace on the same DLA core must never execute concurrently.
+    #[cfg(all(feature = "v_1_7", not(feature = "enterprise")))]
+    pub unsafe fn set_dla_workspace_allocation_strategy(
+        &mut self,
+        strategy: crate::DLAWorkspaceAllocationStrategy,
+    ) -> Result<()> {
+        if cfg!(feature = "mock_runtime")
+            || self
+                .inner
+                .pin_mut()
+                .setDLAWorkspaceAllocationStrategy(strategy.into())
+        {
+            Ok(())
+        } else {
+            Err(Error::Runtime(
+                "Failed to set DLA workspace allocation strategy".to_string(),
+            ))
+        }
+    }
+
+    /// Returns the DLA workspace allocation strategy for subsequent engine deserializations.
+    #[cfg(all(feature = "v_1_7", not(feature = "enterprise")))]
+    pub fn dla_workspace_allocation_strategy(&self) -> crate::DLAWorkspaceAllocationStrategy {
+        if cfg!(feature = "mock_runtime") {
+            crate::DLAWorkspaceAllocationStrategy::kDEFAULT
+        } else {
+            self.inner.getDLAWorkspaceAllocationStrategy().into()
+        }
+    }
+
     /// Controls whether subsequent engine deserializations defer allocating and copying weights
     /// to the GPU.
     ///

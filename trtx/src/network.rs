@@ -2903,6 +2903,20 @@ impl<'network> NetworkDefinition<'network> {
         SqueezeLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
+    /// Adds a squeeze layer that removes every dimension statically equal to one.
+    /// Dynamic dimensions are retained and must not become one at build or runtime.
+    /// Zero-sized dimensions are retained.
+    #[cfg(feature = "v_1_7")]
+    pub fn add_squeeze_all(&mut self, input: &Tensor) -> Result<SqueezeLayer<'network>> {
+        check_network!(self, input);
+        let layer_ptr = unsafe {
+            self.inner
+                .pin_mut()
+                .addSqueeze1(input.pin_mut(), std::ptr::null_mut())
+        };
+        SqueezeLayer::new(self.inner.as_ptr(), layer_ptr)
+    }
+
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addUnsqueeze`].
     pub fn add_unsqueeze(
         &mut self,
