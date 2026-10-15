@@ -54,7 +54,7 @@ Use `TENSORRT_SDK_DIR` to point to the TensorRT SDK root directory (the path tha
 1. **NVIDIA TensorRT-RTX**: Download and install from [NVIDIA Developer](https://developer.nvidia.com/tensorrt)
      - The TensorRT libraries should be in a location where they can be dynamically loaded.
        (e.g. by setting PATH on Windows or LD_LIBRARY_PATH on Linux)
-     - This crate currently requires TensorRT RTX version 1.3, 1.4, 1.5 or 1.6 (see Cargo feature `v_1_3`, `v_1_4`, `v_1_5`, `v_1_6`).
+     - This crate currently requires TensorRT RTX version 1.3, 1.4, 1.5, 1.6 or 1.7 (see Cargo feature `v_1_3`, `v_1_4`, `v_1_5`, `v_1_6`, `v_1_7`).
        Use `default-features = false` plus version feature to select version.
        You will also have to either enable `dlopen_tensorrt_rtx` or `link_tensorrt_rtx`.
 
@@ -101,6 +101,7 @@ The `trtx` crate has the following Cargo features:
 - `v_1_4` + `default-features = false` + (`dlopen_tensorrt_rtx` or `link_tensorrt_rtx`): Uses TensorRT RTX versions 1.4. At least one version feature has to be enabled
 - `v_1_5` + `default-features = false` + (`dlopen_tensorrt_rtx` or `link_tensorrt_rtx`): Uses TensorRT RTX versions 1.5. At least one version feature has to be enabled
 - `v_1_6` + `default-features = false` + (`dlopen_tensorrt_rtx` or `link_tensorrt_rtx`): Uses TensorRT RTX versions 1.6. At least one version feature has to be enabled
+- `v_1_7` + `default-features = false` + (`dlopen_tensorrt_rtx` or `link_tensorrt_rtx`): Uses TensorRT RTX versions 1.7. At least one version feature has to be enabled
 
 ## Installation
 

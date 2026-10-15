@@ -40,6 +40,7 @@ v_1_3 = ["trtx-sys/v_1_3"]
 v_1_4 = ["trtx-sys/v_1_4", "v_1_3"]
 v_1_5 = ["trtx-sys/v_1_5", "v_1_4"]
 v_1_6 = ["trtx-sys/v_1_6", "v_1_5"]
+v_1_7 = ["trtx-sys/v_1_7", "v_1_6"]
 # the non-RTX version of TensorRT (mainly for debugging/validating TensorRT RTX)
 enterprise = ["trtx-sys/enterprise"]
 

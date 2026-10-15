@@ -36,7 +36,9 @@ fn parse_trt_rtx_version_from_nvinfer_version_h(version_h: &Path) -> Option<RtxH
 }
 
 fn trt_version_suffix_from_feature_flags() -> &'static str {
-    if cfg!(feature = "v_1_6") {
+    if cfg!(feature = "v_1_7") {
+        "_1_7"
+    } else if cfg!(feature = "v_1_6") {
         "_1_6"
     } else if cfg!(feature = "v_1_5") {
         "_1_5"
@@ -119,6 +121,7 @@ fn prepare_transformed_headers(header_dir: &Path, out_dir: &Path) -> PathBuf {
                 "INetworkDefinition",
                 "IBuilderConfig",
                 "ISerializationConfig",
+                "IWeightsManager",
             ] {
                 replaced = replaced
                     .replace(
@@ -249,7 +252,9 @@ fn main() {
     println!("cargo:rerun-if-env-changed=CARGO_FEATURE_LINK_TENSORRT_RTX");
     println!("cargo:rerun-if-env-changed=CARGO_FEATURE_LINK_TENSORRT_ONNXPARSER");
 
-    let trt_version = if cfg!(feature = "v_1_6") {
+    let trt_version = if cfg!(feature = "v_1_7") {
+        "1.7"
+    } else if cfg!(feature = "v_1_6") {
         "1.6"
     } else if cfg!(feature = "v_1_5") {
         "1.5"
@@ -258,7 +263,7 @@ fn main() {
     } else if cfg!(feature = "v_1_3") {
         "1.3"
     } else {
-        panic!("No version feature enabled! Need to at least enable v_1_3, v_1_4, v_1_5 or v_1_6");
+        panic!("No version feature enabled! Need to at least enable v_1_3, v_1_4, v_1_5, v_1_6 or v_1_7");
     };
 
     let header_overwrite = env::var("TENSORRT_INCLUDE_DIR").ok();
