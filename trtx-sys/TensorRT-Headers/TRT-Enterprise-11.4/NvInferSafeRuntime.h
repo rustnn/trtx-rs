@@ -28,6 +28,7 @@
 #include "NvInferSafeRecorder.h"
 #include <algorithm>
 #include <cuda_fp16.h>
+#include <iterator>
 
 namespace nvinfer2
 {
@@ -251,7 +252,8 @@ public:
 
 inline bool operator==(PhysicalDims const& d0, PhysicalDims const& d1) noexcept
 {
-    return d0.nbDims == d1.nbDims && (d0.nbDims <= 0 || std::equal(d0.d, d0.d + d0.nbDims, d1.d));
+    return d0.nbDims == d1.nbDims
+        && (d0.nbDims <= 0 || std::equal(std::cbegin(d0.d), std::cbegin(d0.d) + d0.nbDims, std::cbegin(d1.d)));
 }
 
 inline bool operator!=(PhysicalDims const& d0, PhysicalDims const& d1) noexcept
@@ -653,6 +655,9 @@ public:
 
     //! \brief synchronize one inference of this graph.
     //!
+    //! \details Blocks until all work enqueued by the inference on the main stream and every configured auxiliary
+    //! stream has completed.
+    //!
     //! \pre RUNTIME API
     //!
     //! \return ErrorCode kSUCCESS on success, if any execution error occurred other error code might be returned.
@@ -690,6 +695,13 @@ protected:
 //!        this allocator. If nullptr is passed, the default allocator will be used, which calls cudaMalloc and
 //!        cudaFree.
 //!
+//! \note Equivalent to createTRTGraphWithSo() with a null \c companionSoPath: no host-object binding. An
+//!       engine built with a companion shared object (its manifest carries the binding token) cannot be
+//!       loaded through this entry point -- it fails closed; use createTRTGraphWithSo().
+//!
+//! TODO companion so cleanup: at final ship this entry point takes over the companionSoPath signature
+//! and requires a non-null absolute path; createTRTGraphWithSo() then retires.
+//!
 //! \return ErrorCode
 //! \retval ErrorCode::kSUCCESS Graph created successfully; \p graph is set to the new instance.
 //! \retval ErrorCode::kINVALID_ARGUMENT \p buffer is nullptr or \p bufferSize is not positive.
@@ -700,6 +712,53 @@ protected:
 //!         kINVALID_CONFIG, kFAILED_ALLOCATION, kINVALID_STATE).
 extern "C" ErrorCode createTRTGraph(ITRTGraph*& graph, void const* buffer, int64_t bufferSize, ISafeRecorder& recorder,
     bool trtManagedScratch = true, ISafeMemAllocator* allocator = nullptr) noexcept;
+
+//!
+//! \brief createTRTGraph() variant that additionally binds the engine's companion shared object.
+//!
+//! Identical to createTRTGraph() except for \p companionSoPath. This is a distinct entry point (not a
+//! signature change) so existing createTRTGraph() callers keep compiling and behaving as before while the
+//! companion-object workflow is staged in.
+//!
+//! TODO companion so cleanup: remove this entry point once createTRTGraph() absorbs the companionSoPath
+//! signature and all callers have migrated.
+//!
+//! \pre INIT API
+//!
+//! \param graph A pointer to ITRTGraph, that will be initialized after this call.
+//! \param buffer A buffer that holds the serialized blob that describes the graph.
+//! \param bufferSize Size of the serialized blob
+//! \param companionSoPath Absolute path to this engine's companion shared object, produced by
+//!        graphSerializeCompanionSO alongside the serialized engine. It carries the engine's generated
+//!        host launch code. The path must be \b absolute: the runtime dlopen()s it and verifies the
+//!        pairing token its registry self-reports against the value recorded in the engine, failing
+//!        closed on a mismatch (tamper-resistance is delegated to the trusted storage the .so is
+//!        deployed on). Pass \c nullptr for a legacy engine that has no companion object, which disables
+//!        host-object binding.
+//! \param recorder An ISafeRecorder that sets severity level and records the error messages during the inference. Note
+//!        this does not include RuntimeError happening during kernel execution, see getErrorBuffer for RuntimeError.
+//! \param trtManagedScratch if this parameter is true (default), then TRT will use the memory allocator to allocate
+//!        the scratch memory that holds the intermediate tensors. When cloning the graph, TRT will also
+//!        allocate a new scratch memory automatically. If the parameter is set to false (for sharing scratch memory
+//!        across multiple graphs), user needs to call setScratchMemory for the graph (and its clones) with a memory
+//!        buffer size at least the size queried from getScratchMemorySize.
+//! \param allocator The memory allocator to be used by the runtime. All GPU memory acquired will use
+//!        this allocator. If nullptr is passed, the default allocator will be used, which calls cudaMalloc and
+//!        cudaFree.
+//!
+//! \return ErrorCode
+//! \retval ErrorCode::kSUCCESS Graph created successfully; \p graph is set to the new instance.
+//! \retval ErrorCode::kINVALID_ARGUMENT \p buffer is nullptr, \p bufferSize is not positive, or
+//!         \p companionSoPath is a non-absolute path.
+//! \retval ErrorCode::kINVALID_STATE VM state does not allow this init API (e.g. NvDVMS check failed).
+//! \retval ErrorCode::kFAILED_INITIALIZATION CUDA setup check failed, companion-object loading failed
+//!         (pairing-token mismatch, dlopen error, or invalid registry ABI), or graph construction recorded
+//!         this error on \p recorder, or an exception occurred (e.g. allocation failure during graph creation).
+//! \retval Other codes may be propagated from deserialize(), setManagedScratch(), or loadPersistent() (e.g.
+//!         kINVALID_CONFIG, kFAILED_ALLOCATION, kINVALID_STATE).
+extern "C" ErrorCode createTRTGraphWithSo(ITRTGraph*& graph, void const* buffer, int64_t bufferSize,
+    AsciiChar const* companionSoPath, ISafeRecorder& recorder, bool trtManagedScratch = true,
+    ISafeMemAllocator* allocator = nullptr) noexcept;
 
 //!
 //! \brief Toplevel graph destructor.
