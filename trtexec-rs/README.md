@@ -3,7 +3,7 @@
 This is a small tool that mimics [https://github.com/NVIDIA/TensorRT/tree/main/samples/trtexec](https://github.com/NVIDIA/TensorRT/tree/main/samples/trtexec).
 
 While the real `trtexec` runs ONNX files, `trtexec-rs` can run ONNX files or WebNN files [https://github.com/rustnn/webnn-graph/](https://github.com/rustnn/webnn-graph/).
-By leveraging [RustNN]([https://github.com/rustnn/rustnn/]) for the WebNN to trtx conversion we can test
+By leveraging [RustNN](https://github.com/rustnn/rustnn/) for the WebNN to trtx conversion we can test
 whether any changes in this repo would break RustNN.
 It's also possible to compare ONNX -> TRT vs ONNX -> WebNN -> TRT.
 
