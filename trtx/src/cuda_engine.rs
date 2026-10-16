@@ -445,6 +445,24 @@ impl<'engine> CudaEngine<'engine> {
         }
     }
 
+    /// Frees a deferred-loading engine's GPU weights so they can be loaded again.
+    /// Existing execution contexts remain valid. Returns an error if the engine is not in
+    /// deferred mode or its weights are already unloaded.
+    ///
+    /// # Safety
+    /// All inference on this engine must have completed. No other engine operation may run
+    /// concurrently with this call.
+    #[cfg(all(feature = "v_1_7", not(feature = "enterprise")))]
+    pub unsafe fn unload_weights(&mut self) -> Result<()> {
+        if cfg!(feature = "mock_runtime") || self.inner.pin_mut().unloadWeights() {
+            Ok(())
+        } else {
+            Err(Error::Runtime(
+                "Failed to unload deferred engine weights".to_string(),
+            ))
+        }
+    }
+
     /// Synchronously loads this engine's weights onto the GPU from its serialized plan.
     ///
     /// `plan` must contain the same serialized engine plan that was originally passed to

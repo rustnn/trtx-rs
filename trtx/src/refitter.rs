@@ -437,6 +437,22 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
         }
     }
 
+    /// Releases cached refit resources. A later refit recreates them as needed.
+    ///
+    /// # Safety
+    /// All asynchronous refit work from every refitter sharing the engine must have completed.
+    /// No other refitter for this engine may refit concurrently with this call.
+    #[cfg(all(feature = "v_1_7", not(feature = "enterprise")))]
+    pub unsafe fn release_refit_resources(&mut self) -> Result<()> {
+        if cfg!(feature = "mock_runtime") || self.inner.pin_mut().releaseRefitResources() {
+            Ok(())
+        } else {
+            Err(Error::Runtime(
+                "Failed to release refit resources".to_string(),
+            ))
+        }
+    }
+
     /// Get the weights prototype (type and count) for the given name. Values pointer is null.
     pub fn weights_prototype(&self, weights_name: &str) -> nvinfer1::Weights {
         let name_cstr = CString::new(weights_name).expect("name contains null");

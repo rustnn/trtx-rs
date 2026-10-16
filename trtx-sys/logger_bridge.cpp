@@ -614,3 +614,41 @@ void trtx_destroy_debug_listener(nvinfer1::IDebugListener *self) {
 }
 }
 } // namespace nvinfer1
+
+#if (defined(TRT_MAJOR_RTX) && (TRT_MAJOR_RTX > 1 || TRT_MINOR_RTX >= 7)) ||   \
+    (defined(TRT_MAJOR_ENTERPRISE) &&                                          \
+     (TRT_MAJOR_ENTERPRISE > 11 || TRT_MAJOR_ENTERPRISE >= 2))
+
+class RustRefitterObserver final : public nvonnxparser::IRefitterObserver {
+public:
+  using Callback = void (*)(void *, nvonnxparser::RefitRecord const *);
+  RustRefitterObserver(void *user_data, Callback callback)
+      : user_data_(user_data), callback_(callback) {}
+  void onRefittableWeight(
+      nvonnxparser::RefitRecord const &record) noexcept override {
+    callback_(user_data_, &record);
+  }
+
+private:
+  void *user_data_;
+  Callback callback_;
+};
+
+extern "C" {
+void *trtx_create_refitter_observer(void *user_data,
+                                    RustRefitterObserver::Callback callback) {
+  try {
+    return new RustRefitterObserver(user_data, callback);
+  } catch (...) {
+    return nullptr;
+  }
+}
+void trtx_destroy_refitter_observer(void *observer) {
+  delete static_cast<RustRefitterObserver *>(observer);
+}
+void trtx_parser_set_refit_observer(nvonnxparser::IParser *parser,
+                                    void *observer) {
+  parser->setRefitObserver(static_cast<RustRefitterObserver *>(observer));
+}
+}
+#endif

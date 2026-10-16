@@ -103,6 +103,8 @@ better_enum!(CudaGraphStrategy);
 #[cfg(not(feature = "enterprise"))]
 better_enum!(DynamicShapesKernelSpecializationStrategy);
 better_enum!(ExecutionContextAllocationStrategy);
+#[cfg(feature = "v_1_7")]
+better_enum!(DLAWorkspaceAllocationStrategy);
 #[cfg(not(feature = "enterprise"))]
 better_enum!(ComputeCapability);
 better_enum!(CumulativeOperation);
@@ -279,6 +281,7 @@ include_cpp! {
     generate_pod!("nvinfer1::CudaGraphStrategy")
     generate_pod!("nvinfer1::DynamicShapesKernelSpecializationStrategy")
     generate_pod!("nvinfer1::ExecutionContextAllocationStrategy")
+    generate_pod!("nvinfer1::DLAWorkspaceAllocationStrategy")
     generate_pod!("nvinfer1::CausalMaskKind")
     generate_pod!("nvinfer1::AttentionIOForm")
     generate_pod!("nvinfer1::KVCacheMode")
@@ -868,4 +871,34 @@ impl DataType {
             DataType::kE8M0 => 8,
         }
     }
+}
+
+/// Parser-owned refit metadata, valid only during the observer callback.
+/// Layout matches `nvonnxparser::RefitRecord`.
+#[cfg(feature = "v_1_7")]
+#[repr(C)]
+pub struct RefitRecord {
+    pub trt_name: *const std::ffi::c_char,
+    pub kind: i32,
+    pub onnx_dtype: i32,
+    pub trt_dtype: i32,
+    pub count: i64,
+    pub nb_sources: i32,
+    pub source_onnx_names: *const *const std::ffi::c_char,
+    pub epsilon: f32,
+    pub fixed_data: *const std::ffi::c_void,
+    pub fixed_data_size: usize,
+}
+
+#[cfg(feature = "v_1_7")]
+unsafe extern "C" {
+    pub fn trtx_create_refitter_observer(
+        user_data: *mut std::ffi::c_void,
+        callback: unsafe extern "C" fn(*mut std::ffi::c_void, *const RefitRecord),
+    ) -> *mut std::ffi::c_void;
+    pub fn trtx_destroy_refitter_observer(observer: *mut std::ffi::c_void);
+    pub fn trtx_parser_set_refit_observer(
+        parser: *mut nvonnxparser::IParser,
+        observer: *mut std::ffi::c_void,
+    );
 }

@@ -149,6 +149,7 @@ namespace nvinfer1 {
     enum class DynamicShapesKernelSpecializationStrategy : int32_t;
     enum class CausalMaskKind : int32_t;
     enum class AttentionIOForm : int32_t;
+    enum class DLAWorkspaceAllocationStrategy : int32_t;
 }"#;
 
             // trimming of indentation is necessary, so that rustdoc doesn't interpret
