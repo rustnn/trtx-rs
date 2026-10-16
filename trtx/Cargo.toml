@@ -11,7 +11,7 @@ keywords = ["tensorrt", "inference", "deep-learning", "nvidia", "gpu"]
 categories = ["api-bindings", "science"]
 
 [dependencies]
-trtx-sys = { version = "0.8.1", path = "../trtx-sys", default-features = false }
+trtx-sys = { version = "0.9.0", path = "../trtx-sys", default-features = false }
 thiserror = "2.0"
 cxx = "1.0"
 libloading = { version = "0.9", optional = true }
