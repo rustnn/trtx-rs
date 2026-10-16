@@ -891,7 +891,7 @@ pub struct RefitRecord {
     pub fixed_data_size: usize,
 }
 
-#[cfg(feature = "v_1_7")]
+#[cfg(all(feature = "v_1_7", feature = "onnxparser"))]
 unsafe extern "C" {
     pub fn trtx_create_refitter_observer(
         user_data: *mut std::ffi::c_void,
