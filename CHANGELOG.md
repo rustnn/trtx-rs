@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1+rtx1.7] - 2026-10-16
+
+Hotfix release to restore previous version 0.92 of bindgen.
+bindgen 0.93 broke RustNN's darling.
+
 ## [0.9.0+rtx1.7] - 2026-10-16
 
 See what's new in TensorRT RTX 1.7 https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/index.html#what-s-new-in-nvidia-tensorrt-rtx-1-7
