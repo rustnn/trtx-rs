@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0+rtx1.7] - 2026-10-16
+
+See what's new in TensorRT RTX 1.7 https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/index.html#what-s-new-in-nvidia-tensorrt-rtx-1-7
+
+### 🚀 Features
+
+- Add `get_tensorrt_build_version` (#146)
+- Add support for TensorRT RTX 1.7 (#147)
+- Add support for building without weight data (#148)
+- Add some TRT RTX 1.7 features (without IWeightManager) (#150)
+- Add WeightManager (#151)
+
+### 📚 Documentation
+
+- Update README.md and remove DESIGN.md (#144)
+- Remove AGENTS.md (#153)
+
+### ⚙️ Miscellaneous Tasks
+
+- Add .rgignore that filters TRT headers except the newest (#145)
+- Remove mock feature docs from CI (#154)
+
+### 💼 Other
+
+- Update TensorRT Enterprise headers from 11.1 to 11.4 (#149)
+
 ## [0.8.1+rtx1.6] - 2026-09-10
 
 This is a hotfix release to fix the `-rtx1.5` suffix on crates.io for the previous release.
