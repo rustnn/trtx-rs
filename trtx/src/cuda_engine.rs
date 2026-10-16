@@ -91,6 +91,18 @@ impl std::fmt::Debug for CudaEngine<'_> {
 }
 
 impl<'engine> CudaEngine<'engine> {
+    /// Creates a manager for saving and restoring this engine's opaque weight data.
+    /// Returns `None` when weight management is unavailable (including mock mode).
+    /// The manager must be dropped before this engine; its lifetime enforces that.
+    #[cfg(all(feature = "v_1_7", not(feature = "enterprise")))]
+    pub fn create_weights_manager(&mut self) -> Result<Option<crate::WeightsManager<'_>>> {
+        if cfg!(feature = "mock_runtime") {
+            return Ok(None);
+        }
+        let ptr = self.inner.pin_mut().createWeightsManager();
+        Ok(unsafe { crate::WeightsManager::from_raw(ptr) })
+    }
+
     pub(crate) unsafe fn from_ptr(ptr: *mut ICudaEngine) -> Self {
         Self {
             inner: unsafe { UniquePtr::from_raw(ptr) },

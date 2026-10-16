@@ -143,6 +143,7 @@ fn prepare_transformed_headers(header_dir: &Path, out_dir: &Path) -> PathBuf {
 namespace nvinfer1 {
     class IMoELayer;
     class IRuntimeCache;
+    class IWeightsManager;
     class IDistCollectiveLayer;
     enum class ComputeCapability : int32_t;
     enum class CudaGraphStrategy : int32_t;
