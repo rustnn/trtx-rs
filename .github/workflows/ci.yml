@@ -148,9 +148,6 @@ jobs:
         run: cargo test --features mock --verbose
 
       - name: Build documentation
-        run: cargo doc --features mock --no-deps
-
-      - name: Build documentation (real mode)
         run: cargo doc --no-deps
 
   examples:
