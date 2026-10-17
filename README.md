@@ -40,8 +40,8 @@ trtx-rs/
    You can steer discovery of libclang using LIBCLANG_PATH environment variable if auto-discovery
    discovers a wrong version of libclang, e.g.
 
-   $env:LIBCLANG_PATH="D:\programs\LLVM\bin"  # powershell windows
-   export LIBCLANG_PATH=/usr/lib/llvm-19/lib  # linux
+       $env:LIBCLANG_PATH="D:\programs\LLVM\bin"  # powershell windows
+       export LIBCLANG_PATH=/usr/lib/llvm-19/lib  # linux
 
    See https://rust-lang.github.io/rust-bindgen/requirements.html (note that autocxx uses an older fork of bindgen)
 
@@ -51,7 +51,7 @@ Use `TENSORRT_SDK_DIR` to point to the TensorRT SDK root directory (the path tha
 
 ### Required (GPU execution) 
 
-1. **NVIDIA TensorRT-RTX**: Download and install from [NVIDIA Developer](https://developer.nvidia.com/tensorrt)
+1. **NVIDIA TensorRT-RTX**: Download and install from [NVIDIA Developer](https://developer.nvidia.com/tensorrt-rtx)
      - The TensorRT libraries should be in a location where they can be dynamically loaded.
        (e.g. by setting PATH on Windows or LD_LIBRARY_PATH on Linux)
      - This crate currently requires TensorRT RTX version 1.3, 1.4, 1.5, 1.6 or 1.7 (see Cargo feature `v_1_3`, `v_1_4`, `v_1_5`, `v_1_6`, `v_1_7`).

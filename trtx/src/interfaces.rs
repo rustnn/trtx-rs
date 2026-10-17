@@ -14,7 +14,7 @@ use trtx_sys::{
 };
 use trtx_sys::{DataType, Dims64, ErrorCode, SeekPosition, TensorLocation};
 
-/// Rust trait implemented by [`ProgressMonitor`] for [`trtx_sys::nvinfer1::IProgressMonitor`]; C++ [`nvinfer1::v_1_0::IProgressMonitor`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1v__1__0_1_1_i_progress_monitor.html).
+/// Rust trait to implement [`trtx_sys::nvinfer1::IProgressMonitor`]; C++ [`nvinfer1::v_1_0::IProgressMonitor`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1v__1__0_1_1_i_progress_monitor.html).
 ///
 /// Use with [`crate::BuilderConfig::set_progress_monitor`].
 pub trait MonitorProgress: Send + Sync {
