@@ -110,23 +110,6 @@ impl<'engine> CudaEngine<'engine> {
         }
     }
 
-    #[deprecated = "use nb_io_tensors instead"]
-    pub fn get_nb_io_tensors(&self) -> Result<i32> {
-        self.nb_io_tensors()
-    }
-    #[deprecated = "use tensor_shape instead"]
-    pub fn get_tensor_shape(&self, name: &str) -> Result<Vec<i64>> {
-        self.tensor_shape(name)
-    }
-    #[deprecated = "use io_tensor_name instead"]
-    pub fn get_tensor_name(&self, index: i32) -> Result<String> {
-        self.io_tensor_name(index)
-    }
-    #[deprecated = "use tensor_data_type instead"]
-    pub fn get_tensor_dtype(&self, name: &str) -> Result<DataType> {
-        self.tensor_data_type(name)
-    }
-
     /// See [ICudaEngine::getName]
     pub fn name(&self) -> Result<String> {
         let ptr = self.inner.getName();
@@ -349,11 +332,6 @@ impl<'engine> CudaEngine<'engine> {
                 _engine: Default::default(),
             })
         }
-    }
-
-    #[deprecated = "use tensor_data_type instead"]
-    pub fn tensor_dtype(&self, name: &str) -> Result<DataType> {
-        self.tensor_data_type(name)
     }
 
     /// See [nvinfer1::ICudaEngine::createExecutionContext]

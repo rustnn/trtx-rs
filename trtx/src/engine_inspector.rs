@@ -40,15 +40,6 @@ impl EngineInspector<'_> {
         })
     }
 
-    #[deprecated = "use layer_information instead"]
-    pub fn get_layer_information(
-        &mut self,
-        layer_index: i32,
-        format: LayerInformationFormat,
-    ) -> Result<String> {
-        self.layer_information(layer_index, format)
-    }
-
     /// Returns engine information in the requested format.
     /// See [`trtx_sys::nvinfer1::IEngineInspector::getEngineInformation`].
     pub fn engine_information(&self, format: LayerInformationFormat) -> Result<String> {
@@ -60,10 +51,5 @@ impl EngineInspector<'_> {
         } else {
             unsafe { CStr::from_ptr(ptr) }.to_str()?.to_string()
         })
-    }
-
-    #[deprecated = "use engine_information instead"]
-    pub fn get_engine_information(&self, format: LayerInformationFormat) -> Result<String> {
-        self.engine_information(format)
     }
 }

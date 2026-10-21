@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- Removed all deprecated Rust API methods, including the old getter aliases and
+  `NetworkDefinition::add_dynamic_quantize`. Use the current getter names and
+  `NetworkDefinition::add_dynamic_quantize_v2` instead. This is a breaking API change.
+
 ## [0.9.1+rtx1.7] - 2026-10-16
 
 Hotfix release to restore previous version 0.92 of bindgen.

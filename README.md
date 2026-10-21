@@ -171,9 +171,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut context = engine.create_execution_context()?;
 
     // Query tensor information
-    let num_tensors = engine.get_nb_io_tensors()?;
+    let num_tensors = engine.nb_io_tensors()?;
     for i in 0..num_tensors {
-        let name = engine.get_tensor_name(i)?;
+        let name = engine.io_tensor_name(i)?;
         println!("Tensor {}: {}", i, name);
     }
 

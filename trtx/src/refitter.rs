@@ -166,11 +166,6 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
         Ok(out)
     }
 
-    #[deprecated = "use missing instead"]
-    pub fn get_missing(&self, max_count: i32) -> Result<Vec<(String, nvinfer1::WeightsRole)>> {
-        self.missing(max_count)
-    }
-
     /// Get descriptions of all weights that could be refit (layer name + role).
     pub fn all(&self, max_count: i32) -> Result<Vec<(String, nvinfer1::WeightsRole)>> {
         let n = max_count.max(0) as usize;
@@ -197,11 +192,6 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
             out.push((s, role));
         }
         Ok(out)
-    }
-
-    #[deprecated = "use all instead"]
-    pub fn get_all(&self, max_count: i32) -> Result<Vec<(String, nvinfer1::WeightsRole)>> {
-        self.all(max_count)
     }
 
     /// See [nvinfer1::IRefitter::setErrorRecorder]
@@ -232,11 +222,6 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
     /// Get the assigned error recorder, or null if none.
     pub fn error_recorder(&self) -> *mut nvinfer1::IErrorRecorder {
         self.inner.getErrorRecorder()
-    }
-
-    #[deprecated = "use error_recorder instead"]
-    pub fn get_error_recorder(&self) -> *mut nvinfer1::IErrorRecorder {
-        self.error_recorder()
     }
 
     /// Specify new weights by name (host location by default).
@@ -280,11 +265,6 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
         Ok(out)
     }
 
-    #[deprecated = "use missing_weights instead"]
-    pub fn get_missing_weights(&self, max_count: i32) -> Result<Vec<String>> {
-        self.missing_weights(max_count)
-    }
-
     /// Get names of all weights that could be refit.
     pub fn all_weights(&self, max_count: i32) -> Result<Vec<String>> {
         let n = max_count.max(0) as usize;
@@ -306,11 +286,6 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
         Ok(out)
     }
 
-    #[deprecated = "use all_weights instead"]
-    pub fn get_all_weights(&self, max_count: i32) -> Result<Vec<String>> {
-        self.all_weights(max_count)
-    }
-
     /// Raw pointer to the underlying IRefitter (for C wrappers). Caller must not use after Refitter is dropped.
     fn refitter_ptr(&self) -> *mut std::ffi::c_void {
         self.inner.as_ptr() as *mut std::ffi::c_void
@@ -319,11 +294,6 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
     /// Get the logger with which the refitter was created. Returns raw pointer.
     pub fn logger(&self) -> *mut nvinfer1::ILogger {
         self.inner.getLogger()
-    }
-
-    #[deprecated = "use logger instead"]
-    pub fn get_logger(&self) -> *mut nvinfer1::ILogger {
-        self.logger()
     }
 
     /// Set the maximum number of threads used by the refitter.
@@ -338,11 +308,6 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
     /// Get the maximum number of threads that can be used by the refitter.
     pub fn max_threads(&self) -> i32 {
         self.inner.getMaxThreads()
-    }
-
-    #[deprecated = "use max_threads instead"]
-    pub fn get_max_threads(&self) -> i32 {
-        self.max_threads()
     }
 
     /// Specify new weights by name with explicit host/device location.
@@ -376,20 +341,10 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
         unsafe { self.inner.getNamedWeights(name_cstr.as_ptr()) }
     }
 
-    #[deprecated = "use named_weights instead"]
-    pub fn get_named_weights(&self, weights_name: &str) -> nvinfer1::Weights {
-        self.named_weights(weights_name)
-    }
-
     /// Get the location for weights associated with the given name.
     pub fn weights_location(&self, weights_name: &str) -> nvinfer1::TensorLocation {
         let name_cstr = CString::new(weights_name).expect("name contains null");
         unsafe { self.inner.getWeightsLocation(name_cstr.as_ptr()) }
-    }
-
-    #[deprecated = "use weights_location instead"]
-    pub fn get_weights_location(&self, weights_name: &str) -> nvinfer1::TensorLocation {
-        self.weights_location(weights_name)
     }
 
     /// Unset weights for the given name. Returns false if they were never set.
@@ -408,11 +363,6 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
     /// Get whether weights validation is enabled during refitting.
     pub fn weights_validation(&self) -> bool {
         self.inner.getWeightsValidation()
-    }
-
-    #[deprecated = "use weights_validation instead"]
-    pub fn get_weights_validation(&self) -> bool {
-        self.weights_validation()
     }
 
     /// Enqueue weights refitting on the given CUDA stream.
@@ -457,11 +407,6 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
     pub fn weights_prototype(&self, weights_name: &str) -> nvinfer1::Weights {
         let name_cstr = CString::new(weights_name).expect("name contains null");
         unsafe { self.inner.getWeightsPrototype(name_cstr.as_ptr()) }
-    }
-
-    #[deprecated = "use weights_prototype instead"]
-    pub fn get_weights_prototype(&self, weights_name: &str) -> nvinfer1::Weights {
-        self.weights_prototype(weights_name)
     }
 }
 
