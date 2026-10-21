@@ -167,15 +167,6 @@ impl<'network, Inner: AsLayer> Layer<'network, Inner> {
         unsafe { Tensor::new(self.network, tensor) }
     }
 
-    #[deprecated = "use input instead"]
-    pub fn get_input(
-        &self,
-        network: &'_ NetworkDefinition,
-        index: i32,
-    ) -> Result<Tensor<'network>> {
-        self.input(network, index)
-    }
-
     /// See [nvinfer1::ILayer::getOutput]
     pub fn output(&self, network: &'_ NetworkDefinition, index: i32) -> Result<Tensor<'network>> {
         check_network!(network, self);
@@ -183,34 +174,16 @@ impl<'network, Inner: AsLayer> Layer<'network, Inner> {
         unsafe { Tensor::new(self.network, tensor) }
     }
 
-    #[deprecated = "use output instead"]
-    pub fn get_output(
-        &self,
-        network: &'_ NetworkDefinition,
-        index: i32,
-    ) -> Result<Tensor<'network>> {
-        self.output(network, index)
-    }
     /// See [nvinfer1::ILayer::getNbInputs]
     pub fn num_inputs(&self, network: &'_ NetworkDefinition) -> i32 {
         check_network!(network, self);
         self.inner.as_layer().getNbInputs()
     }
 
-    #[deprecated = "use num_inputs instead"]
-    pub fn get_num_inputs(&self, network: &'_ NetworkDefinition) -> i32 {
-        self.num_inputs(network)
-    }
-
     /// See [nvinfer1::ILayer::getNbOutputs]
     pub fn num_outputs(&self, network: &'_ NetworkDefinition) -> i32 {
         check_network!(network, self);
         self.inner.as_layer().getNbOutputs()
-    }
-
-    #[deprecated = "use num_outputs instead"]
-    pub fn get_num_outputs(&self, network: &'_ NetworkDefinition) -> i32 {
-        self.num_outputs(network)
     }
 
     /// See [nvinfer1::ILayer::setName]
@@ -451,7 +424,7 @@ impl ShuffleLayer<'_> {
 impl ResizeLayer<'_> {
     // --- IResizeLayer (full) ---
     // `setInput` / `getInput` / `getOutput` / `getNbInputs` / `getNbOutputs` / name accessors:
-    // [`Layer::set_input`], [`Layer::get_input`], [`Layer::get_output`], etc.
+    // [`Layer::set_input`], [`Layer::input`], [`Layer::output`], etc.
 
     /// See [nvinfer1::IResizeLayer::setOutputDimensions]
     pub fn set_output_dimensions(&mut self, network: &mut NetworkDefinition, dims: &[i64]) {
@@ -1048,10 +1021,6 @@ impl NormalizationLayer<'_> {
         self.inner.as_ref().getEpsilon()
     }
 
-    #[deprecated = "use epsilon instead"]
-    pub fn get_epsilon(&self, network: &NetworkDefinition) -> f32 {
-        self.epsilon(network)
-    }
     /// See [nvinfer1::INormalizationLayer::setAxes]
     pub fn set_axes(&mut self, network: &mut NetworkDefinition, axes: crate::Axes) {
         check_network!(network, self);
@@ -1063,10 +1032,6 @@ impl NormalizationLayer<'_> {
         crate::Axes::from_bits(self.inner.as_ref().getAxes())
     }
 
-    #[deprecated = "use axes instead"]
-    pub fn get_axes(&self, network: &NetworkDefinition) -> crate::Axes {
-        self.axes(network)
-    }
     /// See [nvinfer1::INormalizationLayer::setNbGroups]
     pub fn set_num_groups(&mut self, network: &mut NetworkDefinition, groups: i64) {
         check_network!(network, self);
@@ -1076,11 +1041,6 @@ impl NormalizationLayer<'_> {
     pub fn num_groups(&self, network: &NetworkDefinition) -> i64 {
         check_network!(network, self);
         self.inner.as_ref().getNbGroups()
-    }
-
-    #[deprecated = "use num_groups instead"]
-    pub fn get_num_groups(&self, network: &NetworkDefinition) -> i64 {
-        self.num_groups(network)
     }
 
     // is removed because deprecated in TRT
@@ -1459,19 +1419,9 @@ impl<'network> NetworkDefinition<'network> {
         self.inner.getNbInputs()
     }
 
-    #[deprecated = "use nb_inputs instead"]
-    pub fn get_nb_inputs(&self) -> i32 {
-        self.nb_inputs()
-    }
-
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::getNbOutputs`].
     pub fn nb_outputs(&self) -> i32 {
         self.inner.getNbOutputs()
-    }
-
-    #[deprecated = "use nb_outputs instead"]
-    pub fn get_nb_outputs(&self) -> i32 {
-        self.nb_outputs()
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::getInput`].
@@ -1486,11 +1436,6 @@ impl<'network> NetworkDefinition<'network> {
         unsafe { Tensor::new(self.inner.as_ptr(), tensor_ptr) }
     }
 
-    #[deprecated = "use input instead"]
-    pub fn get_input(&self, index: i32) -> Result<Tensor<'network>> {
-        self.input(index)
-    }
-
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::getOutput`].
     pub fn output(&self, index: i32) -> Result<Tensor<'network>> {
         let tensor_ptr = self.inner.getOutput(index);
@@ -1501,11 +1446,6 @@ impl<'network> NetworkDefinition<'network> {
             )));
         }
         unsafe { Tensor::new(self.inner.as_ptr(), tensor_ptr) }
-    }
-
-    #[deprecated = "use output instead"]
-    pub fn get_output(&self, index: i32) -> Result<Tensor<'network>> {
-        self.output(index)
     }
 
     /// Returns an iterator over the network's input tensors.
@@ -1532,11 +1472,6 @@ impl<'network> NetworkDefinition<'network> {
         self.inner.getNbLayers()
     }
 
-    #[deprecated = "use nb_layers instead"]
-    pub fn get_nb_layers(&self) -> i32 {
-        self.nb_layers()
-    }
-
     pub fn layer(&self, layer_index: i32) -> Result<DynLayer<'network>> {
         let layer_ptr = self.inner.getLayer(layer_index);
         DynLayer::new_dyn(self.inner.as_ptr(), layer_ptr)
@@ -1551,29 +1486,14 @@ impl<'network> NetworkDefinition<'network> {
         }
     }
 
-    #[deprecated = "use layer instead"]
-    pub fn get_layer(&self, layer_index: i32) -> Result<DynLayer<'network>> {
-        self.layer(layer_index)
-    }
-
     /// Layer name at index (for introspection/dumping). Returns "(Unnamed)" if null.
     pub fn layer_name(&self, layer_index: i32) -> Result<String> {
         Ok(self.layer(layer_index)?.name(self))
     }
 
-    #[deprecated = "use layer_name instead"]
-    pub fn get_layer_name(&self, layer_index: i32) -> Result<String> {
-        self.layer_name(layer_index)
-    }
-
     /// Layer type enum value at index (for introspection/dumping). See TensorRT LayerType.
     pub fn layer_type(&self, layer_index: i32) -> Result<LayerType> {
         Ok(self.layer(layer_index)?.layer_type_dynamic())
-    }
-
-    #[deprecated = "use layer_type instead"]
-    pub fn get_layer_type(&self, layer_index: i32) -> Result<LayerType> {
-        self.layer_type(layer_index)
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addActivation`].
@@ -2678,32 +2598,6 @@ impl<'network> NetworkDefinition<'network> {
         DequantizeLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
-    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addDynamicQuantize`].
-    #[deprecated(note = "use add_dynamic_quantize_v2 instead")]
-    pub fn add_dynamic_quantize(
-        &mut self,
-        input: &'_ Tensor,
-        axis: i32,
-        block_size: i32,
-        output_type: DataType,
-        scale_type: DataType,
-    ) -> Result<DynamicQuantizeLayer<'network>> {
-        check_network!(self, input);
-        debug!(
-            "add_dynamic_quantize input={} axis={axis} block_size={block_size} output_type={output_type:?} scale_type={scale_type:?}",
-            tensor_dbg(self, input)
-        );
-        #[allow(deprecated)]
-        let layer_ptr = self.inner.pin_mut().addDynamicQuantize(
-            input.pin_mut(),
-            axis,
-            block_size,
-            output_type.into(),
-            scale_type.into(),
-        );
-        DynamicQuantizeLayer::new(self.inner.as_ptr(), layer_ptr)
-    }
-
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addDynamicQuantizeV2`].
     pub fn add_dynamic_quantize_v2(
         &mut self,
@@ -3350,11 +3244,6 @@ impl<'network> Attention<'network> {
         unsafe { Tensor::new(self.network, tensor_ptr) }
     }
 
-    #[deprecated = "use input instead"]
-    pub fn get_input(&self, network: &NetworkDefinition, index: i32) -> Result<Tensor<'network>> {
-        self.input(network, index)
-    }
-
     /// See [`trtx_sys::nvinfer1::IAttention::getNbOutputs`].
     pub fn num_outputs(&self, network: &NetworkDefinition) -> i32 {
         check_network!(network, self);
@@ -3366,11 +3255,6 @@ impl<'network> Attention<'network> {
         check_network!(network, self);
         let tensor_ptr = self.inner.getOutput(index);
         unsafe { Tensor::new(self.network, tensor_ptr) }
-    }
-
-    #[deprecated = "use output instead"]
-    pub fn get_output(&self, network: &NetworkDefinition, index: i32) -> Result<Tensor<'network>> {
-        self.output(network, index)
     }
 
     /// See [`trtx_sys::nvinfer1::IAttention::setName`].
@@ -3441,11 +3325,6 @@ impl<'network> Attention<'network> {
         self.inner.getNormalizationQuantizeToType().into()
     }
 
-    #[deprecated = "use normalization_quantize_to_type instead"]
-    pub fn get_normalization_quantize_to_type(&self, network: &NetworkDefinition) -> DataType {
-        self.normalization_quantize_to_type(network)
-    }
-
     /// See [`trtx_sys::nvinfer1::IAttention::setMetadata`].
     pub fn set_metadata(&mut self, network: &mut NetworkDefinition, metadata: &str) -> Result<()> {
         check_network!(network, self);
@@ -3480,11 +3359,6 @@ impl<'network> Attention<'network> {
     pub fn nb_ranks(&self, network: &NetworkDefinition) -> i32 {
         check_network!(network, self);
         self.inner.getNbRanks()
-    }
-
-    #[deprecated = "use nb_ranks instead"]
-    pub fn get_nb_ranks(&self, network: &NetworkDefinition) -> i32 {
-        self.nb_ranks(network)
     }
 
     #[cfg(feature = "v_1_5")]
@@ -3834,7 +3708,7 @@ impl IteratorLayer<'_> {
     }
 }
 
-// --- LoopOutputLayer: get_loop_output, set_axis (for concatenation), set_input for index 1 ---
+// --- LoopOutputLayer: loop_output, set_axis (for concatenation), set_input for index 1 ---
 
 impl LoopOutputLayer<'_> {
     /// See [`trtx_sys::nvinfer1::ILoopOutputLayer::getLoopOutput`].
@@ -3843,10 +3717,6 @@ impl LoopOutputLayer<'_> {
         self.inner.as_ref().getLoopOutput()
     }
 
-    #[deprecated = "use loop_output instead"]
-    pub fn get_loop_output(&self, network: &NetworkDefinition) -> trtx_sys::nvinfer1::LoopOutput {
-        self.loop_output(network)
-    }
     /// See [`trtx_sys::nvinfer1::ILoopOutputLayer::setAxis`]. Ignored if output kind is kLAST_VALUE.
     pub fn set_axis(&mut self, network: &mut NetworkDefinition, axis: i32) {
         check_network!(network, self);
@@ -3854,18 +3724,13 @@ impl LoopOutputLayer<'_> {
     }
 }
 
-// --- TripLimitLayer: get_trip_limit (getter only) ---
+// --- TripLimitLayer: trip_limit (getter only) ---
 
 impl TripLimitLayer<'_> {
     /// See [`trtx_sys::nvinfer1::ITripLimitLayer::getTripLimit`].
     pub fn trip_limit(&self, network: &NetworkDefinition) -> trtx_sys::nvinfer1::TripLimit {
         check_network!(network, self);
         self.inner.as_ref().getTripLimit()
-    }
-
-    #[deprecated = "use trip_limit instead"]
-    pub fn get_trip_limit(&self, network: &NetworkDefinition) -> trtx_sys::nvinfer1::TripLimit {
-        self.trip_limit(network)
     }
 }
 

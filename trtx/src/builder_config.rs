@@ -105,11 +105,6 @@ impl<'builder> BuilderConfig<'builder> {
         }
     }
 
-    #[deprecated = "use profiling_verbosity instead"]
-    pub fn get_profiling_verbosity(&self) -> ProfilingVerbosity {
-        self.profiling_verbosity()
-    }
-
     /// See [IBuilderConfig::setAvgTimingIterations]
     pub fn set_avg_timing_iterations(&mut self, avg_timing: i32) {
         #[cfg(not(feature = "mock"))]
@@ -123,11 +118,6 @@ impl<'builder> BuilderConfig<'builder> {
         } else {
             0
         }
-    }
-
-    #[deprecated = "use avg_timing_iterations instead"]
-    pub fn get_avg_timing_iterations(&self) -> i32 {
-        self.avg_timing_iterations()
     }
 
     /// See [IBuilderConfig::setEngineCapability]
@@ -145,11 +135,6 @@ impl<'builder> BuilderConfig<'builder> {
         }
     }
 
-    #[deprecated = "use engine_capability instead"]
-    pub fn get_engine_capability(&self) -> EngineCapability {
-        self.engine_capability()
-    }
-
     /// See [IBuilderConfig::setFlags]
     pub fn set_flags(&mut self, flags: u32) {
         #[cfg(not(feature = "mock"))]
@@ -163,11 +148,6 @@ impl<'builder> BuilderConfig<'builder> {
         } else {
             0
         }
-    }
-
-    #[deprecated = "use flags instead"]
-    pub fn get_flags(&self) -> u32 {
-        self.flags()
     }
 
     /// See [IBuilderConfig::setFlag]
@@ -191,11 +171,6 @@ impl<'builder> BuilderConfig<'builder> {
         }
     }
 
-    #[deprecated = "use flag instead"]
-    pub fn get_flag(&self, flag: BuilderFlag) -> bool {
-        self.flag(flag)
-    }
-
     /// See [IBuilderConfig::setDLACore]
     pub fn set_dla_core(&mut self, dla_core: i32) {
         #[cfg(not(feature = "mock"))]
@@ -209,11 +184,6 @@ impl<'builder> BuilderConfig<'builder> {
         } else {
             0
         }
-    }
-
-    #[deprecated = "use dla_core instead"]
-    pub fn get_dla_core(&self) -> i32 {
-        self.dla_core()
     }
 
     /// See [IBuilderConfig::setDefaultDeviceType]
@@ -233,11 +203,6 @@ impl<'builder> BuilderConfig<'builder> {
         }
     }
 
-    #[deprecated = "use default_device_type instead"]
-    pub fn get_default_device_type(&self) -> DeviceType {
-        self.default_device_type()
-    }
-
     /// See [IBuilderConfig::reset]
     pub fn reset(&mut self) {
         #[cfg(not(feature = "mock"))]
@@ -251,11 +216,6 @@ impl<'builder> BuilderConfig<'builder> {
         } else {
             0
         }
-    }
-
-    #[deprecated = "use nb_optimization_profiles instead"]
-    pub fn get_nb_optimization_profiles(&self) -> i32 {
-        self.nb_optimization_profiles()
     }
 
     /// See [IBuilderConfig::addOptimizationProfile].
@@ -305,11 +265,6 @@ impl<'builder> BuilderConfig<'builder> {
         }
     }
 
-    #[deprecated = "use tactic_sources instead"]
-    pub fn get_tactic_sources(&self) -> u32 {
-        self.tactic_sources()
-    }
-
     /// See [IBuilderConfig::getMemoryPoolLimit]
     pub fn memory_pool_limit(&self, pool: MemoryPoolType) -> usize {
         if cfg!(not(feature = "mock")) {
@@ -317,11 +272,6 @@ impl<'builder> BuilderConfig<'builder> {
         } else {
             0
         }
-    }
-
-    #[deprecated = "use memory_pool_limit instead"]
-    pub fn get_memory_pool_limit(&self, pool: MemoryPoolType) -> usize {
-        self.memory_pool_limit(pool)
     }
 
     /// See [IBuilderConfig::setPreviewFeature]
@@ -341,11 +291,6 @@ impl<'builder> BuilderConfig<'builder> {
         }
     }
 
-    #[deprecated = "use preview_feature instead"]
-    pub fn get_preview_feature(&self, feature: PreviewFeature) -> bool {
-        self.preview_feature(feature)
-    }
-
     /// See [IBuilderConfig::setBuilderOptimizationLevel]
     pub fn set_builder_optimization_level(&mut self, level: i32) {
         #[cfg(not(feature = "mock"))]
@@ -361,11 +306,6 @@ impl<'builder> BuilderConfig<'builder> {
         }
     }
 
-    #[deprecated = "use builder_optimization_level instead"]
-    pub fn get_builder_optimization_level(&mut self) -> i32 {
-        self.builder_optimization_level()
-    }
-
     /// See [IBuilderConfig::setHardwareCompatibilityLevel]
     pub fn set_hardware_compatibility_level(&mut self, level: HardwareCompatibilityLevel) {
         #[cfg(not(feature = "mock"))]
@@ -377,11 +317,6 @@ impl<'builder> BuilderConfig<'builder> {
     /// See [IBuilderConfig::getHardwareCompatibilityLevel]
     pub fn hardware_compatibility_level(&self) -> HardwareCompatibilityLevel {
         self.inner.getHardwareCompatibilityLevel().into()
-    }
-
-    #[deprecated = "use hardware_compatibility_level instead"]
-    pub fn get_hardware_compatibility_level(&self) -> HardwareCompatibilityLevel {
-        self.hardware_compatibility_level()
     }
 
     /// See [IBuilderConfig::setMaxAuxStreams]
@@ -399,11 +334,6 @@ impl<'builder> BuilderConfig<'builder> {
         }
     }
 
-    #[deprecated = "use max_aux_streams instead"]
-    pub fn get_max_aux_streams(&self) -> i32 {
-        self.max_aux_streams()
-    }
-
     /// See [IBuilderConfig::setRuntimePlatform]
     pub fn set_runtime_platform(&mut self, platform: RuntimePlatform) {
         #[cfg(not(feature = "mock"))]
@@ -419,11 +349,6 @@ impl<'builder> BuilderConfig<'builder> {
         }
     }
 
-    #[deprecated = "use runtime_platform instead"]
-    pub fn get_runtime_platform(&self) -> RuntimePlatform {
-        self.runtime_platform()
-    }
-
     /// See [IBuilderConfig::setMaxNbTactics]
     pub fn set_max_nb_tactics(&mut self, max_nb_tactics: i32) {
         #[cfg(not(feature = "mock"))]
@@ -437,11 +362,6 @@ impl<'builder> BuilderConfig<'builder> {
         } else {
             0
         }
-    }
-
-    #[deprecated = "use max_nb_tactics instead"]
-    pub fn get_max_nb_tactics(&self) -> i32 {
-        self.max_nb_tactics()
     }
 
     /// See [IBuilderConfig::setTilingOptimizationLevel]
@@ -475,11 +395,6 @@ impl<'builder> BuilderConfig<'builder> {
         }
     }
 
-    #[deprecated = "use tiling_optimization_level instead"]
-    pub fn get_tiling_optimization_level(&self) -> TilingOptimizationLevel {
-        self.tiling_optimization_level()
-    }
-
     /// See [IBuilderConfig::setL2LimitForTiling]
     pub fn set_l2_limit_for_tiling(&mut self, size: i64) -> crate::Result<()> {
         if cfg!(not(feature = "mock")) {
@@ -502,11 +417,6 @@ impl<'builder> BuilderConfig<'builder> {
         } else {
             0
         }
-    }
-
-    #[deprecated = "use l2_limit_for_tiling instead"]
-    pub fn get_l2_limit_for_tiling(&self) -> i64 {
-        self.l2_limit_for_tiling()
     }
 
     /// See [IBuilderConfig::setNbComputeCapabilities]
@@ -543,12 +453,6 @@ impl<'builder> BuilderConfig<'builder> {
     }
 
     #[cfg(not(feature = "enterprise"))]
-    #[deprecated = "use nb_compute_capabilities instead"]
-    pub fn get_nb_compute_capabilities(&self) -> i32 {
-        self.nb_compute_capabilities()
-    }
-
-    #[cfg(not(feature = "enterprise"))]
     /// See [IBuilderConfig::setComputeCapability]
     pub fn set_compute_capability(
         &mut self,
@@ -580,12 +484,6 @@ impl<'builder> BuilderConfig<'builder> {
         } else {
             ComputeCapability::kNONE
         }
-    }
-
-    #[cfg(not(feature = "enterprise"))]
-    #[deprecated = "use compute_capability instead"]
-    pub fn get_compute_capability(&self, index: i32) -> ComputeCapability {
-        self.compute_capability(index)
     }
 
     #[cfg(feature = "v_1_6")]
