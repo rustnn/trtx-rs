@@ -1,6 +1,6 @@
 use std::ffi::{CStr, CString};
 use std::pin::Pin;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use cxx::UniquePtr;
 use trtx_sys::nvinfer1;
@@ -20,7 +20,7 @@ use crate::RuntimeConfig;
 /// pointers before their Rust wrappers run destructors.
 pub struct ExecutionContext<'engine> {
     _engine: std::marker::PhantomData<&'engine CudaEngine<'engine>>,
-    _config: Option<Rc<RuntimeConfig<'engine>>>,
+    _config: Option<Arc<RuntimeConfig<'engine>>>,
     debug_listener: Option<Pin<Box<DebugListener>>>,
     profiler: Option<Pin<Box<Profiler>>>,
     error_recorder: Option<Pin<Box<ErrorRecorder>>>,
@@ -38,7 +38,7 @@ impl std::fmt::Debug for ExecutionContext<'_> {
 impl<'engine> ExecutionContext<'engine> {
     pub(crate) unsafe fn from_ptr(
         execution_context: *mut nvinfer1::IExecutionContext,
-        config: Option<Rc<RuntimeConfig<'engine>>>,
+        config: Option<Arc<RuntimeConfig<'engine>>>,
     ) -> Result<Self> {
         #[cfg(not(feature = "mock_runtime"))]
         if execution_context.is_null() {
