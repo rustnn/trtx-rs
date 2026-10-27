@@ -3,7 +3,7 @@
 //! [`CudaEngine`] wraps [`nvinfer1::ICudaEngine`] (C++ [`nvinfer1::ICudaEngine`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_cuda_engine.html)).
 //! [`SerializationConfig`] wraps [`nvinfer1::ISerializationConfig`] (C++ [`nvinfer1::ISerializationConfig`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_serialization_config.html)).
 
-use std::rc::Rc;
+use std::sync::Arc;
 #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
 use std::{ffi::c_void, pin::Pin};
 use std::{ffi::CStr, marker::PhantomData};
@@ -353,7 +353,7 @@ impl<'engine> CudaEngine<'engine> {
     /// See [nvinfer1::ICudaEngine::createExecutionContext1]
     pub fn create_execution_context_with_config(
         &'_ mut self,
-        runtime_config: Rc<RuntimeConfig<'engine>>,
+        runtime_config: Arc<RuntimeConfig<'engine>>,
     ) -> Result<ExecutionContext<'engine>> {
         #[cfg(not(feature = "mock_runtime"))]
         {

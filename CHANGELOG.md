@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Share `RuntimeConfig` with `Arc`, so `ExecutionContext` can move between threads.
+
 ### Removed
 
 - Removed all deprecated Rust API methods, including the old getter aliases and
