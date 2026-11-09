@@ -59,6 +59,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-target-${{ matrix.rust }}-
 
+      - name: Is Cargo.lock consistent with Cargo.toml?
+        run: cargo fetch --locked
+
       - name: Use libclang-21-dev on Ubuntu (newer will break autocxx)
         if: ${{ matrix.os == 'ubuntu-latest' }}
         shell: bash
