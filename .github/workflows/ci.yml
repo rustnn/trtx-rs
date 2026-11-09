@@ -59,6 +59,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-target-${{ matrix.rust }}-
 
+      - name: Use libclang-21-dev on Ubuntu (newer will break autocxx)
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libclang-21-dev
+          # autocxx for trtx only works for libclang versions not newer than 21.
+          echo "LIBCLANG_PATH=/usr/lib/llvm-21/lib" >> "$GITHUB_ENV"
+
       # Protoc currently needed for rustnn
       - name: Install protobuf compiler
         if: ${{ matrix.os != 'windows-latest' }}
@@ -168,6 +177,14 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Use libclang-21-dev on Ubuntu (newer will break autocxx)
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libclang-21-dev
+          # autocxx for trtx only works for libclang versions not newer than 21.
+          echo "LIBCLANG_PATH=/usr/lib/llvm-21/lib" >> "$GITHUB_ENV"
 
       - name: Run example
         run: cargo run --features mock --example basic_workflow
