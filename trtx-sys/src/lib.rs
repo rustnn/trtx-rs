@@ -69,11 +69,13 @@ better_enum!(MemoryPoolType);
 better_enum!(DeviceType);
 better_enum!(EngineCapability);
 better_enum!(EngineValidity, not(feature = "enterprise"));
-bitflags::bitflags! {
+#[cfg(not(feature = "enterprise"))]
+use bitflags::bitflags;
+#[cfg(not(feature = "enterprise"))]
+bitflags! {
     /// Bitmask indicating the reason(s) why an engine is invalid.
     ///
     /// See https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/namespacenvinfer1.html#a1ad7701ca8f1b97b3909323096d8d6f8
-    #[cfg(not(feature = "enterprise"))]
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
     pub struct EngineInvalidityDiagnostics: u64 {
         /// TensorRT-RTX version mismatch to when engine was built.
