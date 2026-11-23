@@ -136,7 +136,7 @@
 // This allows to use the nightly doc_cfg feature on docs.rs
 //
 // https://users.rust-lang.org/t/how-to-document-optional-features-in-api-docs/64577
-#![cfg_attr(docsrs_trtx, feature(doc_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 #[macro_use]
 mod macros;

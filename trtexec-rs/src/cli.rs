@@ -29,10 +29,6 @@ pub struct Args {
     #[arg(long)]
     pub cuda_graph: bool,
 
-    /// Set extra nvtx spans
-    #[arg(long)]
-    pub nvtx: bool,
-
     /// Don't use engines from cache
     #[arg(long)]
     pub no_cache: bool,

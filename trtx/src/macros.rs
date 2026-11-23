@@ -13,7 +13,7 @@ macro_rules! cfg_feature {
     ($cfg:meta => { $($item:item)* }) => {
         $(
             #[cfg($cfg)]
-            #[cfg_attr(docsrs_trtx, doc(cfg($cfg)))]
+            #[cfg_attr(docsrs, doc(cfg($cfg)))]
             $item
         )*
     };

@@ -48,12 +48,13 @@ enterprise = ["trtx-sys/enterprise"]
 [dev-dependencies]
 cudarc = { version = "0.19.9", features = ["cuda-13020"] }
 # For examples and tests
-pretty_env_logger = "0.5"
+tracing = { version = "0.1.44", features = ["attributes"] }
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 
 [package.metadata.docs.rs]
 # Keep RTX APIs visible and document both loading modes without enabling mocks.
 features = ["v_1_7", "onnxparser", "dlopen_tensorrt_rtx", "dlopen_tensorrt_onnxparser", "link_tensorrt_rtx", "link_tensorrt_onnxparser"]
-rustdoc-args = ["--cfg", "docsrs_trtx"]
+rustdoc-args = ["--cfg", "docsrs"]
 
 [[example]]
 name = "tiny_network"

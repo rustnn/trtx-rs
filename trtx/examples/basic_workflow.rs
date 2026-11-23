@@ -12,12 +12,26 @@
 //! - Copying data to/from GPU
 
 use std::error::Error;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::Layer;
 use trtx::builder::{network_flags, MemoryPoolType};
 use trtx::{Builder, Logger, Runtime};
 
 fn main() -> Result<(), Box<dyn Error>> {
-    // Initialize logging use pretty_env_logger crate
-    pretty_env_logger::init();
+    // Initialize logging use tracing_subscriber crate
+    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+        tracing_subscriber::EnvFilter::builder()
+            .with_default_directive(tracing::level_filters::LevelFilter::WARN.into())
+            .parse("")
+            .unwrap()
+    });
+    let fmt = tracing_subscriber::fmt::layer()
+        .compact()
+        .with_writer(std::io::stderr)
+        .without_time()
+        .with_filter(env_filter);
+    let _ = tracing_subscriber::registry().with(fmt).try_init();
 
     #[cfg(feature = "dlopen_tensorrt_rtx")]
     trtx::dynamically_load_tensorrt(None::<String>).unwrap();

@@ -310,6 +310,10 @@ mod tests {
     use crate::SeekPosition;
     use crate::{DataType, ElementWiseOperation, Runtime};
     use cudarc::driver::{CudaContext, CudaSlice, DevicePtrMut};
+    use tracing::level_filters::LevelFilter;
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::util::SubscriberInitExt;
+    use tracing_subscriber::Layer;
     use trtx_sys::{Dims64, TensorLocation};
 
     #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
@@ -588,10 +592,27 @@ mod tests {
         );
     }
 
+    fn try_init_logging() {
+        let env_filter =
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                tracing_subscriber::EnvFilter::builder()
+                    .with_default_directive(LevelFilter::WARN.into())
+                    .parse("")
+                    .unwrap()
+            });
+        let fmt = tracing_subscriber::fmt::layer()
+            .compact()
+            .with_writer(std::io::stderr)
+            .without_time()
+            .with_filter(env_filter);
+        let _ = tracing_subscriber::registry().with(fmt).try_init();
+    }
+
     #[test]
     #[ignore = "only works on TRT enterprise at the moment"]
     fn set_debug_listener_plus1_chain() {
-        let _ = pretty_env_logger::try_init();
+        try_init_logging();
+
         let logger = Logger::log_crate().expect("logger");
         let (engine_data, expected_debug_names) =
             build_plus1_chain(&logger).expect("build network");

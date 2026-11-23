@@ -10,12 +10,27 @@
 //! Input [1, 3, 4, 4] -> ReLU -> Output [1, 3, 4, 4]
 
 use cudarc::driver::{CudaContext, CudaSlice, DevicePtr, DevicePtrMut};
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::Layer;
 use trtx::builder::MemoryPoolType;
 use trtx::error::Result;
 use trtx::{ActivationType, Builder, DataType, Logger, Runtime};
 
 fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
-    pretty_env_logger::init();
+    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+        tracing_subscriber::EnvFilter::builder()
+            .with_default_directive(tracing::level_filters::LevelFilter::WARN.into())
+            .parse("")
+            .unwrap()
+    });
+    let fmt = tracing_subscriber::fmt::layer()
+        .compact()
+        .with_writer(std::io::stderr)
+        .without_time()
+        .with_filter(env_filter);
+
+    let _ = tracing_subscriber::registry().with(fmt).try_init();
     println!("=== Tiny Network Example ===\n");
 
     // 1. Create logger

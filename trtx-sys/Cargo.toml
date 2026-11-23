@@ -42,4 +42,4 @@ cxx = "1.0"
 [package.metadata.docs.rs]
 # `enterprise` hides RTX APIs, so select the documented features explicitly.
 features = ["v_1_7", "onnxparser", "link_tensorrt_rtx", "link_tensorrt_onnxparser"]
-rustdoc-args = ["--cfg", "docsrs_trtx"]
+rustdoc-args = ["--cfg", "docsrs"]
