@@ -51,11 +51,15 @@ impl std::fmt::Debug for Refitter<'_, '_> {
 impl<'logger, 'engine> Refitter<'logger, 'engine> {
     #[cfg(not(feature = "link_tensorrt_rtx"))]
     #[cfg(not(feature = "dlopen_tensorrt_rtx"))]
+    // This constructor exists under both loading configurations.
+    #[cfg_attr(docsrs, doc(cfg(all())))]
     pub fn new(_cuda_engine: &'engine CudaEngine, _logger: &'logger Logger) -> Result<Self> {
         Err(Error::TrtRtxLibraryNotLoaded)
     }
 
     #[cfg(any(feature = "link_tensorrt_rtx", feature = "dlopen_tensorrt_rtx"))]
+    // This constructor exists under both loading configurations.
+    #[cfg_attr(docsrs, doc(cfg(all())))]
     pub fn new(cuda_engine: &'engine CudaEngine, logger: &'logger Logger) -> Result<Self> {
         #[cfg(not(feature = "mock_runtime"))]
         {
@@ -387,22 +391,19 @@ impl<'logger, 'engine> Refitter<'logger, 'engine> {
         }
     }
 
-    cfg_feature! {
-        all(feature = "v_1_7", not(feature = "enterprise")) => {
-            /// Releases cached refit resources. A later refit recreates them as needed.
-            ///
-            /// # Safety
-            /// All asynchronous refit work from every refitter sharing the engine must have completed.
-            /// No other refitter for this engine may refit concurrently with this call.
-            pub unsafe fn release_refit_resources(&mut self) -> Result<()> {
-                if cfg!(feature = "mock_runtime") || self.inner.pin_mut().releaseRefitResources() {
-                    Ok(())
-                } else {
-                    Err(Error::Runtime(
-                        "Failed to release refit resources".to_string(),
-                    ))
-                }
-            }
+    #[cfg(all(feature = "v_1_7", not(feature = "enterprise")))]
+    /// Releases cached refit resources. A later refit recreates them as needed.
+    ///
+    /// # Safety
+    /// All asynchronous refit work from every refitter sharing the engine must have completed.
+    /// No other refitter for this engine may refit concurrently with this call.
+    pub unsafe fn release_refit_resources(&mut self) -> Result<()> {
+        if cfg!(feature = "mock_runtime") || self.inner.pin_mut().releaseRefitResources() {
+            Ok(())
+        } else {
+            Err(Error::Runtime(
+                "Failed to release refit resources".to_string(),
+            ))
         }
     }
 

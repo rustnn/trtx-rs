@@ -29,9 +29,7 @@
 #![allow(non_snake_case)]
 #![allow(clippy::all)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
-
-#[macro_use]
-mod macros;
+#![cfg_attr(docsrs, doc(auto_cfg))]
 
 #[allow(warnings)]
 mod enums {
@@ -43,19 +41,18 @@ macro_rules! better_enum {
         better_enum!($to, all());
     };
     ($to:ident, $cfg:meta) => {
-        cfg_feature! {
-            $cfg => {
-                pub use crate::enums::$to;
-                impl Into<crate::nvinfer1::$to> for $to {
-                    fn into(self) -> crate::nvinfer1::$to {
-                        unsafe { transmute(self) }
-                    }
-                }
-                impl From<crate::nvinfer1::$to> for $to {
-                    fn from(value: crate::nvinfer1::$to) -> Self {
-                        unsafe { transmute(value) }
-                    }
-                }
+        #[cfg($cfg)]
+        pub use crate::enums::$to;
+        #[cfg($cfg)]
+        impl Into<crate::nvinfer1::$to> for $to {
+            fn into(self) -> crate::nvinfer1::$to {
+                unsafe { transmute(self) }
+            }
+        }
+        #[cfg($cfg)]
+        impl From<crate::nvinfer1::$to> for $to {
+            fn from(value: crate::nvinfer1::$to) -> Self {
+                unsafe { transmute(value) }
             }
         }
     };
@@ -72,15 +69,12 @@ better_enum!(MemoryPoolType);
 better_enum!(DeviceType);
 better_enum!(EngineCapability);
 better_enum!(EngineValidity, not(feature = "enterprise"));
-#[cfg(not(feature = "enterprise"))]
-use bitflags::bitflags;
-#[cfg(not(feature = "enterprise"))]
-bitflags! {
+bitflags::bitflags! {
     /// Bitmask indicating the reason(s) why an engine is invalid.
     ///
     /// See https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/namespacenvinfer1.html#a1ad7701ca8f1b97b3909323096d8d6f8
+    #[cfg(not(feature = "enterprise"))]
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-    #[cfg_attr(docsrs, doc(cfg(not(feature = "enterprise"))))]
     pub struct EngineInvalidityDiagnostics: u64 {
         /// TensorRT-RTX version mismatch to when engine was built.
         const VERSION_MISMATCH = 1 << 0;
@@ -394,16 +388,10 @@ unsafe impl AsLayer for nvinfer1::IConditionLayer {}
 unsafe impl AsLayer for nvinfer1::IIfConditionalOutputLayer {}
 unsafe impl AsLayer for nvinfer1::IIfConditionalInputLayer {}
 unsafe impl AsLayer for nvinfer1::IAttentionBoundaryLayer {}
-cfg_feature! {
-    feature = "v_1_4" => {
-        unsafe impl AsLayer for nvinfer1::IMoELayer {}
-    }
-}
-cfg_feature! {
-    feature = "v_1_4" => {
-        unsafe impl AsLayer for nvinfer1::IDistCollectiveLayer {}
-    }
-}
+#[cfg(feature = "v_1_4")]
+unsafe impl AsLayer for nvinfer1::IMoELayer {}
+#[cfg(feature = "v_1_4")]
+unsafe impl AsLayer for nvinfer1::IDistCollectiveLayer {}
 
 // this one is not concrete
 unsafe impl AsLayer for nvinfer1::ILayer {}
@@ -575,19 +563,13 @@ unsafe impl AsLayerTyped for nvinfer1::IIfConditionalInputLayer {
 unsafe impl AsLayerTyped for nvinfer1::IAttentionBoundaryLayer {
     const TYPE: LayerType = LayerType::kATTENTION_INPUT;
 }
-cfg_feature! {
-    feature = "v_1_4" => {
-        unsafe impl AsLayerTyped for nvinfer1::IMoELayer {
-            const TYPE: LayerType = LayerType::kMOE;
-        }
-    }
+#[cfg(feature = "v_1_4")]
+unsafe impl AsLayerTyped for nvinfer1::IMoELayer {
+    const TYPE: LayerType = LayerType::kMOE;
 }
-cfg_feature! {
-    feature = "v_1_4" => {
-        unsafe impl AsLayerTyped for nvinfer1::IDistCollectiveLayer {
-            const TYPE: LayerType = LayerType::kDIST_COLLECTIVE;
-        }
-    }
+#[cfg(feature = "v_1_4")]
+unsafe impl AsLayerTyped for nvinfer1::IDistCollectiveLayer {
+    const TYPE: LayerType = LayerType::kDIST_COLLECTIVE;
 }
 
 // Logger bridge C functions
@@ -782,12 +764,9 @@ pub mod nvinfer1 {
     pub use super::ffi::nvinfer1::*;
 }
 
-cfg_feature! {
-    feature = "onnxparser" => {
-        pub mod nvonnxparser {
-            pub use super::ffi::nvonnxparser::*;
-        }
-    }
+#[cfg(feature = "onnxparser")]
+pub mod nvonnxparser {
+    pub use super::ffi::nvonnxparser::*;
 }
 
 // Re-export Dims64 as Dims to match TensorRT's typedef
@@ -879,76 +858,58 @@ impl DataType {
     }
 }
 
-cfg_feature! {
-    feature = "v_1_7" => {
-        /// Parser-owned refit metadata, valid only during the observer callback.
-        /// Layout matches `nvonnxparser::RefitRecord`.
-        #[repr(C)]
-        pub struct RefitRecord {
-            pub trt_name: *const std::ffi::c_char,
-            pub kind: i32,
-            pub onnx_dtype: i32,
-            pub trt_dtype: i32,
-            pub count: i64,
-            pub nb_sources: i32,
-            pub source_onnx_names: *const *const std::ffi::c_char,
-            pub epsilon: f32,
-            pub fixed_data: *const std::ffi::c_void,
-            pub fixed_data_size: usize,
-        }
-    }
+#[cfg(feature = "v_1_7")]
+/// Parser-owned refit metadata, valid only during the observer callback.
+/// Layout matches `nvonnxparser::RefitRecord`.
+#[repr(C)]
+pub struct RefitRecord {
+    pub trt_name: *const std::ffi::c_char,
+    pub kind: i32,
+    pub onnx_dtype: i32,
+    pub trt_dtype: i32,
+    pub count: i64,
+    pub nb_sources: i32,
+    pub source_onnx_names: *const *const std::ffi::c_char,
+    pub epsilon: f32,
+    pub fixed_data: *const std::ffi::c_void,
+    pub fixed_data_size: usize,
 }
 
-cfg_feature! {
-    all(feature = "v_1_7", feature = "onnxparser") => {
-        unsafe extern "C" {
-            pub fn trtx_create_refitter_observer(
-                user_data: *mut std::ffi::c_void,
-                callback: unsafe extern "C" fn(*mut std::ffi::c_void, *const RefitRecord),
-            ) -> *mut std::ffi::c_void;
-            pub fn trtx_destroy_refitter_observer(observer: *mut std::ffi::c_void);
-            pub fn trtx_parser_set_refit_observer(
-                parser: *mut nvonnxparser::IParser,
-                observer: *mut std::ffi::c_void,
-            );
-        }
-    }
+#[cfg(all(feature = "v_1_7", feature = "onnxparser"))]
+unsafe extern "C" {
+    pub fn trtx_create_refitter_observer(
+        user_data: *mut std::ffi::c_void,
+        callback: unsafe extern "C" fn(*mut std::ffi::c_void, *const RefitRecord),
+    ) -> *mut std::ffi::c_void;
+    pub fn trtx_destroy_refitter_observer(observer: *mut std::ffi::c_void);
+    pub fn trtx_parser_set_refit_observer(
+        parser: *mut nvonnxparser::IParser,
+        observer: *mut std::ffi::c_void,
+    );
 }
 
-cfg_feature! {
-    feature = "link_tensorrt_onnxparser" => {
-        unsafe extern "C" {
-            pub unsafe fn create_onnx_parser(
-                network: *mut nvinfer1::INetworkDefinition,
-                logger: *mut std::ffi::c_void,
-            ) -> *mut nvonnxparser::IParser;
-        }
-    }
+#[cfg(feature = "link_tensorrt_onnxparser")]
+unsafe extern "C" {
+    pub unsafe fn create_onnx_parser(
+        network: *mut nvinfer1::INetworkDefinition,
+        logger: *mut std::ffi::c_void,
+    ) -> *mut nvonnxparser::IParser;
 }
 
-cfg_feature! {
-    feature = "link_tensorrt_rtx" => {
-        unsafe extern "C" {
-            pub fn create_infer_refitter(
-                cuda_engine: *mut std::ffi::c_void,
-                logger: *mut std::ffi::c_void,
-            ) -> *mut nvinfer1::IRefitter;
-        }
-    }
+#[cfg(feature = "link_tensorrt_rtx")]
+unsafe extern "C" {
+    pub fn create_infer_refitter(
+        cuda_engine: *mut std::ffi::c_void,
+        logger: *mut std::ffi::c_void,
+    ) -> *mut nvinfer1::IRefitter;
 }
 
-cfg_feature! {
-    feature = "link_tensorrt_rtx" => {
-        unsafe extern "C" {
-            pub unsafe fn create_infer_runtime(logger: *mut std::ffi::c_void) -> *mut nvinfer1::IRuntime;
-        }
-    }
+#[cfg(feature = "link_tensorrt_rtx")]
+unsafe extern "C" {
+    pub unsafe fn create_infer_runtime(logger: *mut std::ffi::c_void) -> *mut nvinfer1::IRuntime;
 }
 
-cfg_feature! {
-    feature = "link_tensorrt_rtx" => {
-        unsafe extern "C" {
-            pub unsafe fn create_infer_builder(logger: *mut std::ffi::c_void) -> *mut nvinfer1::IBuilder;
-        }
-    }
+#[cfg(feature = "link_tensorrt_rtx")]
+unsafe extern "C" {
+    pub unsafe fn create_infer_builder(logger: *mut std::ffi::c_void) -> *mut nvinfer1::IBuilder;
 }

@@ -18,11 +18,8 @@ use crate::error::{Error, Result};
 pub use crate::execution_context::ExecutionContext;
 use crate::interfaces::GpuAllocator;
 use crate::logger::Logger;
-cfg_feature! {
-    not(feature = "enterprise") => {
-        pub use crate::runtime_cache::RuntimeCache;
-    }
-}
+#[cfg(not(feature = "enterprise"))]
+pub use crate::runtime_cache::RuntimeCache;
 pub use crate::runtime_config::RuntimeConfig;
 
 /// [`trtx_sys::nvinfer1::IRuntime`] — C++ [`nvinfer1::IRuntime`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_runtime.html).
@@ -53,11 +50,15 @@ unsafe impl Send for Runtime<'_> {}
 impl<'runtime> Runtime<'runtime> {
     #[cfg(not(feature = "link_tensorrt_rtx"))]
     #[cfg(not(feature = "dlopen_tensorrt_rtx"))]
+    // This constructor exists under both loading configurations.
+    #[cfg_attr(docsrs, doc(cfg(all())))]
     pub fn new(logger: &'runtime Logger) -> Result<Self> {
         Err(Error::TrtRtxLibraryNotLoaded)
     }
 
     #[cfg(any(feature = "link_tensorrt_rtx", feature = "dlopen_tensorrt_rtx"))]
+    // This constructor exists under both loading configurations.
+    #[cfg_attr(docsrs, doc(cfg(all())))]
     pub fn new(logger: &'runtime Logger) -> Result<Self> {
         #[cfg(not(feature = "mock_runtime"))]
         {
@@ -142,138 +143,120 @@ impl<'runtime> Runtime<'runtime> {
         }
     }
 
-    cfg_feature! {
-        all(feature = "v_1_7", not(feature = "enterprise")) => {
-            /// Sets the DLA workspace allocation strategy for subsequent engine deserializations.
-            /// Previously deserialized engines retain their strategy.
-            ///
-            /// # Safety
-            /// Engines sharing a static workspace on the same DLA core must never execute concurrently.
-            pub unsafe fn set_dla_workspace_allocation_strategy(
-                &mut self,
-                strategy: crate::DLAWorkspaceAllocationStrategy,
-            ) -> Result<()> {
-                if cfg!(feature = "mock_runtime")
-                    || self
-                        .inner
-                        .pin_mut()
-                        .setDLAWorkspaceAllocationStrategy(strategy.into())
-                {
-                    Ok(())
-                } else {
-                    Err(Error::Runtime(
-                        "Failed to set DLA workspace allocation strategy".to_string(),
-                    ))
-                }
-            }
+    #[cfg(all(feature = "v_1_7", not(feature = "enterprise")))]
+    /// Sets the DLA workspace allocation strategy for subsequent engine deserializations.
+    /// Previously deserialized engines retain their strategy.
+    ///
+    /// # Safety
+    /// Engines sharing a static workspace on the same DLA core must never execute concurrently.
+    pub unsafe fn set_dla_workspace_allocation_strategy(
+        &mut self,
+        strategy: crate::DLAWorkspaceAllocationStrategy,
+    ) -> Result<()> {
+        if cfg!(feature = "mock_runtime")
+            || self
+                .inner
+                .pin_mut()
+                .setDLAWorkspaceAllocationStrategy(strategy.into())
+        {
+            Ok(())
+        } else {
+            Err(Error::Runtime(
+                "Failed to set DLA workspace allocation strategy".to_string(),
+            ))
         }
     }
 
-    cfg_feature! {
-        all(feature = "v_1_7", not(feature = "enterprise")) => {
-            /// Returns the DLA workspace allocation strategy for subsequent engine deserializations.
-            pub fn dla_workspace_allocation_strategy(&self) -> crate::DLAWorkspaceAllocationStrategy {
-                if cfg!(feature = "mock_runtime") {
-                    crate::DLAWorkspaceAllocationStrategy::kDEFAULT
-                } else {
-                    self.inner.getDLAWorkspaceAllocationStrategy().into()
-                }
-            }
+    #[cfg(all(feature = "v_1_7", not(feature = "enterprise")))]
+    /// Returns the DLA workspace allocation strategy for subsequent engine deserializations.
+    pub fn dla_workspace_allocation_strategy(&self) -> crate::DLAWorkspaceAllocationStrategy {
+        if cfg!(feature = "mock_runtime") {
+            crate::DLAWorkspaceAllocationStrategy::kDEFAULT
+        } else {
+            self.inner.getDLAWorkspaceAllocationStrategy().into()
         }
     }
 
-    cfg_feature! {
-        all(feature = "v_1_6", not(feature = "enterprise")) => {
-            /// Controls whether subsequent engine deserializations defer allocating and copying weights
-            /// to the GPU.
-            ///
-            /// When enabled, an engine can create execution contexts, but inference will fail until
-            /// [`CudaEngine::load_weights`] or [`CudaEngine::load_weights_async`] loads its weights.
-            /// This setting must be changed before calling [`Self::deserialize_cuda_engine`].
-            ///
-            /// See [`nvinfer1::IRuntime::setDeferredWeightsLoading`].
-            pub fn set_deferred_weights_loading(&mut self, defer: bool) {
-                if !cfg!(feature = "mock_runtime") {
-                    self.inner.pin_mut().setDeferredWeightsLoading(defer);
-                }
-            }
+    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
+    /// Controls whether subsequent engine deserializations defer allocating and copying weights
+    /// to the GPU.
+    ///
+    /// When enabled, an engine can create execution contexts, but inference will fail until
+    /// [`CudaEngine::load_weights`] or [`CudaEngine::load_weights_async`] loads its weights.
+    /// This setting must be changed before calling [`Self::deserialize_cuda_engine`].
+    ///
+    /// See [`nvinfer1::IRuntime::setDeferredWeightsLoading`].
+    pub fn set_deferred_weights_loading(&mut self, defer: bool) {
+        if !cfg!(feature = "mock_runtime") {
+            self.inner.pin_mut().setDeferredWeightsLoading(defer);
         }
     }
 
-    cfg_feature! {
-        all(feature = "v_1_6", not(feature = "enterprise")) => {
-            /// Returns whether subsequent engine deserializations defer loading weights onto the GPU.
-            ///
-            /// See [`nvinfer1::IRuntime::getDeferredWeightsLoading`].
-            pub fn deferred_weights_loading(&self) -> bool {
-                if cfg!(feature = "mock_runtime") {
-                    false
-                } else {
-                    self.inner.getDeferredWeightsLoading()
-                }
-            }
+    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
+    /// Returns whether subsequent engine deserializations defer loading weights onto the GPU.
+    ///
+    /// See [`nvinfer1::IRuntime::getDeferredWeightsLoading`].
+    pub fn deferred_weights_loading(&self) -> bool {
+        if cfg!(feature = "mock_runtime") {
+            false
+        } else {
+            self.inner.getDeferredWeightsLoading()
         }
     }
 
-    cfg_feature! {
-        not(feature = "enterprise") => {
-            /// Returns the number of bytes required to inspect a serialized engine's header.
-            ///
-            /// See [`nvinfer1::IRuntime::getEngineHeaderSize`].
-            pub fn engine_header_size(&self) -> usize {
-                if cfg!(feature = "mock_runtime") {
-                    0
-                } else {
-                    self.inner.getEngineHeaderSize() as usize
-                }
-            }
+    #[cfg(not(feature = "enterprise"))]
+    /// Returns the number of bytes required to inspect a serialized engine's header.
+    ///
+    /// See [`nvinfer1::IRuntime::getEngineHeaderSize`].
+    pub fn engine_header_size(&self) -> usize {
+        if cfg!(feature = "mock_runtime") {
+            0
+        } else {
+            self.inner.getEngineHeaderSize() as usize
         }
     }
 
-    cfg_feature! {
-        not(feature = "enterprise") => {
-            /// Checks whether a serialized engine is likely to be valid on the current system.
-            ///
-            /// Returns the header-based validity classification and a bitmask of
-            /// [`crate::EngineInvalidityDiagnostics`] values. The diagnostics bitmask is zero for valid
-            /// and suboptimal engines.
-            ///
-            /// This only inspects the engine header and cannot detect corruption in the engine body.
-            ///
-            /// See [`nvinfer1::IRuntime::getEngineValidity`].
-            pub fn engine_validity(
-                &self,
-                data: &[u8],
-            ) -> Result<(crate::EngineValidity, EngineInvalidityDiagnostics)> {
-                let header_size = self.engine_header_size();
-                if data.len() < header_size {
-                    return Err(Error::InvalidArgument(format!(
-                        "engine buffer must contain at least {header_size} bytes, got {}",
-                        data.len()
-                    )));
-                }
-
-                if cfg!(feature = "mock_runtime") {
-                    return Ok((
-                        crate::EngineValidity::kVALID,
-                        EngineInvalidityDiagnostics::empty(),
-                    ));
-                }
-
-                let mut diagnostics = 0;
-                let validity = unsafe {
-                    self.inner.getEngineValidity(
-                        data.as_ptr() as *const autocxx::c_void,
-                        data.len() as i64,
-                        &mut diagnostics,
-                    )
-                };
-                Ok((
-                    validity.into(),
-                    EngineInvalidityDiagnostics::from_bits_retain(diagnostics),
-                ))
-            }
+    #[cfg(not(feature = "enterprise"))]
+    /// Checks whether a serialized engine is likely to be valid on the current system.
+    ///
+    /// Returns the header-based validity classification and a bitmask of
+    /// [`crate::EngineInvalidityDiagnostics`] values. The diagnostics bitmask is zero for valid
+    /// and suboptimal engines.
+    ///
+    /// This only inspects the engine header and cannot detect corruption in the engine body.
+    ///
+    /// See [`nvinfer1::IRuntime::getEngineValidity`].
+    pub fn engine_validity(
+        &self,
+        data: &[u8],
+    ) -> Result<(crate::EngineValidity, EngineInvalidityDiagnostics)> {
+        let header_size = self.engine_header_size();
+        if data.len() < header_size {
+            return Err(Error::InvalidArgument(format!(
+                "engine buffer must contain at least {header_size} bytes, got {}",
+                data.len()
+            )));
         }
+
+        if cfg!(feature = "mock_runtime") {
+            return Ok((
+                crate::EngineValidity::kVALID,
+                EngineInvalidityDiagnostics::empty(),
+            ));
+        }
+
+        let mut diagnostics = 0;
+        let validity = unsafe {
+            self.inner.getEngineValidity(
+                data.as_ptr() as *const autocxx::c_void,
+                data.len() as i64,
+                &mut diagnostics,
+            )
+        };
+        Ok((
+            validity.into(),
+            EngineInvalidityDiagnostics::from_bits_retain(diagnostics),
+        ))
     }
     //pub fn deserialize_cuda_engine_v2(
     //&'_ mut self,

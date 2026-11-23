@@ -543,22 +543,19 @@ impl<'engine> ExecutionContext<'engine> {
         Ok(())
     }
 
-    cfg_feature! {
-        feature = "v_1_4" => {
-            /// See [nvinfer1::IExecutionContext::setCommunicator]
-            ///
-            /// # Safety
-            /// `comm` must be a pointer to a valid NCCL communicator and follow valid NCCL/CUDA
-            /// usage
-            pub unsafe fn set_communicator(&mut self, comm: *mut std::ffi::c_void) -> Result<()> {
-                if self.inner.pin_mut().setCommunicator(comm as *mut _) {
-                    Ok(())
-                } else {
-                    Err(Error::FailedToSetProperty(
-                        crate::error::PropertySetAttempt::ExecutionContextNcclCommunicator,
-                    ))
-                }
-            }
+    #[cfg(feature = "v_1_4")]
+    /// See [nvinfer1::IExecutionContext::setCommunicator]
+    ///
+    /// # Safety
+    /// `comm` must be a pointer to a valid NCCL communicator and follow valid NCCL/CUDA
+    /// usage
+    pub unsafe fn set_communicator(&mut self, comm: *mut std::ffi::c_void) -> Result<()> {
+        if self.inner.pin_mut().setCommunicator(comm as *mut _) {
+            Ok(())
+        } else {
+            Err(Error::FailedToSetProperty(
+                crate::error::PropertySetAttempt::ExecutionContextNcclCommunicator,
+            ))
         }
     }
 }

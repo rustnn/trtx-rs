@@ -133,13 +133,9 @@
     any(feature = "mock", feature = "mock_runtime"),
     allow(unused_variables)
 )]
-// This allows to use the nightly doc_cfg feature on docs.rs
-//
-// https://users.rust-lang.org/t/how-to-document-optional-features-in-api-docs/64577
+// Automatically document feature availability when building on docs.rs.
 #![cfg_attr(docsrs, feature(doc_cfg))]
-
-#[macro_use]
-mod macros;
+#![cfg_attr(docsrs, doc(auto_cfg))]
 
 pub mod axes;
 pub mod builder;
@@ -152,26 +148,17 @@ pub mod host_memory;
 pub mod interfaces;
 pub mod logger;
 pub mod network;
-cfg_feature! {
-    feature = "onnxparser" => {
-        pub mod onnx_parser;
-    }
-}
+#[cfg(feature = "onnxparser")]
+pub mod onnx_parser;
 pub mod optimization_profile;
 pub mod refitter;
 pub mod runtime;
-cfg_feature! {
-    not(feature = "enterprise") => {
-        pub mod runtime_cache;
-    }
-}
+#[cfg(not(feature = "enterprise"))]
+pub mod runtime_cache;
 pub mod runtime_config;
 pub mod tensor;
-cfg_feature! {
-    all(feature = "v_1_7", not(feature = "enterprise")) => {
-        pub mod weights_manager;
-    }
-}
+#[cfg(all(feature = "v_1_7", not(feature = "enterprise")))]
+pub mod weights_manager;
 
 // Re-export commonly used types
 pub use axes::Axes;
@@ -181,91 +168,79 @@ pub use error::{Error, Result};
 use libloading::AsFilename;
 pub use logger::{LogHandler, Logger, Severity, StderrLogger};
 pub use network::{ConvWeights, NetworkDefinition, OwnedConvWeights, OwnedWeights, Tensor};
-cfg_feature! {
-    feature = "onnxparser" => {
-        pub use onnx_parser::OnnxParser;
-    }
-}
+#[cfg(feature = "onnxparser")]
+pub use onnx_parser::OnnxParser;
 pub use refitter::Refitter;
-cfg_feature! {
-    not(feature = "enterprise") => {
-        pub use runtime::RuntimeCache;
-    }
-}
+#[cfg(not(feature = "enterprise"))]
+pub use runtime::RuntimeCache;
 pub use runtime::{CudaEngine, EngineInspector, ExecutionContext, Runtime, RuntimeConfig};
-cfg_feature! {
-    all(feature = "v_1_7", not(feature = "enterprise")) => {
-        pub use weights_manager::WeightsManager;
-    }
-}
+#[cfg(all(feature = "v_1_7", not(feature = "enterprise")))]
+pub use weights_manager::WeightsManager;
 
 #[cfg(feature = "dlopen_tensorrt_rtx")]
 #[cfg(not(any(feature = "link_tensorrt_rtx", feature = "mock")))]
 pub(crate) static TRTLIB: std::sync::RwLock<Option<libloading::Library>> =
     std::sync::RwLock::new(None);
 
-cfg_feature! {
-    feature = "dlopen_tensorrt_rtx" => {
-        pub fn dynamically_load_tensorrt(_filename: Option<impl AsFilename>) -> Result<()> {
-            #[cfg(not(any(feature = "link_tensorrt_rtx", feature = "mock")))]
-            {
-                use log::{debug, warn};
-                if TRTLIB.read()?.is_some() {
-                    return Ok(());
-                }
-                let mut write = TRTLIB.write()?;
-                if write.is_none() {
-                    let lib = if let Some(filename) = _filename {
-                        debug!("Loading library TensorRT library");
-                        unsafe { libloading::Library::new(filename) }
-                    } else {
-                        unsafe {
-                            libloading::Library::new({
-                                let filename = if cfg!(unix) {
-                                    if cfg!(feature = "enterprise") {
-                                        "libnvinfer.so".to_string()
-                                    } else {
-                                        use trtx_sys::{
-                                            get_tensorrt_major_version, get_tensorrt_minor_version,
-                                            get_tensorrt_patch_version,
-                                        };
-                                        format!(
-                                            "libtensorrt_rtx.so.{}.{}.{}",
-                                            get_tensorrt_major_version(),
-                                            get_tensorrt_minor_version(),
-                                            get_tensorrt_patch_version()
-                                        )
-                                    }
-                                } else {
-                                    if cfg!(feature = "enterprise") {
-                                        "nvinfer.dll".to_string()
-                                    } else {
-                                        use trtx_sys::{
-                                            get_tensorrt_major_version, get_tensorrt_minor_version,
-                                        };
-
-                                        // yes, this uses the version from tensort and not nvonnxparser version
-                                        format!(
-                                            "tensorrt_rtx_{}_{}.dll",
-                                            get_tensorrt_major_version(),
-                                            get_tensorrt_minor_version()
-                                        )
-                                    }
+#[cfg(feature = "dlopen_tensorrt_rtx")]
+pub fn dynamically_load_tensorrt(_filename: Option<impl AsFilename>) -> Result<()> {
+    #[cfg(not(any(feature = "link_tensorrt_rtx", feature = "mock")))]
+    {
+        use log::{debug, warn};
+        if TRTLIB.read()?.is_some() {
+            return Ok(());
+        }
+        let mut write = TRTLIB.write()?;
+        if write.is_none() {
+            let lib = if let Some(filename) = _filename {
+                debug!("Loading library TensorRT library");
+                unsafe { libloading::Library::new(filename) }
+            } else {
+                unsafe {
+                    libloading::Library::new({
+                        let filename = if cfg!(unix) {
+                            if cfg!(feature = "enterprise") {
+                                "libnvinfer.so".to_string()
+                            } else {
+                                use trtx_sys::{
+                                    get_tensorrt_major_version, get_tensorrt_minor_version,
+                                    get_tensorrt_patch_version,
+                                };
+                                format!(
+                                    "libtensorrt_rtx.so.{}.{}.{}",
+                                    get_tensorrt_major_version(),
+                                    get_tensorrt_minor_version(),
+                                    get_tensorrt_patch_version()
+                                )
+                            }
+                        } else {
+                            if cfg!(feature = "enterprise") {
+                                "nvinfer.dll".to_string()
+                            } else {
+                                use trtx_sys::{
+                                    get_tensorrt_major_version, get_tensorrt_minor_version,
                                 };
 
-                                debug!("Loading library {filename} as TensorRT library");
-                                filename
-                            })
-                        }
-                    }
-                    .inspect_err(|e| warn!("Failed to load TensorRT library: {e:?}"))?;
+                                // yes, this uses the version from tensort and not nvonnxparser version
+                                format!(
+                                    "tensorrt_rtx_{}_{}.dll",
+                                    get_tensorrt_major_version(),
+                                    get_tensorrt_minor_version()
+                                )
+                            }
+                        };
 
-                    *write = Some(lib);
+                        debug!("Loading library {filename} as TensorRT library");
+                        filename
+                    })
                 }
             }
-            Ok(())
+            .inspect_err(|e| warn!("Failed to load TensorRT library: {e:?}"))?;
+
+            *write = Some(lib);
         }
     }
+    Ok(())
 }
 
 #[cfg(feature = "dlopen_tensorrt_onnxparser")]
@@ -273,66 +248,63 @@ cfg_feature! {
 pub(crate) static TRT_ONNXPARSER_LIB: std::sync::RwLock<Option<libloading::Library>> =
     std::sync::RwLock::new(None);
 
-cfg_feature! {
-    feature = "dlopen_tensorrt_onnxparser" => {
-        pub fn dynamically_load_tensorrt_onnxparser(_filename: Option<impl AsFilename>) -> Result<()> {
-            #[cfg(not(any(feature = "link_tensorrt_onnxparser", feature = "mock")))]
-            {
-                use log::{debug, warn};
-                let mut write = TRT_ONNXPARSER_LIB.write()?;
-                if write.is_some() {
-                    return Ok(());
-                }
+#[cfg(feature = "dlopen_tensorrt_onnxparser")]
+pub fn dynamically_load_tensorrt_onnxparser(_filename: Option<impl AsFilename>) -> Result<()> {
+    #[cfg(not(any(feature = "link_tensorrt_onnxparser", feature = "mock")))]
+    {
+        use log::{debug, warn};
+        let mut write = TRT_ONNXPARSER_LIB.write()?;
+        if write.is_some() {
+            return Ok(());
+        }
 
-                let lib = if let Some(filename) = _filename {
-                    debug!("Loading library TensorRT onnxparser library",);
-                    unsafe { libloading::Library::new(filename) }
-                } else {
-                    unsafe {
-                        libloading::Library::new({
-                            let filename = if cfg!(unix) {
-                                if cfg!(feature = "enterprise") {
-                                    "libnvonnxparser.so".to_string()
-                                } else {
-                                    use trtx_sys::{
-                                        get_tensorrt_major_version, get_tensorrt_minor_version,
-                                        get_tensorrt_patch_version,
-                                    };
-                                    format!(
-                                        "libtensorrt_onnxparser_rtx.so.{}.{}.{}",
-                                        get_tensorrt_major_version(),
-                                        get_tensorrt_minor_version(),
-                                        get_tensorrt_patch_version()
-                                    )
-                                }
-                            } else {
-                                if cfg!(feature = "enterprise") {
-                                    "nvonnxparser.dll".to_string()
-                                } else {
-                                    use trtx_sys::{
-                                        get_tensorrt_major_version, get_tensorrt_minor_version,
-                                    };
-
-                                    format!(
-                                        "tensorrt_onnxparser_rtx_{}_{}.dll",
-                                        get_tensorrt_major_version(),
-                                        get_tensorrt_minor_version()
-                                    )
-                                }
+        let lib = if let Some(filename) = _filename {
+            debug!("Loading library TensorRT onnxparser library",);
+            unsafe { libloading::Library::new(filename) }
+        } else {
+            unsafe {
+                libloading::Library::new({
+                    let filename = if cfg!(unix) {
+                        if cfg!(feature = "enterprise") {
+                            "libnvonnxparser.so".to_string()
+                        } else {
+                            use trtx_sys::{
+                                get_tensorrt_major_version, get_tensorrt_minor_version,
+                                get_tensorrt_patch_version,
+                            };
+                            format!(
+                                "libtensorrt_onnxparser_rtx.so.{}.{}.{}",
+                                get_tensorrt_major_version(),
+                                get_tensorrt_minor_version(),
+                                get_tensorrt_patch_version()
+                            )
+                        }
+                    } else {
+                        if cfg!(feature = "enterprise") {
+                            "nvonnxparser.dll".to_string()
+                        } else {
+                            use trtx_sys::{
+                                get_tensorrt_major_version, get_tensorrt_minor_version,
                             };
 
-                            debug!("Loading library {filename} as TensorRT onnxparser library");
-                            filename
-                        })
-                    }
-                }
-                .inspect_err(|e| warn!("Failed to load TensorRT onnxparser library: {e:?}"))?;
+                            format!(
+                                "tensorrt_onnxparser_rtx_{}_{}.dll",
+                                get_tensorrt_major_version(),
+                                get_tensorrt_minor_version()
+                            )
+                        }
+                    };
 
-                *write = Some(lib);
+                    debug!("Loading library {filename} as TensorRT onnxparser library");
+                    filename
+                })
             }
-            Ok(())
         }
+        .inspect_err(|e| warn!("Failed to load TensorRT onnxparser library: {e:?}"))?;
+
+        *write = Some(lib);
     }
+    Ok(())
 }
 
 // Re-export TensorRT enums
@@ -348,29 +320,17 @@ pub use trtx_sys::{
     UnaryOperation, WeightsRole,
 };
 
-cfg_feature! {
-    not(feature = "enterprise") => {
-        pub use trtx_sys::{
-            ComputeCapability, CudaGraphStrategy, DynamicShapesKernelSpecializationStrategy,
-            EngineInvalidityDiagnostics, EngineValidity,
-        };
-    }
-}
+#[cfg(not(feature = "enterprise"))]
+pub use trtx_sys::{
+    ComputeCapability, CudaGraphStrategy, DynamicShapesKernelSpecializationStrategy,
+    EngineInvalidityDiagnostics, EngineValidity,
+};
 
-cfg_feature! {
-    feature = "v_1_4" => {
-        pub use trtx_sys::{CollectiveOperation, MoEActType};
-    }
-}
+#[cfg(feature = "v_1_4")]
+pub use trtx_sys::{CollectiveOperation, MoEActType};
 
-cfg_feature! {
-    feature = "v_1_5" => {
-        pub use trtx_sys::{AttentionIOForm, CausalMaskKind};
-    }
-}
+#[cfg(feature = "v_1_5")]
+pub use trtx_sys::{AttentionIOForm, CausalMaskKind};
 
-cfg_feature! {
-    feature = "v_1_7" => {
-        pub use trtx_sys::DLAWorkspaceAllocationStrategy;
-    }
-}
+#[cfg(feature = "v_1_7")]
+pub use trtx_sys::DLAWorkspaceAllocationStrategy;

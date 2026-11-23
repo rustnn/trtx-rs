@@ -21,11 +21,8 @@ pub mod network_flags {
 }
 
 pub use crate::builder_config::BuilderConfig;
-cfg_feature! {
-    not(feature = "enterprise") => {
-        pub use trtx_sys::ComputeCapability;
-    }
-}
+#[cfg(not(feature = "enterprise"))]
+pub use trtx_sys::ComputeCapability;
 pub use trtx_sys::{
     BuilderFlag, DeviceType, EngineCapability, HardwareCompatibilityLevel, MemoryPoolType,
     PreviewFeature, ProfilingVerbosity, RuntimePlatform, TilingOptimizationLevel,
@@ -60,11 +57,15 @@ unsafe impl Send for Builder<'_> {}
 impl<'builder> Builder<'builder> {
     #[cfg(not(feature = "link_tensorrt_rtx"))]
     #[cfg(not(feature = "dlopen_tensorrt_rtx"))]
+    // This constructor exists under both loading configurations.
+    #[cfg_attr(docsrs, doc(cfg(all())))]
     pub fn new(_logger: &'builder Logger) -> Result<Self> {
         Err(Error::TrtRtxLibraryNotLoaded)
     }
 
     #[cfg(any(feature = "link_tensorrt_rtx", feature = "dlopen_tensorrt_rtx"))]
+    // This constructor exists under both loading configurations.
+    #[cfg_attr(docsrs, doc(cfg(all())))]
     pub fn new(logger: &'builder Logger) -> Result<Self> {
         #[cfg(not(feature = "mock"))]
         {
