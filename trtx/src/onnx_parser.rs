@@ -94,22 +94,25 @@ impl<'parser> OnnxParser<'parser> {
         })
     }
 
-    /// Attaches an observer invoked once per named weight during parsing.
-    /// Records are owned copies and may be retained after the callback. They form a candidate
-    /// superset of engine refittable weights and are valid only when parsing succeeds.
-    /// A panicking callback aborts the process, since unwinding through C++ is unsupported.
-    #[cfg(feature = "v_1_7")]
-    pub fn set_refit_observer(
-        &mut self,
-        observer: impl FnMut(RefitRecord) + 'static,
-    ) -> Result<()> {
-        let observer = RefitterObserver::new(Box::new(observer))?;
-        #[cfg(not(feature = "mock_runtime"))]
-        unsafe {
-            trtx_sys::trtx_parser_set_refit_observer(self.inner.as_mut_ptr(), observer.cpp);
+    cfg_feature! {
+        feature = "v_1_7" => {
+            /// Attaches an observer invoked once per named weight during parsing.
+            /// Records are owned copies and may be retained after the callback. They form a candidate
+            /// superset of engine refittable weights and are valid only when parsing succeeds.
+            /// A panicking callback aborts the process, since unwinding through C++ is unsupported.
+            pub fn set_refit_observer(
+                &mut self,
+                observer: impl FnMut(RefitRecord) + 'static,
+            ) -> Result<()> {
+                let observer = RefitterObserver::new(Box::new(observer))?;
+                #[cfg(not(feature = "mock_runtime"))]
+                unsafe {
+                    trtx_sys::trtx_parser_set_refit_observer(self.inner.as_mut_ptr(), observer.cpp);
+                }
+                self.refit_observer = Some(observer);
+                Ok(())
+            }
         }
-        self.refit_observer = Some(observer);
-        Ok(())
     }
 
     pub fn parse_from_file(&mut self, path: &str, verbosity: i32) -> Result<()> {
@@ -177,33 +180,39 @@ impl<'parser> OnnxParser<'parser> {
         &mut self.network
     }
 }
-/// Owned description of a named weight emitted while parsing an ONNX model.
-#[cfg(feature = "v_1_7")]
-#[derive(Debug, Clone)]
-pub struct RefitRecord {
-    pub trt_name: String,
-    pub kind: RefitTransformKind,
-    pub onnx_dtype: i32,
-    pub trt_dtype: crate::DataType,
-    pub count: i64,
-    pub source_onnx_names: Vec<String>,
-    /// Used only for batch normalization folding.
-    pub epsilon: f32,
-    /// Build-time bytes for Constant and ConstantOfShape nodes.
-    pub fixed_data: Vec<u8>,
+cfg_feature! {
+    feature = "v_1_7" => {
+        /// Owned description of a named weight emitted while parsing an ONNX model.
+        #[derive(Debug, Clone)]
+        pub struct RefitRecord {
+            pub trt_name: String,
+            pub kind: RefitTransformKind,
+            pub onnx_dtype: i32,
+            pub trt_dtype: crate::DataType,
+            pub count: i64,
+            pub source_onnx_names: Vec<String>,
+            /// Used only for batch normalization folding.
+            pub epsilon: f32,
+            /// Build-time bytes for Constant and ConstantOfShape nodes.
+            pub fixed_data: Vec<u8>,
+        }
+    }
 }
 
-/// Transformation from ONNX source data to TensorRT refit data.
-#[cfg(feature = "v_1_7")]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RefitTransformKind {
-    Identity,
-    DoubleToFloat,
-    BatchNormFoldScale,
-    BatchNormFoldBias,
-    ConstantNode,
-    ConstantOfShape,
-    Unknown(i32),
+cfg_feature! {
+    feature = "v_1_7" => {
+        /// Transformation from ONNX source data to TensorRT refit data.
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        pub enum RefitTransformKind {
+            Identity,
+            DoubleToFloat,
+            BatchNormFoldScale,
+            BatchNormFoldBias,
+            ConstantNode,
+            ConstantOfShape,
+            Unknown(i32),
+        }
+    }
 }
 
 #[cfg(feature = "v_1_7")]

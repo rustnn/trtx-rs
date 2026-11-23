@@ -119,6 +119,13 @@ pub enum Error {
         feature = "dlopen_tensorrt_rtx",
         feature = "dlopen_tensorrt_onnxparser"
     ))]
+    #[cfg_attr(
+        docsrs,
+        doc(cfg(any(
+            feature = "dlopen_tensorrt_rtx",
+            feature = "dlopen_tensorrt_onnxparser"
+        )))
+    )]
     #[error("Dynamic loading error: {0}")]
     Libloading(#[from] libloading::Error),
 

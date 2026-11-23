@@ -419,101 +419,122 @@ impl<'builder> BuilderConfig<'builder> {
         }
     }
 
-    /// See [IBuilderConfig::setNbComputeCapabilities]
-    #[cfg(not(feature = "enterprise"))]
-    pub fn set_nb_compute_capabilities(
-        &mut self,
-        max_nb_compute_capabilities: i32,
-    ) -> crate::Result<()> {
-        if cfg!(not(feature = "mock")) {
-            if self
-                .inner
-                .pin_mut()
-                .setNbComputeCapabilities(max_nb_compute_capabilities)
-            {
-                Ok(())
-            } else {
-                Err(crate::Error::FailedToSetProperty(
-                    PropertySetAttempt::BuilderConfigNbComputeCapabilities,
-                ))
+    cfg_feature! {
+        not(feature = "enterprise") => {
+            /// See [IBuilderConfig::setNbComputeCapabilities]
+            pub fn set_nb_compute_capabilities(
+                &mut self,
+                max_nb_compute_capabilities: i32,
+            ) -> crate::Result<()> {
+                if cfg!(not(feature = "mock")) {
+                    if self
+                        .inner
+                        .pin_mut()
+                        .setNbComputeCapabilities(max_nb_compute_capabilities)
+                    {
+                        Ok(())
+                    } else {
+                        Err(crate::Error::FailedToSetProperty(
+                            PropertySetAttempt::BuilderConfigNbComputeCapabilities,
+                        ))
+                    }
+                } else {
+                    Ok(())
+                }
             }
-        } else {
-            Ok(())
         }
     }
 
-    /// See [IBuilderConfig::getNbComputeCapabilities]
-    #[cfg(not(feature = "enterprise"))]
-    pub fn nb_compute_capabilities(&self) -> i32 {
-        if cfg!(not(feature = "mock")) {
-            self.inner.getNbComputeCapabilities()
-        } else {
-            0
-        }
-    }
-
-    #[cfg(not(feature = "enterprise"))]
-    /// See [IBuilderConfig::setComputeCapability]
-    pub fn set_compute_capability(
-        &mut self,
-        compute_capability: ComputeCapability,
-        index: i32,
-    ) -> crate::Result<()> {
-        if cfg!(not(feature = "mock")) {
-            if self
-                .inner
-                .pin_mut()
-                .setComputeCapability(compute_capability.into(), index)
-            {
-                Ok(())
-            } else {
-                Err(crate::Error::FailedToSetProperty(
-                    PropertySetAttempt::BuilderConfigComputeCapability,
-                ))
+    cfg_feature! {
+        not(feature = "enterprise") => {
+            /// See [IBuilderConfig::getNbComputeCapabilities]
+            pub fn nb_compute_capabilities(&self) -> i32 {
+                if cfg!(not(feature = "mock")) {
+                    self.inner.getNbComputeCapabilities()
+                } else {
+                    0
+                }
             }
-        } else {
-            Ok(())
         }
     }
 
-    #[cfg(not(feature = "enterprise"))]
-    /// See [IBuilderConfig::getComputeCapability]
-    pub fn compute_capability(&self, index: i32) -> ComputeCapability {
-        if cfg!(not(feature = "mock")) {
-            self.inner.getComputeCapability(index).into()
-        } else {
-            ComputeCapability::kNONE
+    cfg_feature! {
+        not(feature = "enterprise") => {
+            /// See [IBuilderConfig::setComputeCapability]
+            pub fn set_compute_capability(
+                &mut self,
+                compute_capability: ComputeCapability,
+                index: i32,
+            ) -> crate::Result<()> {
+                if cfg!(not(feature = "mock")) {
+                    if self
+                        .inner
+                        .pin_mut()
+                        .setComputeCapability(compute_capability.into(), index)
+                    {
+                        Ok(())
+                    } else {
+                        Err(crate::Error::FailedToSetProperty(
+                            PropertySetAttempt::BuilderConfigComputeCapability,
+                        ))
+                    }
+                } else {
+                    Ok(())
+                }
+            }
         }
     }
 
-    #[cfg(feature = "v_1_6")]
-    /// See [IBuilderConfig::setBuildRoute]
-    pub fn set_build_route(&mut self, build_route: &str) -> Result<()> {
-        use std::ffi::CString;
-
-        use crate::error::OkOrFailedSettingProperty;
-
-        let c_str = CString::new(build_route)?;
-        unsafe { self.inner.pin_mut().setBuildRoute(c_str.as_ptr()) }
-            .ok_or_err(PropertySetAttempt::BuildRoute)
+    cfg_feature! {
+        not(feature = "enterprise") => {
+            /// See [IBuilderConfig::getComputeCapability]
+            pub fn compute_capability(&self, index: i32) -> ComputeCapability {
+                if cfg!(not(feature = "mock")) {
+                    self.inner.getComputeCapability(index).into()
+                } else {
+                    ComputeCapability::kNONE
+                }
+            }
+        }
     }
 
-    #[cfg(feature = "v_1_6")]
-    /// See [IBuilderConfig::getBuildRoute]
-    pub fn build_route(&self) -> Result<&str> {
-        use std::ffi::CStr;
+    cfg_feature! {
+        feature = "v_1_6" => {
+            /// See [IBuilderConfig::setBuildRoute]
+            pub fn set_build_route(&mut self, build_route: &str) -> Result<()> {
+                use std::ffi::CString;
 
-        let c_str = unsafe { CStr::from_ptr(self.inner.getBuildRoute()) };
-        Ok(c_str.to_str()?)
+                use crate::error::OkOrFailedSettingProperty;
+
+                let c_str = CString::new(build_route)?;
+                unsafe { self.inner.pin_mut().setBuildRoute(c_str.as_ptr()) }
+                    .ok_or_err(PropertySetAttempt::BuildRoute)
+            }
+        }
     }
 
-    #[cfg(feature = "v_1_6")]
-    /// See [IBuilderConfig::getAllBuildRoutes]
-    pub fn all_build_routes(&self) -> Result<&str> {
-        use std::ffi::CStr;
+    cfg_feature! {
+        feature = "v_1_6" => {
+            /// See [IBuilderConfig::getBuildRoute]
+            pub fn build_route(&self) -> Result<&str> {
+                use std::ffi::CStr;
 
-        let c_str = unsafe { CStr::from_ptr(self.inner.getAllBuildRoutes()) };
-        Ok(c_str.to_str()?)
+                let c_str = unsafe { CStr::from_ptr(self.inner.getBuildRoute()) };
+                Ok(c_str.to_str()?)
+            }
+        }
+    }
+
+    cfg_feature! {
+        feature = "v_1_6" => {
+            /// See [IBuilderConfig::getAllBuildRoutes]
+            pub fn all_build_routes(&self) -> Result<&str> {
+                use std::ffi::CStr;
+
+                let c_str = unsafe { CStr::from_ptr(self.inner.getAllBuildRoutes()) };
+                Ok(c_str.to_str()?)
+            }
+        }
     }
 }
 

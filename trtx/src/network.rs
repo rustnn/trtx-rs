@@ -300,14 +300,18 @@ pub type KVCacheUpdateLayer<'layer> = Layer<'layer, nvinfer1::IKVCacheUpdateLaye
 pub type LrnLayer<'layer> = Layer<'layer, nvinfer1::ILRNLayer>;
 /// [`trtx_sys::nvinfer1::IOneHotLayer`] — C++ [`nvinfer1::IOneHotLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_one_hot_layer.html).
 pub type OneHotLayer<'layer> = Layer<'layer, nvinfer1::IOneHotLayer>;
-#[cfg(feature = "v_1_4")]
-/// [`trtx_sys::nvinfer1::IMoELayer`] — C++ [`nvinfer1::IMoELayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_mo_e_layer.html).
-#[cfg(feature = "v_1_4")]
-pub type MoELayer<'layer> = Layer<'layer, nvinfer1::IMoELayer>;
-#[cfg(feature = "v_1_4")]
-/// [`trtx_sys::nvinfer1::IDistCollectiveLayer`] — C++ [`nvinfer1::IDistCollectiveLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_dist_collective_layer.html).
-#[cfg(feature = "v_1_4")]
-pub type DistCollectiveLayer<'layer> = Layer<'layer, nvinfer1::IDistCollectiveLayer>;
+cfg_feature! {
+    feature = "v_1_4" => {
+        /// [`trtx_sys::nvinfer1::IMoELayer`] — C++ [`nvinfer1::IMoELayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_mo_e_layer.html).
+        pub type MoELayer<'layer> = Layer<'layer, nvinfer1::IMoELayer>;
+    }
+}
+cfg_feature! {
+    feature = "v_1_4" => {
+        /// [`trtx_sys::nvinfer1::IDistCollectiveLayer`] — C++ [`nvinfer1::IDistCollectiveLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_dist_collective_layer.html).
+        pub type DistCollectiveLayer<'layer> = Layer<'layer, nvinfer1::IDistCollectiveLayer>;
+    }
+}
 
 // Loop and conditional boundary layers (created via Loop / IfConditional / add_attention)
 /// [`trtx_sys::nvinfer1::IAttentionInputLayer`] — C++ [`nvinfer1::IAttentionInputLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_attention_input_layer.html).
@@ -1053,226 +1057,232 @@ impl NormalizationLayer<'_> {
     }
 }
 
-#[cfg(feature = "v_1_4")]
-impl MoELayer<'_> {
-    /// See [`trtx_sys::nvinfer1::IMoELayer::setGatedWeights`].
-    pub fn set_gated_weights(
-        &mut self,
-        network: &mut NetworkDefinition,
-        fc_gate_weights: &Tensor,
-        fc_up_weights: &Tensor,
-        fc_down_weights: &Tensor,
-        activation_type: MoEActType,
-    ) -> Result<()> {
-        check_network!(network, self);
-        check_network!(network, fc_gate_weights);
-        check_network!(network, fc_up_weights);
-        check_network!(network, fc_down_weights);
-        self.inner.as_mut().setGatedWeights(
-            fc_gate_weights.pin_mut(),
-            fc_up_weights.pin_mut(),
-            fc_down_weights.pin_mut(),
-            activation_type.into(),
-        );
-        Ok(())
-    }
+cfg_feature! {
+    feature = "v_1_4" => {
+        impl MoELayer<'_> {
+            /// See [`trtx_sys::nvinfer1::IMoELayer::setGatedWeights`].
+            pub fn set_gated_weights(
+                &mut self,
+                network: &mut NetworkDefinition,
+                fc_gate_weights: &Tensor,
+                fc_up_weights: &Tensor,
+                fc_down_weights: &Tensor,
+                activation_type: MoEActType,
+            ) -> Result<()> {
+                check_network!(network, self);
+                check_network!(network, fc_gate_weights);
+                check_network!(network, fc_up_weights);
+                check_network!(network, fc_down_weights);
+                self.inner.as_mut().setGatedWeights(
+                    fc_gate_weights.pin_mut(),
+                    fc_up_weights.pin_mut(),
+                    fc_down_weights.pin_mut(),
+                    activation_type.into(),
+                );
+                Ok(())
+            }
 
-    /// See [`trtx_sys::nvinfer1::IMoELayer::setGatedBiases`].
-    pub fn set_gated_biases(
-        &mut self,
-        network: &mut NetworkDefinition,
-        fc_gate_biases: &Tensor,
-        fc_up_biases: &Tensor,
-        fc_down_biases: &Tensor,
-    ) -> Result<()> {
-        check_network!(network, self);
-        check_network!(network, fc_gate_biases);
-        check_network!(network, fc_up_biases);
-        check_network!(network, fc_down_biases);
-        self.inner.as_mut().setGatedBiases(
-            fc_gate_biases.pin_mut(),
-            fc_up_biases.pin_mut(),
-            fc_down_biases.pin_mut(),
-        );
-        Ok(())
-    }
+            /// See [`trtx_sys::nvinfer1::IMoELayer::setGatedBiases`].
+            pub fn set_gated_biases(
+                &mut self,
+                network: &mut NetworkDefinition,
+                fc_gate_biases: &Tensor,
+                fc_up_biases: &Tensor,
+                fc_down_biases: &Tensor,
+            ) -> Result<()> {
+                check_network!(network, self);
+                check_network!(network, fc_gate_biases);
+                check_network!(network, fc_up_biases);
+                check_network!(network, fc_down_biases);
+                self.inner.as_mut().setGatedBiases(
+                    fc_gate_biases.pin_mut(),
+                    fc_up_biases.pin_mut(),
+                    fc_down_biases.pin_mut(),
+                );
+                Ok(())
+            }
 
-    /// See [`trtx_sys::nvinfer1::IMoELayer::setActivationType`].
-    pub fn set_activation_type(
-        &mut self,
-        network: &mut NetworkDefinition,
-        activation_type: MoEActType,
-    ) -> Result<()> {
-        check_network!(network, self);
-        self.inner
-            .as_mut()
-            .setActivationType(activation_type.into());
-        Ok(())
-    }
+            /// See [`trtx_sys::nvinfer1::IMoELayer::setActivationType`].
+            pub fn set_activation_type(
+                &mut self,
+                network: &mut NetworkDefinition,
+                activation_type: MoEActType,
+            ) -> Result<()> {
+                check_network!(network, self);
+                self.inner
+                    .as_mut()
+                    .setActivationType(activation_type.into());
+                Ok(())
+            }
 
-    /// See [`trtx_sys::nvinfer1::IMoELayer::getActivationType`].
-    pub fn activation_type(&self, network: &NetworkDefinition) -> MoEActType {
-        check_network!(network, self);
-        self.inner.as_ref().getActivationType().into()
-    }
+            /// See [`trtx_sys::nvinfer1::IMoELayer::getActivationType`].
+            pub fn activation_type(&self, network: &NetworkDefinition) -> MoEActType {
+                check_network!(network, self);
+                self.inner.as_ref().getActivationType().into()
+            }
 
-    /// See [`trtx_sys::nvinfer1::IMoELayer::setQuantizationStatic`].
-    pub fn set_quantization_static(
-        &mut self,
-        network: &mut NetworkDefinition,
-        fc_down_activation_scale: &Tensor,
-        data_type: DataType,
-    ) -> Result<()> {
-        check_network!(network, self);
-        check_network!(network, fc_down_activation_scale);
-        self.inner
-            .as_mut()
-            .setQuantizationStatic(fc_down_activation_scale.pin_mut(), data_type.into());
-        Ok(())
-    }
+            /// See [`trtx_sys::nvinfer1::IMoELayer::setQuantizationStatic`].
+            pub fn set_quantization_static(
+                &mut self,
+                network: &mut NetworkDefinition,
+                fc_down_activation_scale: &Tensor,
+                data_type: DataType,
+            ) -> Result<()> {
+                check_network!(network, self);
+                check_network!(network, fc_down_activation_scale);
+                self.inner
+                    .as_mut()
+                    .setQuantizationStatic(fc_down_activation_scale.pin_mut(), data_type.into());
+                Ok(())
+            }
 
-    /// See [`trtx_sys::nvinfer1::IMoELayer::setQuantizationDynamicDblQ`].
-    pub fn set_quantization_dynamic_dbl_q(
-        &mut self,
-        network: &mut NetworkDefinition,
-        fc_down_activation_dbl_q_scale: &Tensor,
-        data_type: DataType,
-        block_shape: &[i64],
-        dyn_q_output_scale_type: DataType,
-    ) -> Result<()> {
-        check_network!(network, self);
-        check_network!(network, fc_down_activation_dbl_q_scale);
-        let block = trtx_sys::Dims::from_slice(block_shape);
-        self.inner.as_mut().setQuantizationDynamicDblQ(
-            fc_down_activation_dbl_q_scale.pin_mut(),
-            data_type.into(),
-            &block,
-            dyn_q_output_scale_type.into(),
-        );
-        Ok(())
-    }
+            /// See [`trtx_sys::nvinfer1::IMoELayer::setQuantizationDynamicDblQ`].
+            pub fn set_quantization_dynamic_dbl_q(
+                &mut self,
+                network: &mut NetworkDefinition,
+                fc_down_activation_dbl_q_scale: &Tensor,
+                data_type: DataType,
+                block_shape: &[i64],
+                dyn_q_output_scale_type: DataType,
+            ) -> Result<()> {
+                check_network!(network, self);
+                check_network!(network, fc_down_activation_dbl_q_scale);
+                let block = trtx_sys::Dims::from_slice(block_shape);
+                self.inner.as_mut().setQuantizationDynamicDblQ(
+                    fc_down_activation_dbl_q_scale.pin_mut(),
+                    data_type.into(),
+                    &block,
+                    dyn_q_output_scale_type.into(),
+                );
+                Ok(())
+            }
 
-    /// See [`trtx_sys::nvinfer1::IMoELayer::setQuantizationToType`].
-    pub fn set_quantization_to_type(
-        &mut self,
-        network: &mut NetworkDefinition,
-        type_: DataType,
-    ) -> Result<()> {
-        check_network!(network, self);
-        self.inner.as_mut().setQuantizationToType(type_.into());
-        Ok(())
-    }
+            /// See [`trtx_sys::nvinfer1::IMoELayer::setQuantizationToType`].
+            pub fn set_quantization_to_type(
+                &mut self,
+                network: &mut NetworkDefinition,
+                type_: DataType,
+            ) -> Result<()> {
+                check_network!(network, self);
+                self.inner.as_mut().setQuantizationToType(type_.into());
+                Ok(())
+            }
 
-    /// See [`trtx_sys::nvinfer1::IMoELayer::getQuantizationToType`].
-    pub fn quantization_to_type(&self, network: &NetworkDefinition) -> DataType {
-        check_network!(network, self);
-        self.inner.as_ref().getQuantizationToType().into()
-    }
+            /// See [`trtx_sys::nvinfer1::IMoELayer::getQuantizationToType`].
+            pub fn quantization_to_type(&self, network: &NetworkDefinition) -> DataType {
+                check_network!(network, self);
+                self.inner.as_ref().getQuantizationToType().into()
+            }
 
-    /// See [`trtx_sys::nvinfer1::IMoELayer::setQuantizationBlockShape`].
-    pub fn set_quantization_block_shape(
-        &mut self,
-        network: &mut NetworkDefinition,
-        block_shape: &[i64],
-    ) -> Result<()> {
-        check_network!(network, self);
-        let block = trtx_sys::Dims::from_slice(block_shape);
-        self.inner.as_mut().setQuantizationBlockShape(&block);
-        Ok(())
-    }
+            /// See [`trtx_sys::nvinfer1::IMoELayer::setQuantizationBlockShape`].
+            pub fn set_quantization_block_shape(
+                &mut self,
+                network: &mut NetworkDefinition,
+                block_shape: &[i64],
+            ) -> Result<()> {
+                check_network!(network, self);
+                let block = trtx_sys::Dims::from_slice(block_shape);
+                self.inner.as_mut().setQuantizationBlockShape(&block);
+                Ok(())
+            }
 
-    /// See [`trtx_sys::nvinfer1::IMoELayer::getQuantizationBlockShape`].
-    pub fn quantization_block_shape(&self, network: &NetworkDefinition) -> Vec<i64> {
-        check_network!(network, self);
-        let d = self.inner.as_ref().getQuantizationBlockShape();
-        d.d[..d.nbDims as usize].to_vec()
-    }
+            /// See [`trtx_sys::nvinfer1::IMoELayer::getQuantizationBlockShape`].
+            pub fn quantization_block_shape(&self, network: &NetworkDefinition) -> Vec<i64> {
+                check_network!(network, self);
+                let d = self.inner.as_ref().getQuantizationBlockShape();
+                d.d[..d.nbDims as usize].to_vec()
+            }
 
-    /// See [`trtx_sys::nvinfer1::IMoELayer::setDynQOutputScaleType`].
-    pub fn set_dyn_q_output_scale_type(
-        &mut self,
-        network: &mut NetworkDefinition,
-        type_: DataType,
-    ) -> Result<()> {
-        check_network!(network, self);
-        self.inner.as_mut().setDynQOutputScaleType(type_.into());
-        Ok(())
-    }
+            /// See [`trtx_sys::nvinfer1::IMoELayer::setDynQOutputScaleType`].
+            pub fn set_dyn_q_output_scale_type(
+                &mut self,
+                network: &mut NetworkDefinition,
+                type_: DataType,
+            ) -> Result<()> {
+                check_network!(network, self);
+                self.inner.as_mut().setDynQOutputScaleType(type_.into());
+                Ok(())
+            }
 
-    /// See [`trtx_sys::nvinfer1::IMoELayer::getDynQOutputScaleType`].
-    pub fn dyn_q_output_scale_type(&self, network: &NetworkDefinition) -> DataType {
-        check_network!(network, self);
-        self.inner.as_ref().getDynQOutputScaleType().into()
-    }
+            /// See [`trtx_sys::nvinfer1::IMoELayer::getDynQOutputScaleType`].
+            pub fn dyn_q_output_scale_type(&self, network: &NetworkDefinition) -> DataType {
+                check_network!(network, self);
+                self.inner.as_ref().getDynQOutputScaleType().into()
+            }
 
-    /// See [`trtx_sys::nvinfer1::IMoELayer::setSwigluParams`].
-    pub fn set_swiglu_params(
-        &mut self,
-        network: &mut NetworkDefinition,
-        limit: f32,
-        alpha: f32,
-        beta: f32,
-    ) -> Result<()> {
-        check_network!(network, self);
-        self.inner.as_mut().setSwigluParams(limit, alpha, beta);
-        Ok(())
-    }
+            /// See [`trtx_sys::nvinfer1::IMoELayer::setSwigluParams`].
+            pub fn set_swiglu_params(
+                &mut self,
+                network: &mut NetworkDefinition,
+                limit: f32,
+                alpha: f32,
+                beta: f32,
+            ) -> Result<()> {
+                check_network!(network, self);
+                self.inner.as_mut().setSwigluParams(limit, alpha, beta);
+                Ok(())
+            }
 
-    /// See [`trtx_sys::nvinfer1::IMoELayer::setSwigluParamLimit`].
-    pub fn set_swiglu_param_limit(
-        &mut self,
-        network: &mut NetworkDefinition,
-        limit: f32,
-    ) -> Result<()> {
-        check_network!(network, self);
-        self.inner.as_mut().setSwigluParamLimit(limit);
-        Ok(())
-    }
+            /// See [`trtx_sys::nvinfer1::IMoELayer::setSwigluParamLimit`].
+            pub fn set_swiglu_param_limit(
+                &mut self,
+                network: &mut NetworkDefinition,
+                limit: f32,
+            ) -> Result<()> {
+                check_network!(network, self);
+                self.inner.as_mut().setSwigluParamLimit(limit);
+                Ok(())
+            }
 
-    /// See [`trtx_sys::nvinfer1::IMoELayer::getSwigluParamLimit`].
-    pub fn swiglu_param_limit(&self, network: &NetworkDefinition) -> f32 {
-        check_network!(network, self);
-        self.inner.as_ref().getSwigluParamLimit()
-    }
+            /// See [`trtx_sys::nvinfer1::IMoELayer::getSwigluParamLimit`].
+            pub fn swiglu_param_limit(&self, network: &NetworkDefinition) -> f32 {
+                check_network!(network, self);
+                self.inner.as_ref().getSwigluParamLimit()
+            }
 
-    /// See [`trtx_sys::nvinfer1::IMoELayer::setSwigluParamAlpha`].
-    pub fn set_swiglu_param_alpha(
-        &mut self,
-        network: &mut NetworkDefinition,
-        alpha: f32,
-    ) -> Result<()> {
-        check_network!(network, self);
-        self.inner.as_mut().setSwigluParamAlpha(alpha);
-        Ok(())
-    }
+            /// See [`trtx_sys::nvinfer1::IMoELayer::setSwigluParamAlpha`].
+            pub fn set_swiglu_param_alpha(
+                &mut self,
+                network: &mut NetworkDefinition,
+                alpha: f32,
+            ) -> Result<()> {
+                check_network!(network, self);
+                self.inner.as_mut().setSwigluParamAlpha(alpha);
+                Ok(())
+            }
 
-    /// See [`trtx_sys::nvinfer1::IMoELayer::getSwigluParamAlpha`].
-    pub fn swiglu_param_alpha(&self, network: &NetworkDefinition) -> f32 {
-        check_network!(network, self);
-        self.inner.as_ref().getSwigluParamAlpha()
-    }
+            /// See [`trtx_sys::nvinfer1::IMoELayer::getSwigluParamAlpha`].
+            pub fn swiglu_param_alpha(&self, network: &NetworkDefinition) -> f32 {
+                check_network!(network, self);
+                self.inner.as_ref().getSwigluParamAlpha()
+            }
 
-    /// See [`trtx_sys::nvinfer1::IMoELayer::setSwigluParamBeta`].
-    pub fn set_swiglu_param_beta(
-        &mut self,
-        network: &mut NetworkDefinition,
-        beta: f32,
-    ) -> Result<()> {
-        check_network!(network, self);
-        self.inner.as_mut().setSwigluParamBeta(beta);
-        Ok(())
-    }
+            /// See [`trtx_sys::nvinfer1::IMoELayer::setSwigluParamBeta`].
+            pub fn set_swiglu_param_beta(
+                &mut self,
+                network: &mut NetworkDefinition,
+                beta: f32,
+            ) -> Result<()> {
+                check_network!(network, self);
+                self.inner.as_mut().setSwigluParamBeta(beta);
+                Ok(())
+            }
 
-    /// See [`trtx_sys::nvinfer1::IMoELayer::getSwigluParamBeta`].
-    pub fn swiglu_param_beta(&self, network: &NetworkDefinition) -> f32 {
-        check_network!(network, self);
-        self.inner.as_ref().getSwigluParamBeta()
+            /// See [`trtx_sys::nvinfer1::IMoELayer::getSwigluParamBeta`].
+            pub fn swiglu_param_beta(&self, network: &NetworkDefinition) -> f32 {
+                check_network!(network, self);
+                self.inner.as_ref().getSwigluParamBeta()
+            }
+        }
     }
 }
 
-#[cfg(feature = "v_1_4")]
-/// `IDistCollectiveLayer` adds no methods beyond [`ILayer`](trtx_sys::nvinfer1::ILayer); use [`Layer`] helpers.
-impl DistCollectiveLayer<'_> {}
+cfg_feature! {
+    feature = "v_1_4" => {
+        /// `IDistCollectiveLayer` adds no methods beyond [`ILayer`](trtx_sys::nvinfer1::ILayer); use [`Layer`] helpers.
+        impl DistCollectiveLayer<'_> {}
+    }
+}
 
 /// [`trtx_sys::nvinfer1::INetworkDefinition`] — C++ [`nvinfer1::INetworkDefinition`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_network_definition.html).
 pub struct NetworkDefinition<'builder> {
@@ -2133,20 +2143,23 @@ impl<'network> NetworkDefinition<'network> {
         unsafe { self.add_constant_unsafe(dims, Some(weights), data_type, false, name) }
     }
 
-    #[cfg(feature = "v_1_7")]
-    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConstant`] with nullptr.
-    ///
-    /// Requires building with IBuilderConfig kSTRIP_PLAN+kREFIT_INDIVIDUAL on TensorRT RTX 1.7+ or
-    /// TensorRT 11.3+
-    pub fn add_constant_placeholder(
-        &mut self,
-        dims: &[i64],
-        data_type: trtx_sys::DataType,
-        name: &str,
-    ) -> Result<ConstantLayer<'network>> {
-        trace!("add_constant_placeholder dims={dims:?} data_type={data_type:?} name={name:?}");
-        // nullptr weights must be named to build the engine!
-        unsafe { self.add_constant_unsafe(dims, None, data_type, false, Some(name)) }
+    cfg_feature! {
+        feature = "v_1_7" => {
+            /// See [`trtx_sys::nvinfer1::INetworkDefinition::addConstant`] with nullptr.
+            ///
+            /// Requires building with IBuilderConfig kSTRIP_PLAN+kREFIT_INDIVIDUAL on TensorRT RTX 1.7+ or
+            /// TensorRT 11.3+
+            pub fn add_constant_placeholder(
+                &mut self,
+                dims: &[i64],
+                data_type: trtx_sys::DataType,
+                name: &str,
+            ) -> Result<ConstantLayer<'network>> {
+                trace!("add_constant_placeholder dims={dims:?} data_type={data_type:?} name={name:?}");
+                // nullptr weights must be named to build the engine!
+                unsafe { self.add_constant_unsafe(dims, None, data_type, false, Some(name)) }
+            }
+        }
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addSoftMax`].
@@ -2797,18 +2810,21 @@ impl<'network> NetworkDefinition<'network> {
         SqueezeLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
-    /// Adds a squeeze layer that removes every dimension statically equal to one.
-    /// Dynamic dimensions are retained and must not become one at build or runtime.
-    /// Zero-sized dimensions are retained.
-    #[cfg(feature = "v_1_7")]
-    pub fn add_squeeze_all(&mut self, input: &Tensor) -> Result<SqueezeLayer<'network>> {
-        check_network!(self, input);
-        let layer_ptr = unsafe {
-            self.inner
-                .pin_mut()
-                .addSqueeze1(input.pin_mut(), std::ptr::null_mut())
-        };
-        SqueezeLayer::new(self.inner.as_ptr(), layer_ptr)
+    cfg_feature! {
+        feature = "v_1_7" => {
+            /// Adds a squeeze layer that removes every dimension statically equal to one.
+            /// Dynamic dimensions are retained and must not become one at build or runtime.
+            /// Zero-sized dimensions are retained.
+            pub fn add_squeeze_all(&mut self, input: &Tensor) -> Result<SqueezeLayer<'network>> {
+                check_network!(self, input);
+                let layer_ptr = unsafe {
+                    self.inner
+                        .pin_mut()
+                        .addSqueeze1(input.pin_mut(), std::ptr::null_mut())
+                };
+                SqueezeLayer::new(self.inner.as_ptr(), layer_ptr)
+            }
+        }
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addUnsqueeze`].
@@ -2901,38 +2917,41 @@ impl<'network> NetworkDefinition<'network> {
         })
     }
 
-    #[cfg(feature = "v_1_5")]
-    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addAttentionV2`].
-    pub fn add_attention_v2(
-        &mut self,
-        query: &'_ Tensor,
-        key: &'_ Tensor,
-        value: &'_ Tensor,
-        norm_op: trtx_sys::AttentionNormalizationOp,
-        causal_kind: CausalMaskKind,
-    ) -> Result<Attention<'network>> {
-        check_network!(self, query);
-        check_network!(self, key);
-        check_network!(self, value);
-        debug!(
-            "add_attention_v2 query={} key={} value={} norm_op={norm_op:?} causal_kind={causal_kind:?}",
-            tensor_dbg(self, query),
-            tensor_dbg(self, key),
-            tensor_dbg(self, value)
-        );
-        let attn_ptr = self.inner.pin_mut().addAttentionV2(
-            query.pin_mut(),
-            key.pin_mut(),
-            value.pin_mut(),
-            norm_op.into(),
-            causal_kind.into(),
-        );
-        let attn = unsafe { attn_ptr.as_mut() }
-            .ok_or_else(|| Error::Runtime("Failed to add attention".to_string()))?;
-        Ok(Attention {
-            inner: unsafe { Pin::new_unchecked(attn) },
-            network: self.inner.as_ptr(),
-        })
+    cfg_feature! {
+        feature = "v_1_5" => {
+            /// See [`trtx_sys::nvinfer1::INetworkDefinition::addAttentionV2`].
+            pub fn add_attention_v2(
+                &mut self,
+                query: &'_ Tensor,
+                key: &'_ Tensor,
+                value: &'_ Tensor,
+                norm_op: trtx_sys::AttentionNormalizationOp,
+                causal_kind: CausalMaskKind,
+            ) -> Result<Attention<'network>> {
+                check_network!(self, query);
+                check_network!(self, key);
+                check_network!(self, value);
+                debug!(
+                    "add_attention_v2 query={} key={} value={} norm_op={norm_op:?} causal_kind={causal_kind:?}",
+                    tensor_dbg(self, query),
+                    tensor_dbg(self, key),
+                    tensor_dbg(self, value)
+                );
+                let attn_ptr = self.inner.pin_mut().addAttentionV2(
+                    query.pin_mut(),
+                    key.pin_mut(),
+                    value.pin_mut(),
+                    norm_op.into(),
+                    causal_kind.into(),
+                );
+                let attn = unsafe { attn_ptr.as_mut() }
+                    .ok_or_else(|| Error::Runtime("Failed to add attention".to_string()))?;
+                Ok(Attention {
+                    inner: unsafe { Pin::new_unchecked(attn) },
+                    network: self.inner.as_ptr(),
+                })
+            }
+        }
     }
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addAttention`].
@@ -2969,64 +2988,70 @@ impl<'network> NetworkDefinition<'network> {
         })
     }
 
-    #[cfg(feature = "v_1_4")]
-    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addMoE`].
-    pub fn add_moe(
-        &mut self,
-        hidden_states: &Tensor,
-        selected_experts_for_tokens: &Tensor,
-        scores_for_selected_experts: &Tensor,
-    ) -> Result<MoELayer<'network>> {
-        check_network!(self, hidden_states);
-        check_network!(self, selected_experts_for_tokens);
-        check_network!(self, scores_for_selected_experts);
-        debug!(
-            "add_moe hidden_states={} selected_experts_for_tokens={} scores_for_selected_experts={}",
-            tensor_dbg(self, hidden_states),
-            tensor_dbg(self, selected_experts_for_tokens),
-            tensor_dbg(self, scores_for_selected_experts)
-        );
-        let layer_ptr = self.inner.pin_mut().addMoE(
-            hidden_states.pin_mut(),
-            selected_experts_for_tokens.pin_mut(),
-            scores_for_selected_experts.pin_mut(),
-        );
-        MoELayer::new(self.inner.as_ptr(), layer_ptr)
+    cfg_feature! {
+        feature = "v_1_4" => {
+            /// See [`trtx_sys::nvinfer1::INetworkDefinition::addMoE`].
+            pub fn add_moe(
+                &mut self,
+                hidden_states: &Tensor,
+                selected_experts_for_tokens: &Tensor,
+                scores_for_selected_experts: &Tensor,
+            ) -> Result<MoELayer<'network>> {
+                check_network!(self, hidden_states);
+                check_network!(self, selected_experts_for_tokens);
+                check_network!(self, scores_for_selected_experts);
+                debug!(
+                    "add_moe hidden_states={} selected_experts_for_tokens={} scores_for_selected_experts={}",
+                    tensor_dbg(self, hidden_states),
+                    tensor_dbg(self, selected_experts_for_tokens),
+                    tensor_dbg(self, scores_for_selected_experts)
+                );
+                let layer_ptr = self.inner.pin_mut().addMoE(
+                    hidden_states.pin_mut(),
+                    selected_experts_for_tokens.pin_mut(),
+                    scores_for_selected_experts.pin_mut(),
+                );
+                MoELayer::new(self.inner.as_ptr(), layer_ptr)
+            }
+        }
     }
 
-    #[cfg(feature = "v_1_4")]
-    /// See [`trtx_sys::nvinfer1::INetworkDefinition::addDistCollective`].
-    ///
-    /// Pass an empty `groups` slice so all ranks participate (`groups == nullptr`, `groupSize == 0` in C++).
-    pub fn add_dist_collective(
-        &mut self,
-        input: &Tensor,
-        dist_collective_op: CollectiveOperation,
-        reduce_op: ReduceOperation,
-        root: i64,
-        groups: &[i64],
-    ) -> Result<DistCollectiveLayer<'network>> {
-        check_network!(self, input);
-        debug!(
-            "add_dist_collective input={} dist_collective_op={dist_collective_op:?} reduce_op={reduce_op:?} root={root} groups={groups:?}",
-            tensor_dbg(self, input)
-        );
-        let (groups_ptr, group_size) = if groups.is_empty() {
-            (std::ptr::null_mut(), 0i64)
-        } else {
-            (groups.as_ptr() as *mut i64, groups.len() as i64)
-        };
-        let layer_ptr = unsafe {
-            self.inner.pin_mut().addDistCollective(
-                input.pin_mut(),
-                dist_collective_op.into(),
-                reduce_op.into(),
-                root,
-                groups_ptr,
-                group_size,
-            )
-        };
-        DistCollectiveLayer::new(self.inner.as_ptr(), layer_ptr)
+    cfg_feature! {
+        feature = "v_1_4" => {
+            /// See [`trtx_sys::nvinfer1::INetworkDefinition::addDistCollective`].
+            ///
+            /// Pass an empty `groups` slice so all ranks participate (`groups == nullptr`, `groupSize == 0` in C++).
+            pub fn add_dist_collective(
+                &mut self,
+                input: &Tensor,
+                dist_collective_op: CollectiveOperation,
+                reduce_op: ReduceOperation,
+                root: i64,
+                groups: &[i64],
+            ) -> Result<DistCollectiveLayer<'network>> {
+                check_network!(self, input);
+                debug!(
+                    "add_dist_collective input={} dist_collective_op={dist_collective_op:?} reduce_op={reduce_op:?} root={root} groups={groups:?}",
+                    tensor_dbg(self, input)
+                );
+                let (groups_ptr, group_size) = if groups.is_empty() {
+                    (std::ptr::null_mut(), 0i64)
+                } else {
+                    (groups.as_ptr() as *mut i64, groups.len() as i64)
+                };
+                let layer_ptr = unsafe {
+                    self.inner.pin_mut().addDistCollective(
+                        input.pin_mut(),
+                        dist_collective_op.into(),
+                        reduce_op.into(),
+                        root,
+                        groups_ptr,
+                        group_size,
+                    )
+                };
+                DistCollectiveLayer::new(self.inner.as_ptr(), layer_ptr)
+            }
+        }
     }
 }
 
@@ -3176,25 +3201,31 @@ impl<'network> Attention<'network> {
         self.inner.getCausal()
     }
 
-    #[cfg(feature = "v_1_5")]
-    /// See [`trtx_sys::nvinfer1::IAttention::setCausalKind`].
-    pub fn set_causal_kind(
-        &mut self,
-        network: &mut NetworkDefinition,
-        kind: CausalMaskKind,
-    ) -> Result<()> {
-        check_network!(network, self);
-        self.inner
-            .as_mut()
-            .setCausalKind(kind.into())
-            .ok_or_err(PropertySetAttempt::AttentionLayerCausalKind)
+    cfg_feature! {
+        feature = "v_1_5" => {
+            /// See [`trtx_sys::nvinfer1::IAttention::setCausalKind`].
+            pub fn set_causal_kind(
+                &mut self,
+                network: &mut NetworkDefinition,
+                kind: CausalMaskKind,
+            ) -> Result<()> {
+                check_network!(network, self);
+                self.inner
+                    .as_mut()
+                    .setCausalKind(kind.into())
+                    .ok_or_err(PropertySetAttempt::AttentionLayerCausalKind)
+            }
+        }
     }
 
-    #[cfg(feature = "v_1_5")]
-    /// See [`trtx_sys::nvinfer1::IAttention::getCausalKind`].
-    pub fn causal_kind(&self, network: &NetworkDefinition) -> CausalMaskKind {
-        check_network!(network, self);
-        self.inner.getCausalKind().into()
+    cfg_feature! {
+        feature = "v_1_5" => {
+            /// See [`trtx_sys::nvinfer1::IAttention::getCausalKind`].
+            pub fn causal_kind(&self, network: &NetworkDefinition) -> CausalMaskKind {
+                check_network!(network, self);
+                self.inner.getCausalKind().into()
+            }
+        }
     }
 
     /// See [`trtx_sys::nvinfer1::IAttention::setDecomposable`].
@@ -3344,110 +3375,140 @@ impl<'network> Attention<'network> {
         }
     }
 
-    #[cfg(feature = "v_1_4")]
-    /// See [`trtx_sys::nvinfer1::IAttention::setNbRanks`].
-    pub fn set_nb_ranks(&mut self, network: &mut NetworkDefinition, nb_ranks: i32) -> Result<()> {
-        check_network!(network, self);
-        self.inner
-            .as_mut()
-            .setNbRanks(nb_ranks)
-            .ok_or_err(PropertySetAttempt::AttentionLayerNumRanks)
-    }
-
-    #[cfg(feature = "v_1_4")]
-    /// See [`trtx_sys::nvinfer1::IAttention::getNbRanks`].
-    pub fn nb_ranks(&self, network: &NetworkDefinition) -> i32 {
-        check_network!(network, self);
-        self.inner.getNbRanks()
-    }
-
-    #[cfg(feature = "v_1_5")]
-    /// See [`trtx_sys::nvinfer1::IAttention::setQueryForm`].
-    pub fn set_query_form(
-        &mut self,
-        network: &mut NetworkDefinition,
-        form: AttentionIOForm,
-    ) -> Result<()> {
-        check_network!(network, self);
-        self.inner
-            .as_mut()
-            .setQueryForm(form.into())
-            .ok_or_err(PropertySetAttempt::AttentionLayerQueryForm)
-    }
-
-    #[cfg(feature = "v_1_5")]
-    /// See [`trtx_sys::nvinfer1::IAttention::setKeyValueForm`].
-    pub fn set_key_value_form(
-        &mut self,
-        network: &mut NetworkDefinition,
-        form: AttentionIOForm,
-    ) -> Result<()> {
-        check_network!(network, self);
-        self.inner
-            .as_mut()
-            .setKeyValueForm(form.into())
-            .ok_or_err(PropertySetAttempt::AttentionLayerKeyValueForm)
-    }
-
-    #[cfg(feature = "v_1_5")]
-    /// See [`trtx_sys::nvinfer1::IAttention::getQueryForm`].
-    pub fn query_form(&self, network: &NetworkDefinition) -> AttentionIOForm {
-        check_network!(network, self);
-        self.inner.getQueryForm().into()
-    }
-
-    #[cfg(feature = "v_1_5")]
-    /// See [`trtx_sys::nvinfer1::IAttention::setKeyValueForm`].
-    pub fn key_value_form(&self, network: &NetworkDefinition) -> AttentionIOForm {
-        check_network!(network, self);
-        self.inner.getQueryForm().into()
-    }
-
-    #[cfg(feature = "v_1_5")]
-    /// See [`trtx_sys::nvinfer1::IAttention::getQueryLengths`].
-    pub fn query_lengths(&self, network: &NetworkDefinition) -> Result<Tensor<'network>> {
-        check_network!(network, self);
-        unsafe { Tensor::new(self.network, self.inner.getQueryLengths()) }
-    }
-
-    #[cfg(feature = "v_1_5")]
-    /// See [`trtx_sys::nvinfer1::IAttention::getKeyValueLengths`].
-    pub fn key_value_lengths(&self, network: &NetworkDefinition) -> Result<Tensor<'network>> {
-        check_network!(network, self);
-        unsafe { Tensor::new(self.network, self.inner.getKeyValueLengths()) }
-    }
-
-    #[cfg(feature = "v_1_5")]
-    /// See [`trtx_sys::nvinfer1::IAttention::setQueryLengths`].
-    pub fn set_query_lengths(
-        &mut self,
-        network: &mut NetworkDefinition,
-        lengths: &'_ Tensor,
-    ) -> Result<()> {
-        check_network!(network, self);
-        check_network!(network, lengths);
-        unsafe {
-            self.inner
-                .as_mut()
-                .setQueryLengths(lengths.inner)
-                .ok_or_err(PropertySetAttempt::AttentionLayerQueryLengths)
+    cfg_feature! {
+        feature = "v_1_4" => {
+            /// See [`trtx_sys::nvinfer1::IAttention::setNbRanks`].
+            pub fn set_nb_ranks(&mut self, network: &mut NetworkDefinition, nb_ranks: i32) -> Result<()> {
+                check_network!(network, self);
+                self.inner
+                    .as_mut()
+                    .setNbRanks(nb_ranks)
+                    .ok_or_err(PropertySetAttempt::AttentionLayerNumRanks)
+            }
         }
     }
 
-    #[cfg(feature = "v_1_5")]
-    /// See [`trtx_sys::nvinfer1::IAttention::setKeyValueLengths`].
-    pub fn set_key_value_lengths(
-        &mut self,
-        network: &mut NetworkDefinition,
-        lengths: &'_ Tensor,
-    ) -> Result<()> {
-        check_network!(network, self);
-        check_network!(network, lengths);
-        unsafe {
-            self.inner
-                .as_mut()
-                .setKeyValueLengths(lengths.inner)
-                .ok_or_err(PropertySetAttempt::AttentionLayerKeyValueLengths)
+    cfg_feature! {
+        feature = "v_1_4" => {
+            /// See [`trtx_sys::nvinfer1::IAttention::getNbRanks`].
+            pub fn nb_ranks(&self, network: &NetworkDefinition) -> i32 {
+                check_network!(network, self);
+                self.inner.getNbRanks()
+            }
+        }
+    }
+
+    cfg_feature! {
+        feature = "v_1_5" => {
+            /// See [`trtx_sys::nvinfer1::IAttention::setQueryForm`].
+            pub fn set_query_form(
+                &mut self,
+                network: &mut NetworkDefinition,
+                form: AttentionIOForm,
+            ) -> Result<()> {
+                check_network!(network, self);
+                self.inner
+                    .as_mut()
+                    .setQueryForm(form.into())
+                    .ok_or_err(PropertySetAttempt::AttentionLayerQueryForm)
+            }
+        }
+    }
+
+    cfg_feature! {
+        feature = "v_1_5" => {
+            /// See [`trtx_sys::nvinfer1::IAttention::setKeyValueForm`].
+            pub fn set_key_value_form(
+                &mut self,
+                network: &mut NetworkDefinition,
+                form: AttentionIOForm,
+            ) -> Result<()> {
+                check_network!(network, self);
+                self.inner
+                    .as_mut()
+                    .setKeyValueForm(form.into())
+                    .ok_or_err(PropertySetAttempt::AttentionLayerKeyValueForm)
+            }
+        }
+    }
+
+    cfg_feature! {
+        feature = "v_1_5" => {
+            /// See [`trtx_sys::nvinfer1::IAttention::getQueryForm`].
+            pub fn query_form(&self, network: &NetworkDefinition) -> AttentionIOForm {
+                check_network!(network, self);
+                self.inner.getQueryForm().into()
+            }
+        }
+    }
+
+    cfg_feature! {
+        feature = "v_1_5" => {
+            /// See [`trtx_sys::nvinfer1::IAttention::setKeyValueForm`].
+            pub fn key_value_form(&self, network: &NetworkDefinition) -> AttentionIOForm {
+                check_network!(network, self);
+                self.inner.getQueryForm().into()
+            }
+        }
+    }
+
+    cfg_feature! {
+        feature = "v_1_5" => {
+            /// See [`trtx_sys::nvinfer1::IAttention::getQueryLengths`].
+            pub fn query_lengths(&self, network: &NetworkDefinition) -> Result<Tensor<'network>> {
+                check_network!(network, self);
+                unsafe { Tensor::new(self.network, self.inner.getQueryLengths()) }
+            }
+        }
+    }
+
+    cfg_feature! {
+        feature = "v_1_5" => {
+            /// See [`trtx_sys::nvinfer1::IAttention::getKeyValueLengths`].
+            pub fn key_value_lengths(&self, network: &NetworkDefinition) -> Result<Tensor<'network>> {
+                check_network!(network, self);
+                unsafe { Tensor::new(self.network, self.inner.getKeyValueLengths()) }
+            }
+        }
+    }
+
+    cfg_feature! {
+        feature = "v_1_5" => {
+            /// See [`trtx_sys::nvinfer1::IAttention::setQueryLengths`].
+            pub fn set_query_lengths(
+                &mut self,
+                network: &mut NetworkDefinition,
+                lengths: &'_ Tensor,
+            ) -> Result<()> {
+                check_network!(network, self);
+                check_network!(network, lengths);
+                unsafe {
+                    self.inner
+                        .as_mut()
+                        .setQueryLengths(lengths.inner)
+                        .ok_or_err(PropertySetAttempt::AttentionLayerQueryLengths)
+                }
+            }
+        }
+    }
+
+    cfg_feature! {
+        feature = "v_1_5" => {
+            /// See [`trtx_sys::nvinfer1::IAttention::setKeyValueLengths`].
+            pub fn set_key_value_lengths(
+                &mut self,
+                network: &mut NetworkDefinition,
+                lengths: &'_ Tensor,
+            ) -> Result<()> {
+                check_network!(network, self);
+                check_network!(network, lengths);
+                unsafe {
+                    self.inner
+                        .as_mut()
+                        .setKeyValueLengths(lengths.inner)
+                        .ok_or_err(PropertySetAttempt::AttentionLayerKeyValueLengths)
+                }
+            }
         }
     }
 }
@@ -3504,49 +3565,61 @@ impl<'network> KVCacheUpdateLayer<'network> {
         self.inner.getCacheMode().into()
     }
 
-    #[cfg(feature = "v_1_5")]
-    /// See [`trtx_sys::nvinfer1::IKVCacheUpdateLayer::setUpdateForm`].
-    pub fn set_update_form(
-        &mut self,
-        network: &mut NetworkDefinition,
-        form: AttentionIOForm,
-    ) -> Result<()> {
-        check_network!(network, self);
-        self.inner
-            .as_mut()
-            .setUpdateForm(form.into())
-            .ok_or_err(PropertySetAttempt::KVCacheUpdateUpdateForm)
-    }
-
-    #[cfg(feature = "v_1_5")]
-    /// See [`trtx_sys::nvinfer1::IKVCacheUpdateLayer::setUpdateForm`].
-    pub fn update_form(&self, network: &NetworkDefinition) -> AttentionIOForm {
-        check_network!(network, self);
-        self.inner.getUpdateForm().into()
-    }
-
-    #[cfg(feature = "v_1_5")]
-    /// See [`trtx_sys::nvinfer1::IKVCacheUpdateLayer::setUpdateLengths`].
-    pub fn set_update_lengths(
-        &mut self,
-        network: &mut NetworkDefinition,
-        lengths: &Tensor,
-    ) -> Result<()> {
-        check_network!(network, self);
-        check_network!(network, lengths);
-        unsafe {
-            self.inner
-                .as_mut()
-                .setUpdateLengths(lengths.inner)
-                .ok_or_err(PropertySetAttempt::KVCacheUpdateLayerUpdateLengths)
+    cfg_feature! {
+        feature = "v_1_5" => {
+            /// See [`trtx_sys::nvinfer1::IKVCacheUpdateLayer::setUpdateForm`].
+            pub fn set_update_form(
+                &mut self,
+                network: &mut NetworkDefinition,
+                form: AttentionIOForm,
+            ) -> Result<()> {
+                check_network!(network, self);
+                self.inner
+                    .as_mut()
+                    .setUpdateForm(form.into())
+                    .ok_or_err(PropertySetAttempt::KVCacheUpdateUpdateForm)
+            }
         }
     }
 
-    #[cfg(feature = "v_1_5")]
-    /// See [`trtx_sys::nvinfer1::IKVCacheUpdateLayer::getUpdateLengths`].
-    pub fn update_lengths(&self, network: &NetworkDefinition) -> Result<Tensor<'network>> {
-        check_network!(network, self);
-        unsafe { Tensor::new(self.network, self.inner.getUpdateLengths()) }
+    cfg_feature! {
+        feature = "v_1_5" => {
+            /// See [`trtx_sys::nvinfer1::IKVCacheUpdateLayer::setUpdateForm`].
+            pub fn update_form(&self, network: &NetworkDefinition) -> AttentionIOForm {
+                check_network!(network, self);
+                self.inner.getUpdateForm().into()
+            }
+        }
+    }
+
+    cfg_feature! {
+        feature = "v_1_5" => {
+            /// See [`trtx_sys::nvinfer1::IKVCacheUpdateLayer::setUpdateLengths`].
+            pub fn set_update_lengths(
+                &mut self,
+                network: &mut NetworkDefinition,
+                lengths: &Tensor,
+            ) -> Result<()> {
+                check_network!(network, self);
+                check_network!(network, lengths);
+                unsafe {
+                    self.inner
+                        .as_mut()
+                        .setUpdateLengths(lengths.inner)
+                        .ok_or_err(PropertySetAttempt::KVCacheUpdateLayerUpdateLengths)
+                }
+            }
+        }
+    }
+
+    cfg_feature! {
+        feature = "v_1_5" => {
+            /// See [`trtx_sys::nvinfer1::IKVCacheUpdateLayer::getUpdateLengths`].
+            pub fn update_lengths(&self, network: &NetworkDefinition) -> Result<Tensor<'network>> {
+                check_network!(network, self);
+                unsafe { Tensor::new(self.network, self.inner.getUpdateLengths()) }
+            }
+        }
     }
 }
 

@@ -80,104 +80,125 @@ impl<'engine> RuntimeConfig<'engine> {
         }
     }
 
-    #[cfg(not(feature = "enterprise"))]
-    /// See [IRuntimeConfig::createRuntimeCache].
-    pub fn create_runtime_cache(&self) -> Result<RuntimeCache> {
-        #[cfg(not(feature = "mock"))]
-        let cache_ptr = self.inner.createRuntimeCache();
-        #[cfg(feature = "mock")]
-        let cache_ptr = std::ptr::null_mut();
-        RuntimeCache::new(cache_ptr)
+    cfg_feature! {
+        not(feature = "enterprise") => {
+            /// See [IRuntimeConfig::createRuntimeCache].
+            pub fn create_runtime_cache(&self) -> Result<RuntimeCache> {
+                #[cfg(not(feature = "mock"))]
+                let cache_ptr = self.inner.createRuntimeCache();
+                #[cfg(feature = "mock")]
+                let cache_ptr = std::ptr::null_mut();
+                RuntimeCache::new(cache_ptr)
+            }
+        }
     }
 
-    #[cfg(not(feature = "enterprise"))]
-    /// See [IRuntimeConfig::setRuntimeCache].
-    pub fn set_runtime_cache(&mut self, cache: Arc<RuntimeCache>) -> Result<()> {
-        if cfg!(not(feature = "mock")) {
-            if self.inner.pin_mut().setRuntimeCache(
-                cache
-                    .inner
-                    .as_ref()
-                    .expect("RuntimeCache inner must be non-null"),
+    cfg_feature! {
+        not(feature = "enterprise") => {
+            /// See [IRuntimeConfig::setRuntimeCache].
+            pub fn set_runtime_cache(&mut self, cache: Arc<RuntimeCache>) -> Result<()> {
+                if cfg!(not(feature = "mock")) {
+                    if self.inner.pin_mut().setRuntimeCache(
+                        cache
+                            .inner
+                            .as_ref()
+                            .expect("RuntimeCache inner must be non-null"),
+                    ) {
+                        self._cache = Some(cache);
+                        Ok(())
+                    } else {
+                        Err(Error::FailedToSetProperty(
+                            PropertySetAttempt::RuntimeConfigRuntimeCache,
+                        ))
+                    }
+                } else {
+                    Ok(())
+                }
+            }
+        }
+    }
+
+    cfg_feature! {
+        not(feature = "enterprise") => {
+            /// See [IRuntimeConfig::getRuntimeCache].
+            ///
+            /// Returns `None` if no runtime cache has been set.
+            pub fn runtime_cache(&self) -> Option<*mut nvinfer1::IRuntimeCache> {
+                if cfg!(not(feature = "mock")) {
+                    let ptr = self.inner.getRuntimeCache();
+                    if ptr.is_null() {
+                        None
+                    } else {
+                        Some(ptr)
+                    }
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    cfg_feature! {
+        not(feature = "enterprise") => {
+            /// See [IRuntimeConfig::setDynamicShapesKernelSpecializationStrategy].
+            pub fn set_dynamic_shapes_kernel_specialization_strategy(
+                &mut self,
+                strategy: DynamicShapesKernelSpecializationStrategy,
             ) {
-                self._cache = Some(cache);
-                Ok(())
-            } else {
-                Err(Error::FailedToSetProperty(
-                    PropertySetAttempt::RuntimeConfigRuntimeCache,
-                ))
+                #[cfg(not(feature = "mock"))]
+                self.inner
+                    .pin_mut()
+                    .setDynamicShapesKernelSpecializationStrategy(strategy.into());
             }
-        } else {
-            Ok(())
         }
     }
 
-    #[cfg(not(feature = "enterprise"))]
-    /// See [IRuntimeConfig::getRuntimeCache].
-    ///
-    /// Returns `None` if no runtime cache has been set.
-    pub fn runtime_cache(&self) -> Option<*mut nvinfer1::IRuntimeCache> {
-        if cfg!(not(feature = "mock")) {
-            let ptr = self.inner.getRuntimeCache();
-            if ptr.is_null() {
-                None
-            } else {
-                Some(ptr)
+    cfg_feature! {
+        not(feature = "enterprise") => {
+            /// See [IRuntimeConfig::getDynamicShapesKernelSpecializationStrategy].
+            pub fn dynamic_shapes_kernel_specialization_strategy(
+                &self,
+            ) -> DynamicShapesKernelSpecializationStrategy {
+                if cfg!(not(feature = "mock")) {
+                    self.inner
+                        .getDynamicShapesKernelSpecializationStrategy()
+                        .into()
+                } else {
+                    DynamicShapesKernelSpecializationStrategy::kNONE
+                }
             }
-        } else {
-            None
         }
     }
 
-    #[cfg(not(feature = "enterprise"))]
-    /// See [IRuntimeConfig::setDynamicShapesKernelSpecializationStrategy].
-    pub fn set_dynamic_shapes_kernel_specialization_strategy(
-        &mut self,
-        strategy: DynamicShapesKernelSpecializationStrategy,
-    ) {
-        #[cfg(not(feature = "mock"))]
-        self.inner
-            .pin_mut()
-            .setDynamicShapesKernelSpecializationStrategy(strategy.into());
-    }
-
-    #[cfg(not(feature = "enterprise"))]
-    /// See [IRuntimeConfig::getDynamicShapesKernelSpecializationStrategy].
-    pub fn dynamic_shapes_kernel_specialization_strategy(
-        &self,
-    ) -> DynamicShapesKernelSpecializationStrategy {
-        if cfg!(not(feature = "mock")) {
-            self.inner
-                .getDynamicShapesKernelSpecializationStrategy()
-                .into()
-        } else {
-            DynamicShapesKernelSpecializationStrategy::kNONE
-        }
-    }
-
-    #[cfg(not(feature = "enterprise"))]
-    /// See [IRuntimeConfig::setCudaGraphStrategy].
-    pub fn set_cuda_graph_strategy(&mut self, strategy: CudaGraphStrategy) -> Result<()> {
-        if cfg!(not(feature = "mock")) {
-            if self.inner.pin_mut().setCudaGraphStrategy(strategy.into()) {
-                Ok(())
-            } else {
-                Err(Error::FailedToSetProperty(
-                    PropertySetAttempt::RuntimeConfigCudaGraphStrategy,
-                ))
+    cfg_feature! {
+        not(feature = "enterprise") => {
+            /// See [IRuntimeConfig::setCudaGraphStrategy].
+            pub fn set_cuda_graph_strategy(&mut self, strategy: CudaGraphStrategy) -> Result<()> {
+                if cfg!(not(feature = "mock")) {
+                    if self.inner.pin_mut().setCudaGraphStrategy(strategy.into()) {
+                        Ok(())
+                    } else {
+                        Err(Error::FailedToSetProperty(
+                            PropertySetAttempt::RuntimeConfigCudaGraphStrategy,
+                        ))
+                    }
+                } else {
+                    Ok(())
+                }
             }
-        } else {
-            Ok(())
         }
     }
 
-    #[cfg(not(feature = "enterprise"))]
-    /// See [IRuntimeConfig::getCudaGraphStrategy].
-    pub fn cuda_graph_strategy(&self) -> CudaGraphStrategy {
-        if cfg!(not(feature = "mock")) {
-            self.inner.getCudaGraphStrategy().into()
-        } else {
-            CudaGraphStrategy::kDISABLED
+    cfg_feature! {
+        not(feature = "enterprise") => {
+            /// See [IRuntimeConfig::getCudaGraphStrategy].
+            pub fn cuda_graph_strategy(&self) -> CudaGraphStrategy {
+                if cfg!(not(feature = "mock")) {
+                    self.inner.getCudaGraphStrategy().into()
+                } else {
+                    CudaGraphStrategy::kDISABLED
+                }
+            }
         }
     }
 }

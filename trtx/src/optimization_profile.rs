@@ -29,25 +29,31 @@ impl<'builder> OptimizationProfile<'builder> {
         }
     }
 
-    /// Overrides the builder config's profiling stream for this profile.
-    /// Pass null to clear the override.
-    ///
-    /// # Safety
-    /// The CUDA stream and any owning green context must remain valid until the build completes.
-    #[cfg(all(feature = "v_1_7", not(feature = "enterprise")))]
-    pub unsafe fn set_profile_stream(&mut self, stream: *mut std::ffi::c_void) {
-        if !cfg!(feature = "mock_runtime") {
-            self.inner.as_mut().setProfileStream(stream.cast());
+    cfg_feature! {
+        all(feature = "v_1_7", not(feature = "enterprise")) => {
+            /// Overrides the builder config's profiling stream for this profile.
+            /// Pass null to clear the override.
+            ///
+            /// # Safety
+            /// The CUDA stream and any owning green context must remain valid until the build completes.
+            pub unsafe fn set_profile_stream(&mut self, stream: *mut std::ffi::c_void) {
+                if !cfg!(feature = "mock_runtime") {
+                    self.inner.as_mut().setProfileStream(stream.cast());
+                }
+            }
         }
     }
 
-    /// Returns the profile's profiling stream override, or null when none is set.
-    #[cfg(all(feature = "v_1_7", not(feature = "enterprise")))]
-    pub fn profile_stream(&self) -> *mut std::ffi::c_void {
-        if cfg!(feature = "mock_runtime") {
-            std::ptr::null_mut()
-        } else {
-            self.inner.getProfileStream().cast()
+    cfg_feature! {
+        all(feature = "v_1_7", not(feature = "enterprise")) => {
+            /// Returns the profile's profiling stream override, or null when none is set.
+            pub fn profile_stream(&self) -> *mut std::ffi::c_void {
+                if cfg!(feature = "mock_runtime") {
+                    std::ptr::null_mut()
+                } else {
+                    self.inner.getProfileStream().cast()
+                }
+            }
         }
     }
 
