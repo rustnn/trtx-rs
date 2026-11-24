@@ -7,15 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+## [0.10.0+rtx1.7] - 2026-11-24
 
-- Share `RuntimeConfig` with `Arc`, so `ExecutionContext` can move between threads.
+### 📚 Documentation
 
-### Removed
+- Fix TRT RTX download link and doc lints (#159)
+- Use doc_cfg feature on docs.rs, replace pretty_env_logger (#164)
 
-- Removed all deprecated Rust API methods, including the old getter aliases and
+### 🚜 Refactor
+
+- [**breaking**] Share RuntimeConfig with Arc (#161)
+
+### ⚙️ Miscellaneous Tasks
+
+- [**breaking**] Remove deprecated methods (#160)
+  Removed all deprecated Rust API methods, including the old getter aliases and
   `NetworkDefinition::add_dynamic_quantize`. Use the current getter names and
   `NetworkDefinition::add_dynamic_quantize_v2` instead. This is a breaking API change.
+- Use libclang-21-dev via LIBCLANG_PATH and change nvidia-nvtx to nvtx (#162)
 
 ## [0.9.1+rtx1.7] - 2026-10-16
 
