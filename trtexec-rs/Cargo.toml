@@ -13,7 +13,6 @@ rustnn = { git = "https://github.com/shubhamg13/rustnn/", branch = "fix/trtx-sen
 
 nvtx = "2.1.0"
 log = "0.4"
-pretty_env_logger = "0.5"
 
 # To upgrade the trtx version to new major version, create a PR with that bump to the RustNN repo
 # and switch the RustNN dep temporarily to that branch until RustNN main has that version bump

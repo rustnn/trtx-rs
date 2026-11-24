@@ -48,12 +48,16 @@ impl<'builder> HostMemory<'builder> {
 }
 
 #[cfg(feature = "mock")]
+// Both real and mock builds implement AsRef.
+#[cfg_attr(docsrs, doc(cfg(all())))]
 impl<'memory> AsRef<[u8]> for HostMemory<'memory> {
     fn as_ref(&self) -> &[u8] {
         &self.mock_data
     }
 }
 #[cfg(not(feature = "mock"))]
+// Both real and mock builds implement AsRef.
+#[cfg_attr(docsrs, doc(cfg(all())))]
 impl<'memory> AsRef<[u8]> for HostMemory<'memory> {
     fn as_ref(&self) -> &'memory [u8] {
         unsafe { slice::from_raw_parts(self.inner.data() as *const u8, self.inner.size()) }

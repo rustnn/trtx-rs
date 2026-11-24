@@ -176,27 +176,23 @@ fn main() -> Result<()> {
 
     validate_weights_as_inputs(args.weights_as_inputs, &args.inputs)?;
 
-    if args.nvtx {
-        // Send tracing/log events to nvtx
-        let env_filter =
-            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-                EnvFilter::builder()
-                    .with_default_directive(LevelFilter::WARN.into())
-                    .parse("")
-                    .unwrap()
-            });
-        let fmt = tracing_subscriber::fmt::layer()
-            .compact()
-            .with_writer(std::io::stderr)
-            .without_time()
-            .with_filter(env_filter);
-        tracing_subscriber::registry()
-            .with(nvtx::tracing::NvtxLayer::default())
-            .with(fmt)
-            .init();
-    } else {
-        pretty_env_logger::init();
-    }
+    // Send tracing/log events to nvtx
+    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+        EnvFilter::builder()
+            .with_default_directive(LevelFilter::WARN.into())
+            .parse("")
+            .unwrap()
+    });
+    let fmt = tracing_subscriber::fmt::layer()
+        .compact()
+        .with_writer(std::io::stderr)
+        .without_time()
+        .with_filter(env_filter);
+    tracing_subscriber::registry()
+        .with(nvtx::tracing::NvtxLayer::default())
+        .with(fmt)
+        .init();
+
     let span = tracing::info_span!("trtexec-rs");
     let _enter = span.enter();
 

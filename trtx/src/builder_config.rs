@@ -419,8 +419,8 @@ impl<'builder> BuilderConfig<'builder> {
         }
     }
 
-    /// See [IBuilderConfig::setNbComputeCapabilities]
     #[cfg(not(feature = "enterprise"))]
+    /// See [IBuilderConfig::setNbComputeCapabilities]
     pub fn set_nb_compute_capabilities(
         &mut self,
         max_nb_compute_capabilities: i32,
@@ -442,8 +442,8 @@ impl<'builder> BuilderConfig<'builder> {
         }
     }
 
-    /// See [IBuilderConfig::getNbComputeCapabilities]
     #[cfg(not(feature = "enterprise"))]
+    /// See [IBuilderConfig::getNbComputeCapabilities]
     pub fn nb_compute_capabilities(&self) -> i32 {
         if cfg!(not(feature = "mock")) {
             self.inner.getNbComputeCapabilities()

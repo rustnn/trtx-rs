@@ -50,11 +50,15 @@ unsafe impl Send for Runtime<'_> {}
 impl<'runtime> Runtime<'runtime> {
     #[cfg(not(feature = "link_tensorrt_rtx"))]
     #[cfg(not(feature = "dlopen_tensorrt_rtx"))]
+    // This constructor exists under both loading configurations.
+    #[cfg_attr(docsrs, doc(cfg(all())))]
     pub fn new(logger: &'runtime Logger) -> Result<Self> {
         Err(Error::TrtRtxLibraryNotLoaded)
     }
 
     #[cfg(any(feature = "link_tensorrt_rtx", feature = "dlopen_tensorrt_rtx"))]
+    // This constructor exists under both loading configurations.
+    #[cfg_attr(docsrs, doc(cfg(all())))]
     pub fn new(logger: &'runtime Logger) -> Result<Self> {
         #[cfg(not(feature = "mock_runtime"))]
         {
@@ -139,12 +143,12 @@ impl<'runtime> Runtime<'runtime> {
         }
     }
 
+    #[cfg(all(feature = "v_1_7", not(feature = "enterprise")))]
     /// Sets the DLA workspace allocation strategy for subsequent engine deserializations.
     /// Previously deserialized engines retain their strategy.
     ///
     /// # Safety
     /// Engines sharing a static workspace on the same DLA core must never execute concurrently.
-    #[cfg(all(feature = "v_1_7", not(feature = "enterprise")))]
     pub unsafe fn set_dla_workspace_allocation_strategy(
         &mut self,
         strategy: crate::DLAWorkspaceAllocationStrategy,
@@ -163,8 +167,8 @@ impl<'runtime> Runtime<'runtime> {
         }
     }
 
-    /// Returns the DLA workspace allocation strategy for subsequent engine deserializations.
     #[cfg(all(feature = "v_1_7", not(feature = "enterprise")))]
+    /// Returns the DLA workspace allocation strategy for subsequent engine deserializations.
     pub fn dla_workspace_allocation_strategy(&self) -> crate::DLAWorkspaceAllocationStrategy {
         if cfg!(feature = "mock_runtime") {
             crate::DLAWorkspaceAllocationStrategy::kDEFAULT
@@ -173,6 +177,7 @@ impl<'runtime> Runtime<'runtime> {
         }
     }
 
+    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
     /// Controls whether subsequent engine deserializations defer allocating and copying weights
     /// to the GPU.
     ///
@@ -181,17 +186,16 @@ impl<'runtime> Runtime<'runtime> {
     /// This setting must be changed before calling [`Self::deserialize_cuda_engine`].
     ///
     /// See [`nvinfer1::IRuntime::setDeferredWeightsLoading`].
-    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
     pub fn set_deferred_weights_loading(&mut self, defer: bool) {
         if !cfg!(feature = "mock_runtime") {
             self.inner.pin_mut().setDeferredWeightsLoading(defer);
         }
     }
 
+    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
     /// Returns whether subsequent engine deserializations defer loading weights onto the GPU.
     ///
     /// See [`nvinfer1::IRuntime::getDeferredWeightsLoading`].
-    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
     pub fn deferred_weights_loading(&self) -> bool {
         if cfg!(feature = "mock_runtime") {
             false
@@ -200,10 +204,10 @@ impl<'runtime> Runtime<'runtime> {
         }
     }
 
+    #[cfg(not(feature = "enterprise"))]
     /// Returns the number of bytes required to inspect a serialized engine's header.
     ///
     /// See [`nvinfer1::IRuntime::getEngineHeaderSize`].
-    #[cfg(not(feature = "enterprise"))]
     pub fn engine_header_size(&self) -> usize {
         if cfg!(feature = "mock_runtime") {
             0
@@ -212,6 +216,7 @@ impl<'runtime> Runtime<'runtime> {
         }
     }
 
+    #[cfg(not(feature = "enterprise"))]
     /// Checks whether a serialized engine is likely to be valid on the current system.
     ///
     /// Returns the header-based validity classification and a bitmask of
@@ -221,7 +226,6 @@ impl<'runtime> Runtime<'runtime> {
     /// This only inspects the engine header and cannot detect corruption in the engine body.
     ///
     /// See [`nvinfer1::IRuntime::getEngineValidity`].
-    #[cfg(not(feature = "enterprise"))]
     pub fn engine_validity(
         &self,
         data: &[u8],
@@ -289,6 +293,10 @@ mod tests {
     use crate::SeekPosition;
     use crate::{DataType, ElementWiseOperation, Runtime};
     use cudarc::driver::{CudaContext, CudaSlice, DevicePtrMut};
+    use tracing::level_filters::LevelFilter;
+    use tracing_subscriber::layer::SubscriberExt;
+    use tracing_subscriber::util::SubscriberInitExt;
+    use tracing_subscriber::Layer;
     use trtx_sys::{Dims64, TensorLocation};
 
     #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
@@ -567,10 +575,27 @@ mod tests {
         );
     }
 
+    fn try_init_logging() {
+        let env_filter =
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                tracing_subscriber::EnvFilter::builder()
+                    .with_default_directive(LevelFilter::WARN.into())
+                    .parse("")
+                    .unwrap()
+            });
+        let fmt = tracing_subscriber::fmt::layer()
+            .compact()
+            .with_writer(std::io::stderr)
+            .without_time()
+            .with_filter(env_filter);
+        let _ = tracing_subscriber::registry().with(fmt).try_init();
+    }
+
     #[test]
     #[ignore = "only works on TRT enterprise at the moment"]
     fn set_debug_listener_plus1_chain() {
-        let _ = pretty_env_logger::try_init();
+        try_init_logging();
+
         let logger = Logger::log_crate().expect("logger");
         let (engine_data, expected_debug_names) =
             build_plus1_chain(&logger).expect("build network");

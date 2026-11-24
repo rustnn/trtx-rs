@@ -133,6 +133,9 @@
     any(feature = "mock", feature = "mock_runtime"),
     allow(unused_variables)
 )]
+// Automatically document feature availability when building on docs.rs.
+#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(docsrs, doc(auto_cfg))]
 
 pub mod axes;
 pub mod builder;

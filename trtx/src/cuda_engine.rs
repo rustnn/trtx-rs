@@ -91,10 +91,10 @@ impl std::fmt::Debug for CudaEngine<'_> {
 }
 
 impl<'engine> CudaEngine<'engine> {
+    #[cfg(all(feature = "v_1_7", not(feature = "enterprise")))]
     /// Creates a manager for saving and restoring this engine's opaque weight data.
     /// Returns `None` when weight management is unavailable (including mock mode).
     /// The manager must be dropped before this engine; its lifetime enforces that.
-    #[cfg(all(feature = "v_1_7", not(feature = "enterprise")))]
     pub fn create_weights_manager(&mut self) -> Result<Option<crate::WeightsManager<'_>>> {
         if cfg!(feature = "mock_runtime") {
             return Ok(None);
@@ -420,13 +420,13 @@ impl<'engine> CudaEngine<'engine> {
         RuntimeConfig::new(config_ptr)
     }
 
+    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
     /// Returns whether this engine's weights have been loaded onto the GPU.
     ///
     /// This is normally `true`. It is `false` after deserializing an engine while
     /// [`crate::Runtime::deferred_weights_loading`] is enabled and before loading its weights.
     ///
     /// See [`nvinfer1::ICudaEngine::areWeightsLoaded`].
-    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
     pub fn weights_loaded(&self) -> bool {
         if cfg!(feature = "mock_runtime") {
             true
@@ -435,6 +435,7 @@ impl<'engine> CudaEngine<'engine> {
         }
     }
 
+    #[cfg(all(feature = "v_1_7", not(feature = "enterprise")))]
     /// Frees a deferred-loading engine's GPU weights so they can be loaded again.
     /// Existing execution contexts remain valid. Returns an error if the engine is not in
     /// deferred mode or its weights are already unloaded.
@@ -442,7 +443,6 @@ impl<'engine> CudaEngine<'engine> {
     /// # Safety
     /// All inference on this engine must have completed. No other engine operation may run
     /// concurrently with this call.
-    #[cfg(all(feature = "v_1_7", not(feature = "enterprise")))]
     pub unsafe fn unload_weights(&mut self) -> Result<()> {
         if cfg!(feature = "mock_runtime") || self.inner.pin_mut().unloadWeights() {
             Ok(())
@@ -453,6 +453,7 @@ impl<'engine> CudaEngine<'engine> {
         }
     }
 
+    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
     /// Synchronously loads this engine's weights onto the GPU from its serialized plan.
     ///
     /// `plan` must contain the same serialized engine plan that was originally passed to
@@ -463,7 +464,6 @@ impl<'engine> CudaEngine<'engine> {
     /// already loaded, the supplied plan does not match, or the GPU copy fails.
     ///
     /// See [`nvinfer1::ICudaEngine::loadWeights`].
-    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
     pub fn load_weights(&mut self, plan: &[u8]) -> Result<()> {
         if cfg!(feature = "mock_runtime") {
             return Ok(());
@@ -484,6 +484,7 @@ impl<'engine> CudaEngine<'engine> {
         }
     }
 
+    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
     /// Asynchronously loads this engine's weights onto the GPU using a stream reader.
     ///
     /// See [`nvinfer1::ICudaEngine::loadWeightsAsync`].
@@ -498,7 +499,6 @@ impl<'engine> CudaEngine<'engine> {
     /// The caller must ensure that any work using the loaded weights is ordered after the transfer
     /// on that stream, or explicitly synchronize across streams. After this returns successfully,
     /// [`Self::weights_loaded`] is `true` even though the transfer may still be in flight.
-    #[cfg(all(feature = "v_1_6", not(feature = "enterprise")))]
     pub unsafe fn load_weights_async(
         &mut self,
         stream_reader: Pin<&mut StreamReaderV2>,

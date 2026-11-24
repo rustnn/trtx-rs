@@ -25,6 +25,8 @@ impl<'parser> OnnxParser<'parser> {
         feature = "link_tensorrt_onnxparser",
         feature = "dlopen_tensorrt_onnxparser"
     )))]
+    // This constructor exists under both loading configurations.
+    #[cfg_attr(docsrs, doc(cfg(all())))]
     pub fn new(network: &mut NetworkDefinition, logger: &Logger) -> Result<Self> {
         Err(Error::TrtOnnxParserLibraryNotLoaded)
     }
@@ -37,6 +39,8 @@ impl<'parser> OnnxParser<'parser> {
     /// before the network build is finished (as the parser holds the weights).
     ///
     /// Use [OnnxParser::network], [OnnxParser::network_mut] to get a borrow to the network
+    // This constructor exists under both loading configurations.
+    #[cfg_attr(docsrs, doc(cfg(all())))]
     pub fn new(network: NetworkDefinition<'parser>, logger: &Logger) -> Result<Self> {
         #[cfg(not(feature = "mock"))]
         {
@@ -94,11 +98,11 @@ impl<'parser> OnnxParser<'parser> {
         })
     }
 
+    #[cfg(feature = "v_1_7")]
     /// Attaches an observer invoked once per named weight during parsing.
     /// Records are owned copies and may be retained after the callback. They form a candidate
     /// superset of engine refittable weights and are valid only when parsing succeeds.
     /// A panicking callback aborts the process, since unwinding through C++ is unsupported.
-    #[cfg(feature = "v_1_7")]
     pub fn set_refit_observer(
         &mut self,
         observer: impl FnMut(RefitRecord) + 'static,
@@ -177,8 +181,8 @@ impl<'parser> OnnxParser<'parser> {
         &mut self.network
     }
 }
-/// Owned description of a named weight emitted while parsing an ONNX model.
 #[cfg(feature = "v_1_7")]
+/// Owned description of a named weight emitted while parsing an ONNX model.
 #[derive(Debug, Clone)]
 pub struct RefitRecord {
     pub trt_name: String,
@@ -193,8 +197,8 @@ pub struct RefitRecord {
     pub fixed_data: Vec<u8>,
 }
 
-/// Transformation from ONNX source data to TensorRT refit data.
 #[cfg(feature = "v_1_7")]
+/// Transformation from ONNX source data to TensorRT refit data.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RefitTransformKind {
     Identity,

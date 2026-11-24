@@ -302,11 +302,9 @@ pub type LrnLayer<'layer> = Layer<'layer, nvinfer1::ILRNLayer>;
 pub type OneHotLayer<'layer> = Layer<'layer, nvinfer1::IOneHotLayer>;
 #[cfg(feature = "v_1_4")]
 /// [`trtx_sys::nvinfer1::IMoELayer`] — C++ [`nvinfer1::IMoELayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_mo_e_layer.html).
-#[cfg(feature = "v_1_4")]
 pub type MoELayer<'layer> = Layer<'layer, nvinfer1::IMoELayer>;
 #[cfg(feature = "v_1_4")]
 /// [`trtx_sys::nvinfer1::IDistCollectiveLayer`] — C++ [`nvinfer1::IDistCollectiveLayer`](https://docs.nvidia.com/deeplearning/tensorrt-rtx/latest/_static/c-api/classnvinfer1_1_1_i_dist_collective_layer.html).
-#[cfg(feature = "v_1_4")]
 pub type DistCollectiveLayer<'layer> = Layer<'layer, nvinfer1::IDistCollectiveLayer>;
 
 // Loop and conditional boundary layers (created via Loop / IfConditional / add_attention)
@@ -2797,10 +2795,10 @@ impl<'network> NetworkDefinition<'network> {
         SqueezeLayer::new(self.inner.as_ptr(), layer_ptr)
     }
 
+    #[cfg(feature = "v_1_7")]
     /// Adds a squeeze layer that removes every dimension statically equal to one.
     /// Dynamic dimensions are retained and must not become one at build or runtime.
     /// Zero-sized dimensions are retained.
-    #[cfg(feature = "v_1_7")]
     pub fn add_squeeze_all(&mut self, input: &Tensor) -> Result<SqueezeLayer<'network>> {
         check_network!(self, input);
         let layer_ptr = unsafe {

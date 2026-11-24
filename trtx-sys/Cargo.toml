@@ -6,6 +6,8 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 description = "Raw FFI bindings to NVIDIA TensorRT-RTX (EXPERIMENTAL - NOT FOR PRODUCTION)"
+documentation = "https://docs.rs/trtx-sys/"
+
 readme = "../README.md"
 links = "tensorrt-rtx"
 keywords = ["tensorrt", "inference", "nvidia", "ffi"]
@@ -36,3 +38,8 @@ enterprise = []
 autocxx = "0.30"
 bitflags = "2.13.1"
 cxx = "1.0"
+
+[package.metadata.docs.rs]
+# `enterprise` hides RTX APIs, so select the documented features explicitly.
+features = ["v_1_7", "onnxparser", "link_tensorrt_rtx", "link_tensorrt_onnxparser"]
+rustdoc-args = ["--cfg", "docsrs"]

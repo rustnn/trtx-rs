@@ -28,6 +28,8 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 #![allow(clippy::all)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(docsrs, doc(auto_cfg))]
 
 #[allow(warnings)]
 mod enums {
@@ -36,12 +38,18 @@ mod enums {
 
 macro_rules! better_enum {
     ($to:ident) => {
+        better_enum!($to, all());
+    };
+    ($to:ident, $cfg:meta) => {
+        #[cfg($cfg)]
         pub use crate::enums::$to;
+        #[cfg($cfg)]
         impl Into<crate::nvinfer1::$to> for $to {
             fn into(self) -> crate::nvinfer1::$to {
                 unsafe { transmute(self) }
             }
         }
+        #[cfg($cfg)]
         impl From<crate::nvinfer1::$to> for $to {
             fn from(value: crate::nvinfer1::$to) -> Self {
                 unsafe { transmute(value) }
@@ -60,8 +68,7 @@ better_enum!(ProfilingVerbosity);
 better_enum!(MemoryPoolType);
 better_enum!(DeviceType);
 better_enum!(EngineCapability);
-#[cfg(not(feature = "enterprise"))]
-better_enum!(EngineValidity);
+better_enum!(EngineValidity, not(feature = "enterprise"));
 #[cfg(not(feature = "enterprise"))]
 use bitflags::bitflags;
 #[cfg(not(feature = "enterprise"))]
@@ -98,15 +105,14 @@ better_enum!(PreviewFeature);
 better_enum!(HardwareCompatibilityLevel);
 better_enum!(RuntimePlatform);
 better_enum!(TilingOptimizationLevel);
-#[cfg(not(feature = "enterprise"))]
-better_enum!(CudaGraphStrategy);
-#[cfg(not(feature = "enterprise"))]
-better_enum!(DynamicShapesKernelSpecializationStrategy);
+better_enum!(CudaGraphStrategy, not(feature = "enterprise"));
+better_enum!(
+    DynamicShapesKernelSpecializationStrategy,
+    not(feature = "enterprise")
+);
 better_enum!(ExecutionContextAllocationStrategy);
-#[cfg(feature = "v_1_7")]
-better_enum!(DLAWorkspaceAllocationStrategy);
-#[cfg(not(feature = "enterprise"))]
-better_enum!(ComputeCapability);
+better_enum!(DLAWorkspaceAllocationStrategy, feature = "v_1_7");
+better_enum!(ComputeCapability, not(feature = "enterprise"));
 better_enum!(CumulativeOperation);
 better_enum!(ElementWiseOperation);
 better_enum!(GatherMode);
@@ -136,14 +142,10 @@ better_enum!(TripLimit);
 better_enum!(LoopOutput);
 better_enum!(KVCacheMode);
 better_enum!(FillOperation);
-#[cfg(feature = "v_1_4")]
-better_enum!(MoEActType);
-#[cfg(feature = "v_1_4")]
-better_enum!(CollectiveOperation);
-#[cfg(feature = "v_1_5")]
-better_enum!(CausalMaskKind);
-#[cfg(feature = "v_1_5")]
-better_enum!(AttentionIOForm);
+better_enum!(MoEActType, feature = "v_1_4");
+better_enum!(CollectiveOperation, feature = "v_1_4");
+better_enum!(CausalMaskKind, feature = "v_1_5");
+better_enum!(AttentionIOForm, feature = "v_1_5");
 
 pub use enums::ErrorCode;
 
@@ -689,17 +691,7 @@ unsafe extern "C" {
     pub unsafe fn trtx_destroy_profiler(profiler: *mut nvinfer1::IProfiler);
 
     // TensorRT factory functions (wrapped as simple C functions)
-    #[cfg(feature = "link_tensorrt_rtx")]
-    pub unsafe fn create_infer_builder(logger: *mut std::ffi::c_void) -> *mut nvinfer1::IBuilder;
-
-    #[cfg(feature = "link_tensorrt_rtx")]
-    pub unsafe fn create_infer_runtime(logger: *mut std::ffi::c_void) -> *mut nvinfer1::IRuntime;
-
-    #[cfg(feature = "link_tensorrt_rtx")]
-    pub fn create_infer_refitter(
-        cuda_engine: *mut std::ffi::c_void,
-        logger: *mut std::ffi::c_void,
-    ) -> *mut nvinfer1::IRefitter; // Returns IRefitter*
+    // Gated factory declaration is below this extern block. // Returns IRefitter*
 
     pub unsafe fn trtx_refitter_get_missing(
         refitter: *mut std::ffi::c_void,
@@ -728,12 +720,6 @@ unsafe extern "C" {
     ) -> i32;
 
     // ONNX Parser factory function
-    #[cfg(feature = "link_tensorrt_onnxparser")]
-    pub unsafe fn create_onnx_parser(
-        network: *mut nvinfer1::INetworkDefinition,
-        logger: *mut std::ffi::c_void,
-    ) -> *mut nvonnxparser::IParser;
-
     pub unsafe fn network_add_concatenation(
         network: *mut std::ffi::c_void,
         inputs: *mut *mut std::ffi::c_void,
@@ -874,9 +860,9 @@ impl DataType {
     }
 }
 
+#[cfg(feature = "v_1_7")]
 /// Parser-owned refit metadata, valid only during the observer callback.
 /// Layout matches `nvonnxparser::RefitRecord`.
-#[cfg(feature = "v_1_7")]
 #[repr(C)]
 pub struct RefitRecord {
     pub trt_name: *const std::ffi::c_char,
@@ -902,4 +888,30 @@ unsafe extern "C" {
         parser: *mut nvonnxparser::IParser,
         observer: *mut std::ffi::c_void,
     );
+}
+
+#[cfg(feature = "link_tensorrt_onnxparser")]
+unsafe extern "C" {
+    pub unsafe fn create_onnx_parser(
+        network: *mut nvinfer1::INetworkDefinition,
+        logger: *mut std::ffi::c_void,
+    ) -> *mut nvonnxparser::IParser;
+}
+
+#[cfg(feature = "link_tensorrt_rtx")]
+unsafe extern "C" {
+    pub fn create_infer_refitter(
+        cuda_engine: *mut std::ffi::c_void,
+        logger: *mut std::ffi::c_void,
+    ) -> *mut nvinfer1::IRefitter;
+}
+
+#[cfg(feature = "link_tensorrt_rtx")]
+unsafe extern "C" {
+    pub unsafe fn create_infer_runtime(logger: *mut std::ffi::c_void) -> *mut nvinfer1::IRuntime;
+}
+
+#[cfg(feature = "link_tensorrt_rtx")]
+unsafe extern "C" {
+    pub unsafe fn create_infer_builder(logger: *mut std::ffi::c_void) -> *mut nvinfer1::IBuilder;
 }
