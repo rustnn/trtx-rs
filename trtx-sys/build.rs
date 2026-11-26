@@ -239,6 +239,63 @@ fn generate_enum_bindings(crate_root: &str, out_path: &Path, include_dir: &Path)
     write_if_changed(&out_file, enums_src.as_bytes());
 }
 
+/// autocxx 0.31 can move an intermediate pointer's const qualifier onto its
+/// pointee. Repair only the affected wrappers; the SDK and cxx bridge already
+/// have the correct signatures. Remove when upstream preserves these qualifiers.
+fn repair_autocxx_pointer_qualifiers(out_dir: &Path) {
+    let header = out_dir.join("autocxx-build-dir/include/autocxxgen_ffi.h");
+    let source = std::fs::read_to_string(&header).expect("Failed to read autocxx wrapper header");
+    let repairs = [
+        ("executeV2", r"const\s+void\s*\*\s*\*", "void* const*"),
+        (
+            "addConcatenation",
+            r"const\s+nvinfer1::ITensor\s*\*\s*\*",
+            "nvinfer1::ITensor* const*",
+        ),
+        (
+            "addEinsum",
+            r"const\s+nvinfer1::ITensor\s*\*\s*\*",
+            "nvinfer1::ITensor* const*",
+        ),
+        (
+            "addPluginV2",
+            r"const\s+nvinfer1::ITensor\s*\*\s*\*",
+            "nvinfer1::ITensor* const*",
+        ),
+        (
+            "addPluginV3",
+            r"const\s+nvinfer1::ITensor\s*\*\s*\*",
+            "nvinfer1::ITensor* const*",
+        ),
+        (
+            "setPluginsToSerialize",
+            r"const\s+const\s+char\s*\*\s*\*",
+            "char const* const*",
+        ),
+        (
+            "getUsedVCPluginLibraries",
+            r"const\s+const\s+char\s*\*\s*\*",
+            "char const* const*",
+        ),
+    ];
+    let mut output = source;
+    for (method, pattern, replacement) in repairs {
+        let wrapper = format!("{method}_autocxx_wrapper_");
+        let regex = Regex::new(pattern).unwrap();
+        output = output
+            .split_inclusive('\n')
+            .map(|line| {
+                if line.contains(&wrapper) {
+                    regex.replace_all(line, replacement).into_owned()
+                } else {
+                    line.to_owned()
+                }
+            })
+            .collect();
+    }
+    write_if_changed(&header, output.as_bytes());
+}
+
 fn main() {
     // RUST_LOG makes autocxx unbearably slow. RUST_LOG unusually intended for running the program
     // not building it
@@ -408,6 +465,8 @@ fn main() {
     .extra_clang_args(&clang_args)
     .build()
     .expect("Failed to build autocxx bindings");
+
+    repair_autocxx_pointer_qualifiers(&out_path);
 
     // Set C++17 standard and suppress warnings
     if cfg!(target_os = "windows") && cfg!(target_env = "msvc") {

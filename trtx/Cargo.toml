@@ -16,7 +16,7 @@ trtx-sys = { version = "0.10.0", path = "../trtx-sys", default-features = false 
 thiserror = "2.0"
 cxx = "1.0"
 libloading = { version = "0.9", optional = true }
-autocxx = { version = "0.30" }
+autocxx = { version = "0.31" }
 
 log = "0.4.29"
 
