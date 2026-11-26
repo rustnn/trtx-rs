@@ -813,12 +813,18 @@ impl<'network> PoolingLayer<'network> {
 
 impl<'network> DynamicQuantizeLayer<'network> {
     /// See [nvinfer1::IDynamicQuantizeLayer::setAxis]
+    #[deprecated(
+        note = "use set_block_shape instead; the block shape rank must match the input rank"
+    )]
+    #[allow(deprecated)]
     pub fn set_axis(&mut self, network: &mut NetworkDefinition, axis: i32) {
         check_network!(network, self);
         self.inner.as_mut().setAxis(axis);
     }
 
     /// See [nvinfer1::IDynamicQuantizeLayer::getAxis]
+    #[deprecated(note = "use block_shape instead")]
+    #[allow(deprecated)]
     pub fn axis(&self, network: &NetworkDefinition) -> i32 {
         check_network!(network, self);
         self.inner.getAxis()
@@ -838,12 +844,18 @@ impl<'network> DynamicQuantizeLayer<'network> {
     }
 
     /// See [nvinfer1::IDynamicQuantizeLayer::setBlockSize]
+    #[deprecated(
+        note = "use set_block_shape instead; the block shape rank must match the input rank"
+    )]
+    #[allow(deprecated)]
     pub fn set_block_size(&mut self, network: &mut NetworkDefinition, size: i32) {
         check_network!(network, self);
         self.inner.as_mut().setBlockSize(size);
     }
 
     /// See [nvinfer1::IDynamicQuantizeLayer::getBlockSize]
+    #[deprecated(note = "use block_shape instead")]
+    #[allow(deprecated)]
     pub fn block_size(&self, network: &NetworkDefinition) -> i32 {
         check_network!(network, self);
         self.inner.getBlockSize()
@@ -2417,6 +2429,10 @@ impl<'network> NetworkDefinition<'network> {
         TopKLayer::new(self.inner.as_ptr(), layer_ptr)
     }
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addTopK`].
+    #[deprecated(
+        note = "use add_topk_with_indices instead; pass DataType::kINT32 for the legacy indices type"
+    )]
+    #[allow(deprecated)]
     pub fn add_topk(
         &mut self,
         input: &'_ Tensor,
@@ -2935,6 +2951,11 @@ impl<'network> NetworkDefinition<'network> {
 
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addAttention`].
     /// Creates an attention block (internally creates [`AttentionInputLayer`] and [`AttentionOutputLayer`]).
+    #[cfg_attr(
+        feature = "v_1_5",
+        deprecated(note = "use add_attention_v2 with CausalMaskKind instead")
+    )]
+    #[allow(deprecated)]
     pub fn add_attention(
         &mut self,
         query: &'_ Tensor,
@@ -3160,6 +3181,8 @@ impl<'network> Attention<'network> {
     }
 
     /// See [`trtx_sys::nvinfer1::IAttention::setCausal`].
+    #[cfg_attr(feature = "v_1_5", deprecated(note = "use set_causal_kind instead"))]
+    #[allow(deprecated)]
     pub fn set_causal(&mut self, network: &mut NetworkDefinition, is_causal: bool) -> Result<()> {
         check_network!(network, self);
         self.inner
@@ -3169,6 +3192,8 @@ impl<'network> Attention<'network> {
     }
 
     /// See [`trtx_sys::nvinfer1::IAttention::getCausal`].
+    #[cfg_attr(feature = "v_1_5", deprecated(note = "use causal_kind instead"))]
+    #[allow(deprecated)]
     pub fn causal(&self, network: &NetworkDefinition) -> bool {
         check_network!(network, self);
         self.inner.getCausal()
@@ -3734,6 +3759,10 @@ impl TripLimitLayer<'_> {
 
 impl<'builder> NetworkDefinition<'builder> {
     /// See [`trtx_sys::nvinfer1::INetworkDefinition::addNormalization`].
+    #[deprecated(
+        note = "use add_normalization_v2 instead; check the scale and bias broadcasting rules"
+    )]
+    #[allow(deprecated)]
     pub fn add_normalization(
         &mut self,
         input: &'_ Tensor,

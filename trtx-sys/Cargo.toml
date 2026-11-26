@@ -14,7 +14,7 @@ keywords = ["tensorrt", "inference", "nvidia", "ffi"]
 categories = ["external-ffi-bindings"]
 
 [build-dependencies]
-autocxx-build = "0.30"
+autocxx-build = "0.31"
 bindgen = "0.72"
 cc = "1.0"
 regex = "1.0"
@@ -35,7 +35,7 @@ v_1_7 = ["v_1_6"]
 enterprise = []
 
 [dependencies]
-autocxx = "0.30"
+autocxx = "0.31"
 bitflags = "2.13.1"
 cxx = "1.0"
 

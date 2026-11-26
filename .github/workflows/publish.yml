@@ -27,14 +27,6 @@ jobs:
         with:
           components: rustfmt, clippy
           
-      - name: Use libclang-21-dev on Ubuntu (newer will break autocxx)
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libclang-21-dev
-          # autocxx for trtx only works for libclang versions not newer than 21.
-          echo "LIBCLANG_PATH=/usr/lib/llvm-21/lib" >> "$GITHUB_ENV"
-
       - name: Check formatting
         run: cargo fmt --all -- --check
 

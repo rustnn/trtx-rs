@@ -85,9 +85,7 @@
 //!
 //! ### Required (building)
 //!
-//! 1. **libclang < 22**: Required for autocxx. On Windows: `winget install LLVM.LLVM -v 20.1.2`
-//!
-//!   *Important*: libclang version 22 or greater will cause a compilation error
+//! 1. **libclang >= 21**: Required for autocxx. On Windows: `winget install LLVM.LLVM`
 //!
 //!   You can steer discovery of libclang using LIBCLANG_PATH environment variable if auto-discovery
 //!   discovers a wrong version of libclang, e.g.
