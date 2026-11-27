@@ -38,18 +38,18 @@ jobs:
       # The VS 2026 STL requires Clang >=22 when bindgen parses its headers.
       - name: Install LLVM for Windows bindings
         if: ${{ matrix.os == 'windows-latest' }}
-        uses: KyleMayes/install-llvm-action@v2
-        with:
-          version: "22.1.0"
-          force-url: https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.0/LLVM-22.1.0-win64.exe
-          directory: ${{ runner.temp }}/llvm
-          env: false
-
-      - name: Select libclang for Windows bindings
-        if: ${{ matrix.os == 'windows-latest' }}
         shell: pwsh
         run: |
-          $llvmBin = Join-Path $env:LLVM_PATH "bin"
+          $version = "22.1.0"
+          $installer = Join-Path $env:RUNNER_TEMP "LLVM-$version-win64.exe"
+          $llvmDir = Join-Path $env:RUNNER_TEMP "llvm"
+          Invoke-WebRequest -Uri "https://github.com/llvm/llvm-project/releases/download/llvmorg-$version/LLVM-$version-win64.exe" -OutFile $installer
+          # NSIS requires /D to be last and its path to be unquoted, even with spaces.
+          $process = Start-Process -FilePath $installer -ArgumentList "/S /D=$llvmDir" -Wait -PassThru
+          if ($process.ExitCode -ne 0) {
+            throw "LLVM installer failed with exit code $($process.ExitCode)"
+          }
+          $llvmBin = Join-Path $llvmDir "bin"
           if (!(Test-Path (Join-Path $llvmBin "libclang.dll"))) {
             throw "libclang.dll not found in $llvmBin"
           }
